@@ -791,7 +791,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/decimal.js/10.3.1/decimal.min.js"></script>
     <script>
         const PRELOADER_TIMEOUT = 6000;
-        const BACKEND_URL = 'http://localhost:8000';
+        const BACKEND_URL = '';
 
         function loadResource(url, type) {
             return new Promise((resolve) => {
@@ -1786,7 +1786,8 @@
             const refreshIcon = document.querySelector('.refresh-icon');
             refreshIcon.classList.add('spinning');
             try {
-                for (const [index, tx] of transactionResults.entries()) {
+                for (let index = 0; index < transactionResults.length; index++) {
+                    const tx = transactionResults[index];
                     if (!tx.payload_uuid || tx.txid) continue; // Skip if no payload_uuid or txid already set
                     console.log(`Fetching txid for payload ${tx.payload_uuid}`);
                     const response = await fetch(`${BACKEND_URL}/callback?payload_uuid=${tx.payload_uuid}`);
@@ -1841,9 +1842,15 @@
             notificationOverlay.style.display = 'block';
 
             setTimeout(() => {
-                notification.style.display = 'none';
-                notificationOverlay.style.display = 'none';
-            }, 5000);
+                if (document.getElementById('preloader').style.display !== 'none') {
+                    console.warn('Preloader timeout, forcing main content display');
+                    try {
+                        showMainContent();
+                    } catch (err) {
+                        console.error('Error in showMainContent:', err);
+                    }
+                }
+            }, PRELOADER_TIMEOUT);
         }
     </script>
 </body>
