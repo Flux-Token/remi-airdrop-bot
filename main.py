@@ -12,10 +12,6 @@ from xrpl.models.requests import AccountInfo, Ledger, AccountLines, ServerInfo
 from xrpl.models.requests import GenericRequest
 from xrpl.utils import xrp_to_drops
 import uvicorn
-from dotenv import load_dotenv
-
-# Load environment variables from .env file
-load_dotenv()
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -41,8 +37,10 @@ FEE_WALLET_ADDRESS = os.getenv("FEE_WALLET_ADDRESS")
 
 # Validate environment variables
 if not XAMAN_API_KEY or not XAMAN_API_SECRET or not FEE_WALLET_ADDRESS:
-    logger.error("XAMAN_API_KEY, XAMAN_API_SECRET, or FEE_WALLET_ADDRESS not set in .env file")
-    raise ValueError("XAMAN_API_KEY, XAMAN_API_SECRET, and FEE_WALLET_ADDRESS must be set in .env file")
+    logger.error("XAMAN_API_KEY, XAMAN_API_SECRET, or FEE_WALLET_ADDRESS 
+not set as environment variables")
+    raise ValueError("XAMAN_API_KEY, XAMAN_API_SECRET, and 
+FEE_WALLET_ADDRESS must be set as environment variables")
 
 # Pydantic models
 class Wallet(BaseModel):
