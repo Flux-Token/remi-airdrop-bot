@@ -183,13 +183,6 @@ async def initiate_oauth():
     except Exception as e:
         logger.error(f"Error in initiate_oauth: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
-    data = response.json()
-    logger.info(f"OAuth initiated: {data}")
-    return {
-        "payload_uuid": data["uuid"],
-        "qr_code_url": f"https://xumm.app/sign/{data['uuid']}_q.png",
-        "authorize_url": data["next"]["always"]
-    }
 
 # Callback for OAuth polling
 
