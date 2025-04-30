@@ -26,7 +26,13 @@ logger = logging.getLogger(__name__)
 app = FastAPI()
 
 # Mount static files
-app.mount("/", StaticFiles(directory=".", html=True), name="static")
+app.mount("/static", StaticFiles(directory=".", html=True), name="static")
+
+# Add a root route to serve index.html
+@app.get("/")
+async def serve_index():
+    with open("index.html", "r") as f:
+        return HTMLResponse(content=f.read())
 
 # CORS configuration
 app.add_middleware(
