@@ -37,10 +37,8 @@ FEE_WALLET_ADDRESS = os.getenv("FEE_WALLET_ADDRESS")
 
 # Validate environment variables
 if not XAMAN_API_KEY or not XAMAN_API_SECRET or not FEE_WALLET_ADDRESS:
-    logger.error("XAMAN_API_KEY, XAMAN_API_SECRET, or FEE_WALLET_ADDRESS 
-not set as environment variables")
-    raise ValueError("XAMAN_API_KEY, XAMAN_API_SECRET, and 
-FEE_WALLET_ADDRESS must be set as environment variables")
+    logger.error("XAMAN_API_KEY, XAMAN_API_SECRET, or FEE_WALLET_ADDRESS not set as environment variables")
+    raise ValueError("XAMAN_API_KEY, XAMAN_API_SECRET, and FEE_WALLET_ADDRESS must be set as environment variables")
 
 # Pydantic models
 class Wallet(BaseModel):
