@@ -34,4 +34,4 @@ websocket-client==1.4.2
 websockets==15.0.1
 wrapt==1.17.2
 xrpl-py==4.1.0
-xumm-sdk-py==1.0.4
+xumm-sdk-py==1.0.3
