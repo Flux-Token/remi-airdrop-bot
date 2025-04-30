@@ -5,6 +5,7 @@ from typing import List, Optional
 from fastapi import FastAPI, HTTPException, Depends, Query, Header
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import requests
 from xrpl.asyncio.clients import AsyncWebsocketClient
@@ -23,6 +24,9 @@ logger = logging.getLogger(__name__)
 
 # FastAPI app
 app = FastAPI()
+
+# Mount static files
+app.mount("/", StaticFiles(directory=".", html=True), name="static")
 
 # CORS configuration
 app.add_middleware(
