@@ -1,23 +1,23 @@
-import asyncio
-import logging
-import os
-from typing import List, Optional
 from fastapi import FastAPI, HTTPException, Depends, Query, Header
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse  # Added 
+FileResponse for serving index.html
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-import requests
-from xrpl.asyncio.clients import AsyncWebsocketClient
-from xrpl.models.requests import AccountInfo, Ledger, AccountLines, ServerInfo
-from xrpl.models.requests import GenericRequest
+from fastapi.staticfiles import StaticFiles  # Added StaticFiles for 
+serving static files
+import os
+import logging
+from xumm import XummSdk
+from xrpl.clients import JsonRpcClient
+from xrpl.models.requests import AccountInfo, AccountLines
+from xrpl.models.transactions import Payment
 from xrpl.utils import xrp_to_drops
-import uvicorn
+from pydantic import BaseModel, Field
+from typing import List, Optional
 
-# Configure logging
+# Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# FastAPI app
 app = FastAPI()
 
 # CORS configuration
@@ -29,713 +29,344 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Root endpoint to confirm the app is running
+# Serve static files from the 'static' folder
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# Serve index.html at the root URL instead of the JSON message
 @app.get("/")
 async def root():
-    return {"message": "REMI Airdrop Bot is running!"}
+    return FileResponse("static/index.html")
 
 # Configuration
-# Load API keys and fee wallet address from .env file
+# Load API keys and fee wallet address from environment variables
 XAMAN_API_KEY = os.getenv("XAMAN_API_KEY")
 XAMAN_API_SECRET = os.getenv("XAMAN_API_SECRET")
 FEE_WALLET_ADDRESS = os.getenv("FEE_WALLET_ADDRESS")
 
-
 # Validate environment variables
 if not XAMAN_API_KEY or not XAMAN_API_SECRET or not FEE_WALLET_ADDRESS:
-    logger.error("XAMAN_API_KEY, XAMAN_API_SECRET, or FEE_WALLET_ADDRESS not set as environment variables")
-    raise ValueError("XAMAN_API_KEY, XAMAN_API_SECRET, and FEE_WALLET_ADDRESS must be set as environment variables")
+    logger.error("XAMAN_API_KEY, XAMAN_API_SECRET, or FEE_WALLET_ADDRESS 
+not set as environment variables")
+    raise ValueError("XAMAN_API_KEY, XAMAN_API_SECRET, and 
+FEE_WALLET_ADDRESS must be set as environment variables")
 
-# Pydantic models
+# Initialize Xumm SDK
+xumm = XummSdk(XAMAN_API_KEY, XAMAN_API_SECRET)
+
+# Initialize XRPL client
+XRPL_NODE = os.getenv("XRPL_NODE", "wss://s1.ripple.com")
+client = JsonRpcClient(XRPL_NODE)
+
+# Pydantic models for request validation
 class Wallet(BaseModel):
     address: str
-    amount: Optional[float] = 0
+    amount: float = Field(..., ge=0)
 
 class AirdropRequest(BaseModel):
     token_type: str
-    total_amount: float
-    issuer: Optional[str] = None
-    currency: Optional[str] = None
+    total_amount: float = Field(..., ge=0)
     wallets: List[Wallet]
     account: str
+    issuer: Optional[str] = None
+    currency: Optional[str] = None
 
-class Token(BaseModel):
-    name: str
-    issuer: str
-    currency: str
-
-# Dependency for validating access token
-async def get_access_token(authorization: str = Header(...), account: str = Header(...)):
-    if not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Invalid authorization header")
-    token = authorization.split(" ")[1]
-    logger.info(f"Validating access token: {token} for account: {account}")
-    # Skip Xumm /user-token validation and trust the issued_user_token
-    # Optionally, add token validation logic here in the future if needed
-    return {"token": token, "account": account}
-
-# Get XRPL client for Mainnet
-async def get_xrpl_client():
-    primary_node = "wss://s1.ripple.com"
-    fallback_node = "wss://s2.ripple.com"
-    logger.info(f"Connecting to primary Mainnet node: {primary_node}")
-    client = None
-    try:
-        client = AsyncWebsocketClient(primary_node)
-        await client.open()
-        if client.is_open():
-            response = await client.request(ServerInfo())
-            if response.is_successful():
-                network_id = response.result.get("info", {}).get("network_id", 0)
-                if network_id != 0:
-                    logger.error(f"Connected to non-Mainnet network (network_id: {network_id})")
-                    await client.close()
-                    raise HTTPException(
-                        status_code=500,
-                        detail="Connected to incorrect network. Expected XRP Ledger Mainnet."
-                    )
-                logger.info(
-                    f"Connected to primary Mainnet node ({primary_node}): "
-                    f"{response.result}"
-                )
-                return client
-            else:
-                logger.warning(
-                    f"Primary node ({primary_node}) response invalid, "
-                    "trying fallback..."
-                )
-                await client.close()
-    except Exception as e:
-        logger.warning(
-            f"Failed to connect to primary Mainnet node ({primary_node}): "
-            f"{str(e)}, trying fallback..."
-        )
-        if client and client.is_open():
-            await client.close()
-
-    logger.info(f"Connecting to fallback Mainnet node: {fallback_node}")
-    try:
-        client = AsyncWebsocketClient(fallback_node)
-        await client.open()
-        if client.is_open():
-            response = await client.request(ServerInfo())
-            if response.is_successful():
-                network_id = response.result.get("info", {}).get("network_id", 0)
-                if network_id != 0:
-                    logger.error(f"Connected to non-Mainnet network (network_id: {network_id})")
-                    await client.close()
-                    raise HTTPException(
-                        status_code=500,
-                        detail="Connected to incorrect network. Expected XRP Ledger Mainnet."
-                    )
-                logger.info(
-                    f"Connected to fallback Mainnet node ({fallback_node}): "
-                    f"{response.result}"
-                )
-                return client
-            else:
-                logger.error(
-                    f"Fallback node ({fallback_node}) response invalid."
-                )
-                await client.close()
-    except Exception as e:
-        logger.error(
-            f"Failed to connect to fallback Mainnet node ({fallback_node}): "
-            f"{str(e)}"
-        )
-        if client and client.is_open():
-            await client.close()
-    raise HTTPException(
-        status_code=500,
-        detail=(
-            "Failed to connect to XRP Ledger Mainnet nodes. Please try again "
-            "later."
-        )
-    )
-
-# Get current network fee
-async def get_current_fee(client: AsyncWebsocketClient) -> int:
-    try:
-        response = await asyncio.wait_for(client.request(Ledger(ledger_index="validated")), timeout=30)
-        if not response.is_successful():
-            raise Exception("Failed to fetch ledger data")
-        base_fee = int(response.result["ledger"]["base_fee"])
-        logger.info(f"Fetched base fee: {base_fee} drops")
-        return base_fee
-    except Exception as e:
-        logger.error(f"Fee fetch error: {str(e)}")
-        return 12  # Fallback to 12 drops
-
-# Initiate OAuth with Xumm
 @app.post("/initiate-oauth")
 async def initiate_oauth():
-    headers = {
-        "X-API-Key": XAMAN_API_KEY,
-        "X-API-Secret": XAMAN_API_SECRET
-    }
-    payload = {
-        "txjson": {
-            "TransactionType": "SignIn"
+    try:
+        payload = {
+            "txjson": {
+                "TransactionType": "SignIn"
+            }
         }
-    }
-    logger.info("Initiating OAuth with Xumm")
-    response = requests.post("https://xumm.app/api/v1/platform/payload", headers=headers, json=payload)
-    if response.status_code != 200:
-        logger.error(f"Xumm payload error: {response.status_code} - {response.text}")
-        raise HTTPException(status_code=500, detail=f"Failed to initiate OAuth: {response.text}")
-    data = response.json()
-    logger.info(f"OAuth initiated: {data}")
-    return {
-        "payload_uuid": data["uuid"],
-        "qr_code_url": f"https://xumm.app/sign/{data['uuid']}_q.png",
-        "authorize_url": data["next"]["always"]
-    }
-
-# Callback for OAuth polling
+        response = await xumm.payload.create(payload)
+        if not response:
+            raise HTTPException(status_code=500, detail="Failed to create 
+OAuth payload")
+        return {
+            "payload_uuid": response.uuid,
+            "qr_code_url": f"https://xumm.app/sign/{response.uuid}_q.png",
+            "authorize_url": response.next.always
+        }
+    except Exception as e:
+        logger.error(f"Error in initiate_oauth: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/callback")
-async def callback(payload_uuid: str):
-    headers = {
-        "X-API-Key": XAMAN_API_KEY,
-        "X-API-Secret": XAMAN_API_SECRET
-    }
-    response = requests.get(f"https://xumm.app/api/v1/platform/payload/{payload_uuid}", headers=headers)
-    data = response.json()
-    logger.info(f"Callback response for payload {payload_uuid}: {data}")
-    
-    # Check if the payload is signed and has an account
-    if (
-        response.status_code == 200 
-        and data.get("meta", {}).get("exists", False)
-        and data.get("meta", {}).get("signed", False)
-        and data.get("response", {}).get("account")
-        and data.get("application", {}).get("issued_user_token")
-    ):
-        account = data["response"]["account"]
-        issued_user_token = data["application"]["issued_user_token"]
-        # Attempt to generate user token for verification
-        token_response = requests.post(
-            "https://xumm.app/api/v1/platform/user-token",
-            headers=headers,
-            json={"user_token": data["response"]["hex"]}
-        )
-        if token_response.status_code == 200:
-            token_data = token_response.json()
-            logger.info(f"Xumm user-token response: {token_data}")
-            user_token = token_data.get("token")
-            if not user_token:
-                logger.warning(f"No token in user-token response: {token_data}, using issued_user_token")
-                user_token = issued_user_token
-        else:
-            logger.warning(f"Xumm user-token failed: {token_response.status_code} - {token_response.text}, using issued_user_token")
-            user_token = issued_user_token
-        return {
-            "meta": {"signed": True},
-            "application": {"issued_user_token": user_token},
-            "response": {"account": account}
-        }
-    elif data.get("meta", {}).get("cancelled", False):
-        raise HTTPException(status_code=400, detail="Payload was cancelled")
-    elif data.get("meta", {}).get("expired", False):
-        raise HTTPException(status_code=400, detail="Payload has expired")
-    else:
-        return JSONResponse(status_code=202, content={"status": "pending"})
-
-# Get token holdings
-@app.get("/get-tokens")
-async def get_tokens(token_data: dict = Depends(get_access_token)):
-    client = None
+async def callback(payload_uuid: str = Query(...)):
     try:
-        client = await get_xrpl_client()
-        account_lines_request = AccountLines(account=token_data["account"], ledger_index="validated")
-        response = await asyncio.wait_for(client.request(account_lines_request), timeout=30)
-        if not response.is_successful():
-            raise Exception(response.result.get("error_message", "Failed to fetch account lines"))
+        payload_status = await xumm.payload.get(payload_uuid)
+        if not payload_status:
+            raise HTTPException(status_code=404, detail="Payload not 
+found")
+
+        if payload_status.meta.cancelled:
+            return JSONResponse(status_code=400, content={"detail": 
+"Payload was cancelled"})
+        if payload_status.meta.expired:
+            return JSONResponse(status_code=400, content={"detail": 
+"Payload has expired"})
+        if not payload_status.meta.signed:
+            return JSONResponse(status_code=202, content={"status": 
+"pending"})
+
+        return payload_status
+    except Exception as e:
+        logger.error(f"Error in callback: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/get-tokens")
+async def get_tokens(authorization: str = Header(...), account: str = 
+Header(...)):
+    try:
+        if not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid 
+authorization header")
+        token = authorization.split(" ")[1]
+        # Validate token with Xumm (simplified for this example)
+        user_token_validation = await 
+xumm.payload.validate_user_token(token, account)
+        if not user_token_validation:
+            raise HTTPException(status_code=401, detail="Invalid or 
+expired token")
+
+        # Fetch account lines (trustlines) to get token holdings
+        request = AccountLines(account=account)
+        response = await client.request(request)
+        lines = response.result.get("lines", [])
+
         tokens = []
-        for line in response.result.get("lines", []):
-            if float(line["limit"]) > 0:
-                tokens.append({
-                    "name": line["currency"],
-                    "issuer": line["account"],
-                    "currency": line["currency"]
-                })
-        logger.info(f"Token holdings for {token_data['account']}: {tokens}")
+        for line in lines:
+            tokens.append({
+                "currency": line["currency"],
+                "issuer": line["account"],
+                "name": line["currency"],  # Simplified; in practice, you 
+might map currency codes to names
+                "balance": float(line["balance"])
+            })
+
         return {"tokens": tokens}
     except Exception as e:
-        logger.error(f"Token fetch error: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=(
-                "Failed to fetch token holdings: Ensure account is funded on "
-                "the XRP Ledger Mainnet. Acquire XRP from an exchange like "
-                "Coinbase or Bitstamp."
-            )
-        )
-    finally:
-        if client and client.is_open():
-            await client.close()
+        logger.error(f"Error in get_tokens: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-# Check balance
 @app.get("/balance")
-async def balance(
-    issuer: Optional[str] = Query(None),
-    currency: Optional[str] = Query(None),
-    token_data: dict = Depends(get_access_token)
-):
-    client = None
+async def get_balance(authorization: str = Header(...), account: str = 
+Header(...), issuer: Optional[str] = Query(None), currency: Optional[str] 
+= Query(None)):
     try:
-        client = await get_xrpl_client()
-        account_info_request = AccountInfo(account=token_data["account"], ledger_index="validated")
-        response = await asyncio.wait_for(client.request(account_info_request), timeout=30)
-        if not response.is_successful():
-            raise Exception(response.result.get("error_message", "Account not found"))
-        balance_xrp = float(response.result["account_data"]["Balance"]) / 1_000_000
-        logger.info(f"XRP balance for {token_data['account']}: {balance_xrp}")
-        
+        if not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid 
+authorization header")
+        token = authorization.split(" ")[1]
+        user_token_validation = await 
+xumm.payload.validate_user_token(token, account)
+        if not user_token_validation:
+            raise HTTPException(status_code=401, detail="Invalid or 
+expired token")
+
+        # Get XRP balance
+        request = AccountInfo(account=account, ledger_index="validated")
+        response = await client.request(request)
+        if not response.result.get("account_data"):
+            raise HTTPException(status_code=404, detail="Account not found 
+or not funded")
+        xrp_balance = float(response.result["account_data"]["Balance"]) / 
+1_000_000
+
         if issuer and currency:
-            account_lines_request = AccountLines(account=token_data["account"], ledger_index="validated")
-            lines_response = await asyncio.wait_for(client.request(account_lines_request), timeout=30)
-            if not lines_response.is_successful():
-                raise Exception(lines_response.result.get("error_message", "Failed to fetch account lines"))
-            balance_token = 0
-            for line in lines_response.result.get("lines", []):
-                if line["account"] == issuer and line["currency"] == currency:
-                    balance_token = float(line["balance"])
+            # Get token balance
+            request = AccountLines(account=account)
+            response = await client.request(request)
+            lines = response.result.get("lines", [])
+            token_balance = None
+            for line in lines:
+                if line["account"] == issuer and line["currency"] == 
+currency:
+                    token_balance = float(line["balance"])
                     break
-            logger.info(f"Token balance for {token_data['account']} ({currency}): {balance_token}")
-            return {
-                "account": token_data["account"],
-                "balance_token": balance_token,
-                "currency": currency
-            }
-        return {
-            "account": token_data["account"],
-            "balance_xrp": balance_xrp
-        }
-    except Exception as e:
-        logger.error(f"Balance error: {str(e)}")
-        raise HTTPException(
-            status_code=404,
-            detail=(
-                "Failed to fetch balance: Account not found or not funded. "
-                "Please acquire XRP from an exchange like Coinbase or Bitstamp "
-                "and fund your Mainnet account."
-            )
-        )
-    finally:
-        if client and client.is_open():
-            await client.close()
+            if token_balance is None:
+                raise HTTPException(status_code=404, detail="Token not 
+found in account")
+            return {"balance_token": token_balance, "currency": currency, 
+"account": account}
 
-# Validate wallets
+        return {"balance_xrp": xrp_balance, "account": account}
+    except Exception as e:
+        logger.error(f"Error in get_balance: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/validate-wallets")
-async def validate_wallets(
-    wallets: List[Wallet],
-    token_type: str = Query(...),
-    issuer: Optional[str] = Query(None),
-    currency: Optional[str] = Query(None),
-    token_data: dict = Depends(get_access_token)
-):
-    logger.info(f"Validating wallets: {wallets}, token_type: {token_type}, issuer: {issuer}, currency: {currency}")
-    client = None
+async def validate_wallets(wallets: List[Wallet], token_type: str = 
+Query(...), issuer: Optional[str] = Query(None), currency: Optional[str] = 
+Query(None), authorization: str = Header(...), account: str = 
+Header(...)):
     try:
-        client = await get_xrpl_client()
+        if not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid 
+authorization header")
+        token = authorization.split(" ")[1]
+        user_token_validation = await 
+xumm.payload.validate_user_token(token, account)
+        if not user_token_validation:
+            raise HTTPException(status_code=401, detail="Invalid or 
+expired token")
+
         results = []
         for wallet in wallets:
-            wallet.address = wallet.address.strip()
             try:
-                account_info_request = AccountInfo(account=wallet.address, ledger_index="validated")
-                response = await asyncio.wait_for(client.request(account_info_request), timeout=30)
-                if response.is_successful():
-                    results.append({
-                        "address": wallet.address,
-                        "status": "Valid",
-                        "error": None
-                    })
+                request = AccountInfo(account=wallet.address, 
+ledger_index="validated")
+                response = await client.request(request)
+                if not response.result.get("account_data"):
+                    results.append({"address": wallet.address, "status": 
+"invalid", "error": "Account not found or not funded"})
                 else:
-                    error_message = response.result.get("error_message", "Unknown error")
-                    results.append({
-                        "address": wallet.address,
-                        "status": "Invalid",
-                        "error": error_message
-                    })
+                    results.append({"address": wallet.address, "status": 
+"valid"})
             except Exception as e:
-                results.append({
-                    "address": wallet.address,
-                    "status": "Invalid",
-                    "error": str(e)
-                })
+                results.append({"address": wallet.address, "status": 
+"invalid", "error": str(e)})
         return results
     except Exception as e:
-        logger.error(f"Wallet validation error: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=(
-                "Failed to validate wallets: Ensure addresses are valid and "
-                "funded on the XRP Ledger Mainnet. Acquire XRP from an exchange "
-                "like Coinbase or Bitstamp."
-            )
-        )
-    finally:
-        if client and client.is_open():
-            await client.close()
+        logger.error(f"Error in validate_wallets: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-# Check trustlines
 @app.post("/check-trustlines")
-async def check_trustlines(
-    wallets: List[Wallet],
-    token_type: str = Query(...),
-    issuer: Optional[str] = Query(None),
-    currency: Optional[str] = Query(None),
-    token_data: dict = Depends(get_access_token)
-):
-    logger.info(f"Checking trustlines for wallets: {wallets}, token_type: {token_type}, issuer: {issuer}, currency: {currency}")
-    if token_type != "XRP" and (not issuer or not currency):
-        raise HTTPException(
-            status_code=400,
-            detail="Issuer and currency are required for token trustline checks"
-        )
-    client = None
+async def check_trustlines(wallets: List[Wallet], token_type: str = 
+Query(...), issuer: Optional[str] = Query(None), currency: Optional[str] = 
+Query(None), authorization: str = Header(...), account: str = 
+Header(...)):
     try:
-        client = await get_xrpl_client()
+        if not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid 
+authorization header")
+        token = authorization.split(" ")[1]
+        user_token_validation = await 
+xumm.payload.validate_user_token(token, account)
+        if not user_token_validation:
+            raise HTTPException(status_code=401, detail="Invalid or 
+expired token")
+
+        if token_type != "XRP" and (not issuer or not currency):
+            raise HTTPException(status_code=400, detail="Issuer and 
+currency required for non-XRP tokens")
+
         results = []
         for wallet in wallets:
-            wallet.address = wallet.address.strip()
+            if token_type == "XRP":
+                results.append({"address": wallet.address, 
+"has_trustline": True})  # XRP doesn't require trustlines
+                continue
             try:
-                if token_type == "XRP":
-                    results.append({
-                        "address": wallet.address,
-                        "has_trustline": True
-                    })
-                else:
-                    trustline_request = GenericRequest(
-                        command="account_lines",
-                        account=wallet.address,
-                        ledger_index="validated"
-                    )
-                    response = await asyncio.wait_for(client.request(trustline_request), timeout=30)
-                    trustlines = response.result.get("lines", [])
-                    logger.info(f"Trustlines for wallet {wallet.address}: {trustlines}")
-                    trustline_exists = any(
-                        line["account"] == issuer and line["currency"] == currency
-                        for line in trustlines
-                    )
-                    results.append({
-                        "address": wallet.address,
-                        "has_trustline": trustline_exists
-                    })
+                request = AccountLines(account=wallet.address)
+                response = await client.request(request)
+                lines = response.result.get("lines", [])
+                has_trustline = any(line["account"] == issuer and 
+line["currency"] == currency for line in lines)
+                results.append({"address": wallet.address, 
+"has_trustline": has_trustline})
             except Exception as e:
-                logger.error(f"Error checking trustline for {wallet.address}: {str(e)}")
-                results.append({
-                    "address": wallet.address,
-                    "has_trustline": False
-                })
-        logger.info("Trustline check completed.")
+                logger.error(f"Error checking trustline for 
+{wallet.address}: {str(e)}")
+                results.append({"address": wallet.address, 
+"has_trustline": False})
         return results
     except Exception as e:
-        logger.error(f"Trustline check error: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=(
-                "Failed to check trustlines: Ensure wallets are valid and have "
-                "trustlines set up on the XRP Ledger Mainnet. Acquire XRP from "
-                "an exchange like Coinbase or Bitstamp."
-            )
-        )
-    finally:
-        if client and client.is_open():
-            await client.close()
+        logger.error(f"Error in check_trustlines: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-# Airdrop endpoint
 @app.post("/airdrop")
-async def airdrop(request: AirdropRequest, token_data: dict = Depends(get_access_token)):
-    logger.info(f"Initiating airdrop with payload: {request.model_dump()}")
-    account = request.account
-    if not account:
-        logger.error("Account is required in request body but missing")
-        raise HTTPException(status_code=400, detail="Account is required in request body")
-    logger.info(f"Processing airdrop for account: {account}")
+async def airdrop(request: AirdropRequest, authorization: str = 
+Header(...)):
     try:
-        total_wallet_amount = round(sum(float(wallet.amount or 0)
-                                       for wallet in request.wallets), 6)
-        request_total_amount = round(float(request.total_amount or 0), 6)
-        logger.info(
-            f"Total wallet amount: {total_wallet_amount}, "
-            f"Request total amount: {request_total_amount}, "
-            f"Difference: {abs(total_wallet_amount - request_total_amount)}"
-        )
-        if abs(total_wallet_amount - request_total_amount) > 0.000001:
-            wallet_amounts = [float(wallet.amount or 0) for wallet in request.wallets]
-            raise HTTPException(
-                status_code=422,
-                detail={
-                    "error": "Total amount does not match sum of wallet amounts",
-                    "request_total_amount": request_total_amount,
-                    "calculated_wallet_amount": total_wallet_amount,
-                    "difference": abs(total_wallet_amount - request_total_amount),
-                    "wallet_amounts": wallet_amounts,
-                    "raw_payload": request.model_dump()
-                }
-            )
-    except (ValueError, TypeError) as e:
-        logger.error(f"Invalid amount data: {str(e)}, Payload: {request.model_dump()}")
-        raise HTTPException(
-            status_code=422,
-            detail={
-                "error": f"Invalid amount data: {str(e)}",
-                "request_total_amount": str(request.total_amount),
-                "calculated_wallet_amount": "N/A",
-                "wallet_amounts": [str(wallet.amount) for wallet in request.wallets],
-                "raw_payload": request.model_dump()
-            }
-        )
+        if not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid 
+authorization header")
+        token = authorization.split(" ")[1]
+        user_token_validation = await 
+xumm.payload.validate_user_token(token, request.account)
+        if not user_token_validation:
+            raise HTTPException(status_code=401, detail="Invalid or 
+expired token")
 
-    if not request.wallets:
-        raise HTTPException(status_code=422, detail="At least one wallet is required")
+        if request.token_type != "XRP" and (not request.issuer or not 
+request.currency):
+            raise HTTPException(status_code=400, detail="Issuer and 
+currency required for non-XRP tokens")
 
-    if request.token_type != "XRP":
-        if not request.issuer:
-            raise HTTPException(status_code=400, detail="Issuer is required for token airdrops")
-        if not request.currency:
-            raise HTTPException(
-                status_code=400,
-                detail="Currency code is required for token airdrops"
-            )
+        # Validate total amount matches sum of wallet amounts
+        wallet_sum = sum(wallet.amount for wallet in request.wallets)
+        if abs(wallet_sum - request.total_amount) > 0.000001:
+            raise HTTPException(status_code=422, detail={"error": "Total 
+amount does not match sum of wallet amounts", "wallet_sum": wallet_sum, 
+"total_amount": request.total_amount})
 
-    client = None
-    try:
-        client = await get_xrpl_client()
-        sequence_response = await asyncio.wait_for(
-            client.request(AccountInfo(account=account)),
-            timeout=30
-        )
-        if not sequence_response.is_successful():
-            raise Exception(
-                f"Failed to fetch account info: "
-                f"{sequence_response.result.get('error_message', 'Unknown error')}"
-            )
-        sequence_int = int(sequence_response.result["account_data"]["Sequence"])
-        logger.info(f"Fetched sequence for account {account}: {sequence_int}")
-
-        last_ledger_response = await asyncio.wait_for(
-            client.request(Ledger(ledger_index="validated")),
-            timeout=30
-        )
-        if not last_ledger_response.is_successful():
-            raise Exception(
-                f"Failed to fetch ledger: "
-                f"{last_ledger_response.result.get('error_message', 'Unknown error')}"
-            )
-        last_ledger = int(last_ledger_response.result["ledger"]["ledger_index"])
-        last_ledger_sequence = last_ledger + 100
-        logger.info(
-            f"Fetched last ledger index: {last_ledger}, "
-            f"using last_ledger_sequence: {last_ledger_sequence}"
-        )
-
-        fee = await get_current_fee(client)
-        logger.info(f"Using fee: {fee} drops")
-
-        # Calculate REMI service fee: 0.05 XRP per wallet, capped at 5 XRP
-        service_fee = min(len(request.wallets) * 0.05, 5.0)
-        logger.info(f"Calculated REMI service fee: {service_fee} XRP for {len(request.wallets)} wallets")
-
-        total_network_fee = 0
-        transactions = []
-        fee_transaction = None
-        headers = {
-            "X-API-Key": XAMAN_API_KEY,
-            "X-API-Secret": XAMAN_API_SECRET,
-            "Authorization": f"Bearer {token_data['token']}"
-        }
+        # Calculate fees
+        network_fee_per_tx = 0.000012  # 12 drops per transaction
+        total_transactions = len([w for w in request.wallets if w.amount > 
+0])
+        total_network_fee = network_fee_per_tx * (total_transactions + 1)  
+# +1 for fee transaction
+        service_fee_per_wallet = 0.05
+        max_service_fee = 5.0
+        total_service_fee = min(len(request.wallets) * 
+service_fee_per_wallet, max_service_fee)
 
         # Create fee transaction
-        if service_fee > 0:
-            fee_amount = xrp_to_drops(service_fee)
-            logger.info(f"Creating fee transaction: {service_fee} XRP ({fee_amount} drops) to {FEE_WALLET_ADDRESS}")
-            fee_tx = {
+        fee_payload = {
+            "txjson": {
                 "TransactionType": "Payment",
-                "Account": account,
+                "Account": request.account,
                 "Destination": FEE_WALLET_ADDRESS,
-                "Amount": str(fee_amount),
-                "Fee": str(fee),
-                "Sequence": int(sequence_int),
-                "LastLedgerSequence": int(last_ledger_sequence)
+                "Amount": xrp_to_drops(total_service_fee)
             }
-            logger.info(f"Fee transaction: {fee_tx}")
-            payload = {"txjson": fee_tx}
-            response = requests.post(
-                "https://xumm.app/api/v1/platform/payload",
-                headers=headers,
-                json=payload
-            )
-            if response.status_code != 200:
-                logger.error(
-                    f"Xumm payload error for fee payment: "
-                    f"{response.status_code} - {response.text}"
-                )
-                raise HTTPException(
-                    status_code=500,
-                    detail=f"Failed to create fee payment payload: {response.text}"
-                )
-            payload_data = response.json()
-            fee_transaction = {
-                "payload_uuid": payload_data["uuid"],
-                "sign_url": payload_data["next"]["always"]
-            }
-            total_network_fee += float(fee) / 1_000_000
-            sequence_int += 1
+        }
+        fee_response = await xumm.payload.create(fee_payload)
+        if not fee_response:
+            raise HTTPException(status_code=500, detail="Failed to create 
+fee transaction payload")
 
         # Create airdrop transactions
-        for i, wallet in enumerate(request.wallets):
-            wallet.address = wallet.address.strip()
-            if float(wallet.amount or 0) <= 0:
-                transactions.append({
-                    "status": {
-                        "address": wallet.address,
-                        "status": "Skipped",
-                        "error": "Amount is zero"
-                    }
-                })
+        transactions = []
+        for wallet in request.wallets:
+            if wallet.amount <= 0:
+                transactions.append({"status": {"address": wallet.address, 
+"status": "skipped (amount <= 0)"}})
                 continue
-            if request.token_type != "XRP":
-                trustline_request = GenericRequest(
-                    command="account_lines",
-                    account=wallet.address,
-                    ledger_index="validated"
-                )
-                trustline_response = await asyncio.wait_for(client.request(trustline_request), timeout=30)
-                trustlines = trustline_response.result.get("lines", [])
-                logger.info(f"Trustlines for wallet {wallet.address}: {trustlines}")
-                trustline_exists = any(
-                    line["account"] == request.issuer and line["currency"] == request.currency
-                    for line in trustlines
-                )
-                if not trustline_exists:
-                    transactions.append({
-                        "status": {
-                            "address": wallet.address,
-                            "status": "Failed",
-                            "error": "No trustline exists for this token"
-                        }
-                    })
-                    continue
-                payment_tx = {
+            amount = xrp_to_drops(wallet.amount) if request.token_type == 
+"XRP" else {
+                "currency": request.currency,
+                "value": str(wallet.amount),
+                "issuer": request.issuer
+            }
+            payload = {
+                "txjson": {
                     "TransactionType": "Payment",
-                    "Account": account,
+                    "Account": request.account,
                     "Destination": wallet.address,
-                    "Amount": {
-                        "currency": request.currency,
-                        "value": str(float(wallet.amount)),
-                        "issuer": request.issuer
-                    },
-                    "Fee": str(fee),
-                    "Sequence": int(sequence_int),
-                    "LastLedgerSequence": int(last_ledger_sequence)
+                    "Amount": amount
                 }
-                logger.info(f"Token payment transaction: {payment_tx}")
-                payload = {"txjson": payment_tx}
-                response = requests.post(
-                    "https://xumm.app/api/v1/platform/payload",
-                    headers=headers,
-                    json=payload
-                )
-                if response.status_code != 200:
-                    logger.error(
-                        f"Xumm payload error for token payment: "
-                        f"{response.status_code} - {response.text}"
-                    )
-                    transactions.append({
-                        "status": {
-                            "address": wallet.address,
-                            "status": "Failed",
-                            "error": f"Failed to create payment payload: {response.text}"
-                        }
-                    })
-                    continue
-                payload_data = response.json()
-                transactions.append({
-                    "payload_uuid": payload_data["uuid"],
-                    "sign_url": payload_data["next"]["always"],
-                    "status": {
-                        "address": wallet.address,
-                        "status": "Pending Payment"
-                    }
-                })
-                total_network_fee += float(fee) / 1_000_000
-                sequence_int += 1
-            else:
-                amount = xrp_to_drops(float(wallet.amount or 0))
-                logger.info(f"XRP payment amount: {amount} drops")
-                payment_tx = {
-                    "TransactionType": "Payment",
-                    "Account": account,
-                    "Destination": wallet.address,
-                    "Amount": str(amount),
-                    "Fee": str(fee),
-                    "Sequence": int(sequence_int),
-                    "LastLedgerSequence": int(last_ledger_sequence)
-                }
-                logger.info(f"Payment transaction (XRP): {payment_tx}")
-                payload = {"txjson": payment_tx}
-                logger.info(
-                    f"Sending Xumm payload for XRP payment "
-                    f"{i + 1}/{len(request.wallets)}: {payload}"
-                )
-                response = requests.post(
-                    "https://xumm.app/api/v1/platform/payload",
-                    headers=headers,
-                    json=payload
-                )
-                if response.status_code != 200:
-                    logger.error(
-                        f"Xumm payload error for XRP payment: "
-                        f"{response.status_code} - {response.text}"
-                    )
-                    transactions.append({
-                        "status": {
-                            "address": wallet.address,
-                            "status": "Failed",
-                            "error": (
-                                f"Failed to create payment payload: "
-                                f"{response.text}"
-                            )
-                        }
-                    })
-                    continue
-                payload_data = response.json()
-                transactions.append({
-                    "payload_uuid": payload_data["uuid"],
-                    "sign_url": payload_data["next"]["always"],
-                    "status": {
-                        "address": wallet.address,
-                        "status": "Pending Payment"
-                    }
-                })
-                total_network_fee += float(fee) / 1_000_000
-                sequence_int += 1
-    except Exception as e:
-        logger.error(f"Airdrop error: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=(
-                "Failed to process airdrop: Ensure the account is funded with "
-                "XRP and tokens on the XRP Ledger Mainnet. Acquire XRP from an "
-                "exchange like Coinbase or Bitstamp."
-            )
-        )
-    finally:
-        if client and client.is_open():
-            await client.close()
-    logger.info("Airdrop initiated, awaiting user authorization in Xaman.")
-    response_content = {
-        "transactions": transactions,
-        "total_fee": total_network_fee,
-        "service_fee": service_fee
-    }
-    if fee_transaction:
-        response_content["fee_transaction"] = fee_transaction
-    return JSONResponse(content=response_content)
+            }
+            response = await xumm.payload.create(payload)
+            if not response:
+                transactions.append({"status": {"address": wallet.address, 
+"status": "failed to create payload"}})
+                continue
+            transactions.append({
+                "payload_uuid": response.uuid,
+                "sign_url": response.next.always,
+                "status": {"address": wallet.address, "status": "pending"}
+            })
 
-# Run the FastAPI server
-if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+        return {
+            "transactions": transactions,
+            "fee_transaction": {
+                "payload_uuid": fee_response.uuid,
+                "sign_url": fee_response.next.always
+            },
+            "total_fee": total_network_fee,
+            "service_fee": total_service_fee
+        }
+    except Exception as e:
+        logger.error(f"Error in airdrop: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
