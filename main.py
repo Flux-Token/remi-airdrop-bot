@@ -1,9 +1,9 @@
 from fastapi import FastAPI, HTTPException, Depends, Query, Header
-from fastapi.responses import JSONResponse, FileResponse  # Added 
-FileResponse for serving index.html
+from fastapi.responses import JSONResponse, FileResponse  # Added for 
+serving index.html
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles  # Added StaticFiles for 
-serving static files
+from fastapi.staticfiles import StaticFiles  # Added for serving static 
+files
 import os
 import logging
 from xumm import XummSdk
@@ -32,7 +32,7 @@ app.add_middleware(
 # Serve static files from the 'static' folder
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# Serve index.html at the root URL instead of the JSON message
+# Serve index.html at the root URL
 @app.get("/")
 async def root():
     return FileResponse("static/index.html")
