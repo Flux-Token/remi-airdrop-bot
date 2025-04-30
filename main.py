@@ -169,20 +169,20 @@ async def get_current_fee(client: AsyncWebsocketClient) -> int:
 # Initiate OAuth with Xumm
 @app.post("/initiate-oauth")
 async def initiate_oauth():
-    headers = {
-        "X-API-Key": XAMAN_API_KEY,
-        "X-API-Secret": XAMAN_API_SECRET
-    }
-    payload = {
-        "txjson": {
-            "TransactionType": "SignIn"
-        }
-    }
-    logger.info("Initiating OAuth with Xumm")
-    response = requests.post("https://xumm.app/api/v1/platform/payload", headers=headers, json=payload)
-    if response.status_code != 200:
-        logger.error(f"Xumm payload error: {response.status_code} - {response.text}")
-        raise HTTPException(status_code=500, detail=f"Failed to initiate OAuth: {response.text}")
+    try:
+        xumm = XummSdk(XAMAN_API_KEY, XAMAN_API_SECRET)
+        payload = xumm.payload.create_sign_in()
+        if not payload:
+            logger.error("Failed to create OAuth payload")
+            raise HTTPException(status_code=500, detail="Failed to initiate OAuth")
+        payload_uuid = payload.get("uuid")
+        qr_url = payload.get("refs", {}).get("qr_png")
+        auth_url = payload.get("next", {}).get("always")
+        logger.info(f"Initiated OAuth payload: {payload_uuid}")
+        return JSONResponse(content={"uuid": payload_uuid, "qr_url": qr_url, "auth_url": auth_url})
+    except Exception as e:
+        logger.error(f"Error in initiate_oauth: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
     data = response.json()
     logger.info(f"OAuth initiated: {data}")
     return {
