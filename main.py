@@ -36,10 +36,8 @@ XAMAN_API_SECRET = os.getenv("XAMAN_API_SECRET")
 
 # Validate environment variables
 if not XAMAN_API_KEY or not XAMAN_API_SECRET:
-    logger.error("XAMAN_API_KEY or XAMAN_API_SECRET not set as environment 
-variables")
-    raise ValueError("XAMAN_API_KEY and XAMAN_API_SECRET must be set as 
-environment variables")
+    logger.error("XAMAN_API_KEY or XAMAN_API_SECRET not set as environment variables")
+    raise ValueError("XAMAN_API_KEY and XAMAN_API_SECRET must be set as environment variables")
 
 # Initialize Xumm SDK
 xumm = XummSdk(XAMAN_API_KEY, XAMAN_API_SECRET)
@@ -55,8 +53,7 @@ async def initiate_oauth():
         }
         response = await xumm.payload.create(payload)
         if not response:
-            raise HTTPException(status_code=500, detail="Failed to create 
-OAuth payload")
+            raise HTTPException(status_code=500, detail="Failed to create OAuth payload")
         return {
             "payload_uuid": response.uuid,
             "qr_code_url": f"https://xumm.app/sign/{response.uuid}_q.png",
