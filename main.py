@@ -40,11 +40,6 @@ XAMAN_API_KEY = os.getenv("XAMAN_API_KEY")
 XAMAN_API_SECRET = os.getenv("XAMAN_API_SECRET")
 FEE_WALLET_ADDRESS = os.getenv("FEE_WALLET_ADDRESS")
 
-# Debug environment variables
-logger.info(f"XAMAN_API_KEY: {'Set' if XAMAN_API_KEY else 'Not set'} (first 4 chars: {XAMAN_API_KEY[:4] if XAMAN_API_KEY else 'N/A'})")
-logger.info(f"XAMAN_API_SECRET: {'Set' if XAMAN_API_SECRET else 'Not set'} (first 4 chars: {XAMAN_API_SECRET[:4] if XAMAN_API_SECRET else 'N/A'})")
-logger.info(f"FEE_WALLET_ADDRESS: {'Set' if FEE_WALLET_ADDRESS else 'Not set'} (first 4 chars: {FEE_WALLET_ADDRESS[:4] if FEE_WALLET_ADDRESS else 'N/A'})")
-logger.info(f"XRPL_NODE: {'Set' if os.getenv('XRPL_NODE') else 'Not set'} (value: {os.getenv('XRPL_NODE') if os.getenv('XRPL_NODE') else 'N/A'})")
 
 # Validate environment variables
 if not XAMAN_API_KEY or not XAMAN_API_SECRET or not FEE_WALLET_ADDRESS:
