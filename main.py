@@ -15,6 +15,7 @@ from xrpl.utils import xrp_to_drops
 import uvicorn
 from dotenv import load_dotenv
 from fastapi.responses import HTMLResponse
+from xumm_sdk import XummSdk
 
 # Load environment variables from .env file
 load_dotenv()
