@@ -172,8 +172,7 @@ async def get_current_fee(client: AsyncWebsocketClient) -> int:
         return 12  # Fallback to 12 drops
 
 # Initiate OAuth with Xumm
-@app.post("
-/initiate-oauth")
+@app.post("/initiate-oauth")
 async def initiate_oauth():
     headers = {
         "X-API-Key": XAMAN_API_KEY,
