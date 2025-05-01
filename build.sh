@@ -7,7 +7,7 @@ pip --version
 echo "Upgrading pip..."
 pip install --upgrade pip
 echo "Installing dependencies from requirements.txt..."
-pip install -r requirements.txt --no-cache-dir
+pip install -r requirements.txt --no-cache-dir --index-url https://pypi.python.org/simple
 if [ $? -eq 0 ]; then
     echo "Dependencies installed successfully."
     echo "Listing installed packages..."
