@@ -1,4 +1,5 @@
-from xumm_sdk import XummSdk
+from xumm.client import XummSdk
+from xumm import XummSdk
 import asyncio
 import logging
 import os
