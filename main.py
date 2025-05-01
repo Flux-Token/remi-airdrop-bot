@@ -187,8 +187,9 @@ async def initiate_oauth():
         print(f"Payload response: {payload.__dict__}")  # Log the entire payload object
         response = {
             "uuid": payload.uuid,
-            "qr_url": payload.next.always,
-            "auth_url": payload.refs.websocket_status
+            "qrUrl": payload.next.always,  # Change to camelCase
+            "websocket_url": payload.refs.websocket_status,  # Change to expected key
+            "pushed": payload.pushed  # Add pushed field
         }
         print(f"Returning response: {response}")  # Log the response being returned
         return response
