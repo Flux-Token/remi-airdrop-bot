@@ -185,17 +185,18 @@ async def initiate_oauth():
     try:
         payload = xumm.payload.create({
             "TransactionType": "SignIn",
-            "options": {"push": True}  # Enable push notifications
+            "options": {"push": True}
         })
-        print(f"Payload response: {payload.__dict__}")  # Log the entire payload object
+        print(f"Payload response: {payload.__dict__}")
         response = {
             "uuid": payload.uuid,
             "qrUrl": payload.next.always,
-            "websocketUrl": payload.refs.websocket_status,  # Use camelCase for consistency
-            "mobileUrl": payload.refs.deeplink if hasattr(payload.refs, "deeplink") else payload.next.always,  # Add deep link for Xaman app
-            "pushed": payload.pushed
+            "websocketUrl": payload.refs.websocket_status,
+            "mobileUrl": payload.refs.deeplink if hasattr(payload.refs, "deeplink") else payload.next.always,
+            "pushed": payload.pushed,
+            "next": payload.next.__dict__  # Include the entire next object
         }
-        print(f"Returning response: {response}")  # Log the response being returned
+        print(f"Returning response: {response}")
         return response
     except Exception as e:
         print(f"Error in initiate_oauth: {e}")
