@@ -184,7 +184,7 @@ xumm = XummSdk(XAMAN_API_KEY, XAMAN_API_SECRET)
 async def initiate_oauth():
     try:
         payload = xumm.payload.create(
-            txjson={"TransactionType": "SignIn"}
+            {"TransactionType": "SignIn"}  # Pass the dictionary directly as a positional argument
         )
         return {
             "uuid": payload.uuid,
