@@ -183,13 +183,17 @@ xumm = XummSdk(XAMAN_API_KEY, XAMAN_API_SECRET)
 @app.post("/initiate-oauth")
 async def initiate_oauth():
     try:
-        payload = xumm.payload.create({"TransactionType": "SignIn"})
+        payload = xumm.payload.create({
+            "TransactionType": "SignIn",
+            "options": {"push": True}  # Enable push notifications
+        })
         print(f"Payload response: {payload.__dict__}")  # Log the entire payload object
         response = {
             "uuid": payload.uuid,
-            "qrUrl": payload.next.always,  # Change to camelCase
-            "websocket_url": payload.refs.websocket_status,  # Change to expected key
-            "pushed": payload.pushed  # Add pushed field
+            "qrUrl": payload.next.always,
+            "websocketUrl": payload.refs.websocket_status,  # Use camelCase for consistency
+            "mobileUrl": payload.refs.deeplink if hasattr(payload.refs, "deeplink") else payload.next.always,  # Add deep link for Xaman app
+            "pushed": payload.pushed
         }
         print(f"Returning response: {response}")  # Log the response being returned
         return response
