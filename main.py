@@ -4,6 +4,7 @@ import logging
 import os
 from typing import List, Optional
 from fastapi import FastAPI, HTTPException, Depends, Query, Header
+from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -175,6 +176,10 @@ async def get_current_fee(client: AsyncWebsocketClient) -> int:
         return 12  # Fallback to 12 drops
 
 # Initiate OAuth with Xumm
+XAMAN_API_KEY = os.getenv("XAMAN_API_KEY")
+XAMAN_API_SECRET = os.getenv("XAMAN_API_SECRET")
+xumm = XummSdk(XAMAN_API_KEY, XAMAN_API_SECRET)
+
 @app.post("/initiate-oauth")
 async def initiate_oauth():
     try:
@@ -183,7 +188,7 @@ async def initiate_oauth():
         )
         return {
             "uuid": payload.uuid,
-            "qr_url": payload.next.always,  # Updated to match XummPostPayloadResponse structure
+            "qr_url": payload.next.always,
             "auth_url": payload.refs.websocket_status
         }
     except Exception as e:
