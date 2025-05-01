@@ -183,14 +183,15 @@ xumm = XummSdk(XAMAN_API_KEY, XAMAN_API_SECRET)
 @app.post("/initiate-oauth")
 async def initiate_oauth():
     try:
-        payload = xumm.payload.create(
-            {"TransactionType": "SignIn"}  # Pass the dictionary directly as a positional argument
-        )
-        return {
+        payload = xumm.payload.create({"TransactionType": "SignIn"})
+        print(f"Payload response: {payload.__dict__}")  # Log the entire payload object
+        response = {
             "uuid": payload.uuid,
             "qr_url": payload.next.always,
             "auth_url": payload.refs.websocket_status
         }
+        print(f"Returning response: {response}")  # Log the response being returned
+        return response
     except Exception as e:
         print(f"Error in initiate_oauth: {e}")
         raise
