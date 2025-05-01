@@ -1,4 +1,3 @@
-from xumm.client import XummSdk
 from xumm import XummSdk
 import asyncio
 import logging
