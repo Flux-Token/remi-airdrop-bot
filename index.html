@@ -1,3 +1,5 @@
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -793,6 +795,8 @@
         const PRELOADER_TIMEOUT = 6000;
         const BACKEND_URL = '';
 
+        let notificationTimeout = null; // Track the current notification timeout
+
         function loadResource(url, type) {
             return new Promise((resolve) => {
                 const element = document.createElement(type === 'script' ? 'script' : 'link');
@@ -894,6 +898,7 @@
         const walletAddressContainer = document.getElementById('wallet-address-container');
         const walletToggle = document.getElementById('wallet-toggle');
         const disconnectButton = document.getElementById('disconnect-button');
+        
 
         let storage = {};
         let tokenData = [];
@@ -988,37 +993,6 @@
             }
             updateTotalAmount();
         });
-
-        document.addEventListener('DOMContentLoaded', () => {
-            console.log('DOM loaded, attempting to play audio...');
-            const audio = document.getElementById('loader-audio');
-            audio.volume = 0.5;
-            audio.currentTime = 0;
-            audio.play().catch(err => {
-                console.warn('Audio playback failed:', err);
-            });
-        });
-
-        Promise.all([
-            loadResource('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap', 'link'),
-            loadResource('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css', 'link'),
-            new Promise(resolve => document.addEventListener('DOMContentLoaded', resolve))
-        ]).then(() => {
-            console.log('Critical resources loaded, hiding preloader...');
-            setTimeout(() => {
-                showMainContent();
-            }, PRELOADER_TIMEOUT);
-        }).catch(err => {
-            console.error('Preloader error, showing main content:', err);
-            showMainContent();
-        });
-
-        setTimeout(() => {
-            if (document.getElementById('preloader').style.display !== 'none') {
-                console.warn('Preloader timeout, forcing main content display');
-                showMainContent();
-            }
-        }, PRELOADER_TIMEOUT);
 
         const accessToken = getStorageItem('access_token');
         const storedAccount = getStorageItem('account');
@@ -1209,6 +1183,7 @@
                         walletToggle.classList.add('connected');
                         disconnectButton.style.display = 'inline-block';
                         showNotification('Login successful!');
+                        
                         populateTokenDropdown();
                     } else {
                         console.warn('Unexpected callback response:', JSON.stringify(data));
@@ -1265,6 +1240,7 @@
                         } else if (response.status === 200 && data.meta && data.meta.signed) {
                             clearInterval(interval);
                             showNotification(`${isFee ? 'Fee transaction' : `Transaction ${index + 1}/${total}`} signed successfully!`);
+                            
                             console.log(`Signed txid for payload ${payloadUuid}:`, data.response?.txid || 'None'); // Debug log
                             resolve(true);
                         } else {
@@ -1604,9 +1580,9 @@
             const wallets = Array.from(document.getElementsByClassName('wallet-input')).map(div => ({
                 address: div.querySelector('.wallet-address').value.trim(),
                 amount: parseFloat(div.querySelector('.wallet-amount').value.trim()) || 0
-            }));
+            })).filter(wallet => wallet.amount > 0); // Filter out wallets with zero amount
             if (wallets.length === 0) {
-                showNotification('At least one wallet is required.', true);
+                showNotification('At least one wallet with a non-zero amount is required.', true);
                 return;
             }
             const serviceFee = calculateServiceFee(wallets.length);
@@ -1615,174 +1591,133 @@
             notificationOverlay.style.display = 'block';
 
             feeAgreeBtn.onclick = async () => {
-    feeConfirmation.style.display = 'none';
-    notificationOverlay.style.display = 'none';
-    proceedBtn.disabled = true;
-    proceedLoader.style.display = 'inline-block';
-    airdropForm.style.display = 'none';
-    resultsDiv.innerHTML = '';
-    resultsDiv.style.display = 'none';
-    transactionSigning.style.display = 'block';
-    try {
-        const tokenType = tokenTypeSelect.value;
-        const selectedOption = tokenTypeSelect.selectedOptions[0];
-        const issuer = selectedOption.dataset.issuer || null;
-        const currency = selectedOption.dataset.currency || null;
-        const totalAmount = updateTotalAmount();
-        if (totalAmount.isNaN() || totalAmount.lt(0)) {
-            throw new Error('Total amount must be a non-negative number');
-        }
-        if (tokenType !== 'XRP' && (!issuer || !currency)) {
-            throw new Error('Invalid token selection: Issuer or currency missing');
-        }
-        const wallets = Array.from(document.getElementsByClassName('wallet-input')).map(div => {
-            const address = div.querySelector('.wallet-address').value.trim();
-            const amountInput = div.querySelector('.wallet-amount').value.trim();
-            if (!address) {
-                throw new Error('Wallet address cannot be empty');
-            }
-            const amount = amountInput ? parseFloat(amountInput) : 0;
-            if (isNaN(amount) || amount < 0) {
-                throw new Error(`Invalid amount for address ${address}: ${amountInput}`);
-            }
-            return { address, amount };
-        });
-        if (wallets.length === 0) {
-            throw new Error('At least one wallet is required');
-        }
-        if (totalAmount.gt(0) && !wallets.some(wallet => wallet.amount > 0)) {
-            throw new Error('At least one wallet must have a non-zero amount if total amount is greater than 0');
-        }
-        const payload = {
-            token_type: tokenType,
-            total_amount: totalAmount.toDecimalPlaces(6).toNumber(),
-            wallets,
-            account: getStorageItem('account')
-        };
-        if (tokenType !== 'XRP') {
-            payload.issuer = issuer;
-            payload.currency = currency;
-        }
-        console.log('Airdrop request payload:', JSON.stringify(payload, null, 2));
-        const response = await fetch(`${BACKEND_URL}/airdrop`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${getStorageItem('access_token')}`,
-                'account': getStorageItem('account')
-            },
-            body: JSON.stringify(payload)
-        });
-        if (response.status === 401) {
-            handleUnauthorized();
-            return;
-        }
-        if (response.status === 404) {
-            showNotification(
-                'No funded XRPL account linked in Xaman. Please create and fund an account on Mainnet at https://xrpl.org. ' +
-                'Acquire XRP from an exchange like Coinbase or Bitstamp.',
-                true
-            );
-            return;
-        }
-        if (response.status === 422) {
-            const errorData = await response.json().catch(() => ({}));
-            const detail = errorData.detail || {};
-            throw new Error(`Airdrop payload validation failed: ${detail.error || 'Invalid payload'}. Details: ${JSON.stringify(detail)}`);
-        }
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(`HTTP error! status: ${response.status} - ${errorData.detail || 'Unknown error'}`);
-        }
-        const data = await response.json();
-        console.log('Airdrop response:', data);
-        if (!data.transactions || !Array.isArray(data.transactions)) {
-            throw new Error('Invalid airdrop response from server');
-        }
-        airdropData = { total_fee: data.total_fee, service_fee: data.service_fee }; // Store fee data
-        let allSigned = true;
-        if (data.fee_transaction) {
-            transactionTitle.textContent = `Sign REMI Service Fee Payment (${serviceFee} XRP)`;
-            transactionQr.src = `https://xumm.app/sign/${data.fee_transaction.payload_uuid}_q.png`;
-            transactionQr.style.display = 'block';
-            transactionQrLink.href = data.fee_transaction.sign_url;
-            transactionQrLink.style.display = 'block';
-            showNotification(`Please authorize the REMI service fee payment of ${serviceFee} XRP in Xaman.`);
-            const feeSigned = await pollTransaction(data.fee_transaction.payload_uuid, 0, 0, true);
-            if (!feeSigned) {
-                allSigned = false;
-                showNotification('Fee payment not authorized. Airdrop cancelled.', true);
-                transactionSigning.style.display = 'none';
-                airdropForm.style.display = 'block';
-                return;
-            }
-        }
-        const total = data.transactions.length;
-        transactionResults = data.transactions.map(tx => ({ ...tx, txid: null }));
-        for (const [index, tx] of data.transactions.entries()) {
-            if (!tx.payload_uuid || !tx.sign_url || !tx.status) {
-                showNotification(`Invalid transaction data for transaction ${index + 1}`, true);
-                allSigned = false;
-                break;
-            }
-            transactionTitle.textContent = `Sign Transaction ${index + 1} of ${total} (${tx.status.address})`;
-            transactionTitle.setAttribute('title', tx.status.address);
-            transactionQr.src = `https://xumm.app/sign/${tx.payload_uuid}_q.png`;
-            transactionQr.style.display = 'block';
-            transactionQrLink.href = tx.sign_url;
-            transactionQrLink.style.display = 'block';
-            showNotification(`Airdrop initiated. Please authorize transaction ${index + 1}/${total} in Xaman.`);
-            const signed = await pollTransaction(tx.payload_uuid, index, total);
-            if (!signed) {
-                allSigned = false;
-                break;
-            }
-        }
-        transactionSigning.style.display = 'none';
-        airdropForm.style.display = 'block';
-        resultsDiv.innerHTML = `
-            <h2>Airdrop Report <i class="fas fa-sync-alt refresh-icon" onclick="refreshAirdropReport()"></i></h2>
-            ${transactionResults.map(tx => `
-                <p>
-                    <span>${tx.status.address}: ${tx.txid || tx.status.status}</span>
-                    <span>
-                        ${tx.txid ? `<i class="fas fa-copy copy-icon" onclick="copyTransactionId('${tx.txid}')"></i>` : ''}
-                        ${tx.txid ? '<i class="fas fa-check-circle scanned-check"></i>' : ''}
-                    </span>
-                </p>
-            `).join('')}
-            <p>Total Network Fee: ${airdropData.total_fee || 'N/A'} XRP</p>
-            <p>Total REMI Service Fee: ${airdropData.service_fee || 'N/A'} XRP</p>
-        `;
-        resultsDiv.style.display = 'block';
-        if (allSigned) {
-            showNotification('Airdrop transactions authorized successfully!');
-        } else {
-            showNotification('Some airdrop transactions failed or were not authorized.', true);
-        }
-    } catch (error) {
-        console.error('Error initiating airdrop:', error);
-        showNotification(
-            `Error initiating airdrop: ${error.message}. Ensure your account is funded and wallets are valid on the XRP Ledger Mainnet. ` +
-            `Acquire XRP from an exchange like Coinbase or Bitstamp.`,
-            true
-        );
-        transactionSigning.style.display = 'none';
-        airdropForm.style.display = 'block';
-    } finally {
-        proceedBtn.disabled = false;
-        proceedLoader.style.display = 'none';
-    }
-};
+                feeConfirmation.style.display = 'none';
+                notificationOverlay.style.display = 'none';
+                proceedBtn.disabled = true;
+                proceedLoader.style.display = 'inline-block';
+                airdropForm.style.display = 'none';
+                resultsDiv.innerHTML = '';
+                resultsDiv.style.display = 'none';
+                transactionSigning.style.display = 'block';
+                try {
+                    const tokenType = tokenTypeSelect.value;
+                    const selectedOption = tokenTypeSelect.selectedOptions[0];
+                    const issuer = selectedOption.dataset.issuer || '';
+                    const currency = selectedOption.dataset.currency || '';
+                    const totalAmount = wallets.reduce((sum, wallet) => sum + (wallet.amount || 0), 0);
+                    const account = getStorageItem('account');
+
+                    let query = `?token_type=${encodeURIComponent(tokenType)}`;
+                    if (tokenType !== 'XRP') {
+                        query += `&issuer=${encodeURIComponent(issuer)}¤cy=${encodeURIComponent(currency)}`;
+                    }
+
+                    console.log('Fetching airdrop data with query:', query);
+                    const response = await fetch(`${BACKEND_URL}/airdrop${query}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${getStorageItem('access_token')}`,
+                            'account': account
+                        },
+                        body: JSON.stringify({
+                            token_type: tokenType,
+                            total_amount: totalAmount,
+                            issuer: tokenType !== 'XRP' ? issuer : null,
+                            currency: tokenType !== 'XRP' ? currency : null,
+                            wallets: wallets,
+                         account: account
+                     })
+                    });
+
+                    if (response.status === 401) {
+                     handleUnauthorized();
+                        return;
+                 }
+                    if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({}));
+                        throw new Error(`HTTP error! status: ${response.status} - ${JSON.stringify(errorData.detail || 'Unknown error')}`);
+                    }
+                    const data = await response.json();
+                    console.log('Airdrop response:', data);
+
+                    // Handle fee transaction
+                    if (data.fee_transaction) {
+                        transactionTitle.textContent = `Sign REMI Service Fee Payment (${serviceFee} XRP)`;
+                        transactionQr.src = `https://xumm.app/sign/${data.fee_transaction.payload_uuid}_q.png`;
+                        transactionQr.style.display = 'block';
+                        transactionQrLink.href = data.fee_transaction.sign_url;
+                        transactionQrLink.style.display = 'block';
+                showNotification(`Please authorize the REMI Service Fee payment of ${serviceFee} XRP in Xaman.`);
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                        const feeSigned = await pollTransaction(data.fee_transaction.payload_uuid, 0, 0, true);
+                        if (!feeSigned) {
+                            allSigned = false;
+                            showNotification('Fee payment not authorized. Airdrop cancelled.', true);
+                            proceedBtn.disabled = false;
+                            proceedLoader.style.display = 'none';
+                            return;
+                        }
+                        console.log('Fee signed, proceeding to airdrop transactions');
+                    }
+
+                    // Handle airdrop transactions
+                    let allSigned = true;
+                    if (!data.transactions || data.transactions.length === 0) {
+                        showNotification('No airdrop transactions generated. Check wallet data or server response.', true);
+                        proceedBtn.disabled = false;
+                        proceedLoader.style.display = 'none';
+                        return;
+                    }
+                    const total = data.transactions.length;
+                    for (const [index, tx] of data.transactions.entries()) {
+                        if (!tx.payload_uuid || !tx.sign_url || !tx.status) {
+                            showNotification(`Invalid transaction data for transaction ${index + 1}`, true);
+                            allSigned = false;
+                            break;
+                        }
+                        transactionTitle.textContent = `Sign Transaction ${index + 1} of ${total} (${tx.status.address})`;
+                        transactionTitle.setAttribute('title', tx.status.address);
+                        transactionQr.src = `https://xumm.app/sign/${tx.payload_uuid}_q.png`;
+                        transactionQr.style.display = 'block';
+                        transactionQrLink.href = tx.sign_url;
+                        transactionQrLink.style.display = 'block';
+                        showNotification(`Airdrop initiated. Please authorize transaction ${index + 1}/${total} in Xaman.`);
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                        const signed = await pollTransaction(tx.payload_uuid, index, total);
+                        if (!signed) {
+                            allSigned = false;
+                                break;
+                        }
+                    }
+
+                    if (allSigned) {
+                        showNotification('Airdrop transactions authorized successfully!');
+                        resultsDiv.innerHTML = '<h2>Airdrop Results</h2>' + data.transactions.map((tx, index) => `
+                         <p>Transaction ${index + 1}: ${tx.status.address} - ${tx.txid || 'Pending'}</p>
+                        `).join('');
+                        resultsDiv.style.display = 'block';
+                    } else {
+                        showNotification('Some airdrop transactions failed or were not authorized.', true);
+                    }
+                } catch (error) {
+                    console.error('Error during airdrop:', error);
+                    showNotification(`Error during airdrop process: ${error.message}`, true);
+                } finally {
+                    proceedBtn.disabled = false;
+                    proceedLoader.style.display = 'none';
+                    transactionSigning.style.display = 'none';
+                }
+            };
 
             feeDisagreeBtn.onclick = () => {
                 feeConfirmation.style.display = 'none';
                 notificationOverlay.style.display = 'none';
-                showNotification('Airdrop cancelled. You must agree to the service fee to proceed.', true);
+                showNotification('Airdrop cancelled due to fee disagreement.', true);
             };
         });
 
-        async function refreshAirdropReport() {
+async function refreshAirdropReport() {
             const refreshIcon = document.querySelector('.refresh-icon');
             refreshIcon.classList.add('spinning');
             try {
@@ -1831,27 +1766,33 @@
             });
         }
 
+
         function showNotification(message, isError = false) {
-            notificationOverlay.style.display = 'none';
-            notification.style.display = 'none';
+    // Clear any existing timeout to prevent overlap
+    if (notificationTimeout) {
+        clearTimeout(notificationTimeout);
+        notificationTimeout = null;
+    }
 
-            notification.innerHTML = message;
-            notification.className = `notification ${isError ? 'error' : ''}`;
+    // Hide the notification and overlay initially to reset the animation
+    notificationOverlay.style.display = 'none';
+    notification.style.display = 'none';
 
-            notification.style.display = 'block';
-            notificationOverlay.style.display = 'block';
+    // Set the new message and style
+    notification.innerHTML = message;
+    notification.className = `notification ${isError ? 'error' : ''}`;
 
-            setTimeout(() => {
-                if (document.getElementById('preloader').style.display !== 'none') {
-                    console.warn('Preloader timeout, forcing main content display');
-                    try {
-                        showMainContent();
-                    } catch (err) {
-                        console.error('Error in showMainContent:', err);
-                    }
-                }
-            }, PRELOADER_TIMEOUT);
-        }
+    // Display the notification and overlay
+    notification.style.display = 'block';
+    notificationOverlay.style.display = 'block';
+
+    // Set a timeout to hide the notification after 5 seconds
+    notificationTimeout = setTimeout(() => {
+        notification.style.display = 'none';
+        notificationOverlay.style.display = 'none';
+        notificationTimeout = null; // Reset the timeout variable
+    }, 5000);
+}
     </script>
 </body>
 </html>

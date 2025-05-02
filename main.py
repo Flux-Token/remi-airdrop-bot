@@ -4,10 +4,12 @@ import logging
 import os
 from typing import List, Optional
 from fastapi import FastAPI, HTTPException, Depends, Query, Header
+from fastapi import FastAPI, HTTPException, status, Header, Request
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import Response
 from pydantic import BaseModel
 import requests
 from xrpl.asyncio.clients import AsyncWebsocketClient
@@ -183,24 +185,21 @@ xumm = XummSdk(XAMAN_API_KEY, XAMAN_API_SECRET)
 @app.post("/initiate-oauth")
 async def initiate_oauth():
     try:
-        payload = xumm.payload.create({
-            "TransactionType": "SignIn",
-            "options": {"push": True}
-        })
-        print(f"Payload response: {payload.__dict__}")
+        payload = xumm.payload.create({"TransactionType": "SignIn", "options": {"push": True}})
+        logger.info(f"Payload response: {payload.__dict__}")
         response = {
-            "uuid": payload.uuid,
-            "qrUrl": payload.next.always,
-            "websocketUrl": payload.refs.websocket_status,
-            "mobileUrl": payload.refs.deeplink if hasattr(payload.refs, "deeplink") else payload.next.always,
-            "pushed": payload.pushed,
-            "next": payload.next.__dict__  # Include the entire next object
+            "payload_uuid": payload.uuid,
+            "qr_code_url": f"https://xumm.app/sign/{payload.uuid}_q.png",
+            "authorize_url": payload.next.always,
+            "websocket_url": payload.refs.websocket_status,
+            "mobile_url": payload.refs.deeplink if hasattr(payload.refs, "deeplink") else payload.next.always,
+            "pushed": payload.pushed
         }
-        print(f"Returning response: {response}")
+        logger.info(f"Returning response: {response}")
         return response
     except Exception as e:
-        print(f"Error in initiate_oauth: {e}")
-        raise
+        logger.error(f"Error in initiate_oauth: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to initiate OAuth: {str(e)}")
 
 # Callback for OAuth polling
 
@@ -285,6 +284,10 @@ async def get_tokens(token_data: dict = Depends(get_access_token)):
     finally:
         if client and client.is_open():
             await client.close()
+
+@app.get("/favicon.ico")
+async def favicon():
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 # Check balance
 @app.get("/balance")
