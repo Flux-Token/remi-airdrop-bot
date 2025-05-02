@@ -959,7 +959,7 @@
                 tokenData.forEach(token => {
                     const option = document.createElement('option');
                     option.value = token.currency;
-                    option.textContent = `${token.name} (${token.issuer})`;
+                    option.textContent = token.currency; // Display only the currency (e.g., "PAR", "XAH")
                     option.dataset.issuer = token.issuer;
                     option.dataset.currency = token.currency;
                     tokenTypeSelect.appendChild(option);
