@@ -1722,6 +1722,12 @@
                             <p>Transaction ${index + 1}: ${tx.status.address} - ${tx.txid || 'Pending'}</p>
                         `).join('') + '<button id="back-button" class="button">Back to Airdrop Form</button>';
                         resultsDiv.style.display = 'block';
+                        const newBackButton = document.getElementById('back-button');
+                        if (newBackButton) {
+                            newBackButton.addEventListener('click', clearForm);
+                        } else {
+                            console.error('Back button not found after updating resultsDiv');
+                        }
                     } else {
                         showNotification('Some airdrop transactions failed or were not authorized.', true);
                     }
@@ -1757,31 +1763,40 @@
         }
 
         function clearForm() {
-            console.log('Clearing form and resetting UI...');
-            const walletInputs = document.getElementsByClassName('wallet-input');
-            while (walletInputs.length > 1) {
-                walletInputs[walletInputs.length - 1].remove();
-            }
-            const firstWallet = walletInputs[0];
-            if (firstWallet) {
-                firstWallet.querySelector('.wallet-address').value = '';
-                firstWallet.querySelector('.wallet-amount').value = '';
-                const statusBox = firstWallet.querySelector('.trustline-status-box');
-                statusBox.classList.remove('valid', 'invalid');
-                statusBox.style.display = 'none';
-            }
-            totalAmountInput.value = '';
-            tokenTypeSelect.value = 'XRP';
-            resultsDiv.style.display = 'none';
-            transactionSigning.style.display = 'none';
-            feeConfirmation.style.display = 'none';
-            notificationOverlay.style.display = 'none';
-            if (loginSection.style.display === 'none') {
-                document.getElementById('airdrop-form').style.display = 'block';
-            } else {
-                loginSection.style.display = 'block';
-            }
+    console.log('Clearing form and resetting UI...');
+    const walletInputs = document.getElementsByClassName('wallet-input');
+    while (walletInputs.length > 1) {
+        walletInputs[walletInputs.length - 1].remove();
+    }
+    const firstWallet = walletInputs[0];
+    if (firstWallet) {
+        firstWallet.querySelector('.wallet-address').value = '';
+        firstWallet.querySelector('.wallet-amount').value = '';
+        const statusBox = firstWallet.querySelector('.trustline-status-box');
+        statusBox.classList.remove('valid', 'invalid');
+        statusBox.style.display = 'none';
+    }
+    totalAmountInput.value = '';
+    tokenTypeSelect.value = 'XRP';
+    resultsDiv.style.display = 'none';
+    transactionSigning.style.display = 'none';
+    feeConfirmation.style.display = 'none';
+    notificationOverlay.style.display = 'none';
+    if (loginSection.style.display === 'none') {
+        const airdropFormElement = document.getElementById('airdrop-form');
+        airdropFormElement.style.display = 'block';
+        console.log('Airdrop form should now be visible, display style:', airdropFormElement.style.display);
+        // Ensure parent container is visible
+        const container = airdropFormElement.closest('.container');
+        if (container) {
+            container.style.display = 'flex';
+            console.log('Container display style:', container.style.display);
         }
+    } else {
+        loginSection.style.display = 'block';
+        console.log('User not logged in, showing login section');
+    }
+}
 
     </script>
 </body>
