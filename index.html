@@ -1,5 +1,3 @@
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -144,6 +142,7 @@
             transform: translateY(-2px); 
             box-shadow: 0 5px 15px rgba(255, 111, 97, 0.6);
         }
+
         #results p {
             background: rgba(255, 255, 255, 0.1); 
             color: #fff; 
@@ -696,8 +695,8 @@
         }
 
         #results .refresh-icon:hover {
-    color: #ff6f61;
-    transform: rotate(360deg);
+            color: #ff6f61;
+            transform: rotate(360deg);
         }
 
         #results .refresh-icon.spinning {
@@ -771,7 +770,12 @@
                 <img class="transaction-qr" src="" alt="Transaction QR Code">
                 <a class="transaction-qr-link qr-link" href="#" target="_blank">Open in Xaman</a>
             </div>
-            <div id="results" class="form-section"></div>
+            <div id="results" class="form-section">
+                <h2>Airdrop Report <i class="fas fa-sync-alt refresh-icon" onclick="refreshAirdropReport()"></i></h2>
+                <p>Total Network Fee: N/A XRP</p>
+                <p>Total REMI Service Fee: N/A XRP</p>
+                <button id="back-button" class="button">Back to Airdrop Form</button>
+            </div>
         </div>
         <div id="notification-overlay" class="notification-overlay"></div>
         <div id="notification" class="notification"></div>
@@ -899,7 +903,6 @@
         const walletToggle = document.getElementById('wallet-toggle');
         const disconnectButton = document.getElementById('disconnect-button');
         
-
         let storage = {};
         let tokenData = [];
         let transactionResults = [];
@@ -1355,7 +1358,7 @@
                     if (!issuer.startsWith('r') || issuer.length < 25 || issuer.length > 35) {
                         throw new Error('Invalid issuer address for selected token');
                     }
-                    query = `?issuer=${encodeURIComponent(issuer)}&currency=${encodeURIComponent(currency)}`;
+                    query = `?issuer=${encodeURIComponent(issuer)}¤cy=${encodeURIComponent(currency)}`;
                 }
                 
                 console.log('Fetching balance with query:', query);
@@ -1436,7 +1439,7 @@
                     if (!issuer || !currency) {
                         throw new Error('Issuer or currency missing for selected token');
                     }
-                    query += `&issuer=${encodeURIComponent(issuer)}&currency=${encodeURIComponent(currency)}`;
+                    query += `&issuer=${encodeURIComponent(issuer)}¤cy=${encodeURIComponent(currency)}`;
                 }
                 
                 console.log('Validating wallets:', wallets, 'Query:', query);
@@ -1509,7 +1512,7 @@
                     if (!issuer || !currency) {
                         throw new Error('Issuer or currency missing for selected token');
                     }
-                    query += `&issuer=${encodeURIComponent(issuer)}&currency=${encodeURIComponent(currency)}`;
+                    query += `&issuer=${encodeURIComponent(issuer)}¤cy=${encodeURIComponent(currency)}`;
                 }
                 
                 console.log('Checking trustlines for wallets:', wallets, 'Query:', query);
@@ -1626,14 +1629,14 @@
                             issuer: tokenType !== 'XRP' ? issuer : null,
                             currency: tokenType !== 'XRP' ? currency : null,
                             wallets: wallets,
-                         account: account
-                     })
+                            account: account
+                        })
                     });
 
                     if (response.status === 401) {
-                     handleUnauthorized();
+                        handleUnauthorized();
                         return;
-                 }
+                    }
                     if (!response.ok) {
                         const errorData = await response.json().catch(() => ({}));
                         throw new Error(`HTTP error! status: ${response.status} - ${JSON.stringify(errorData.detail || 'Unknown error')}`);
@@ -1648,7 +1651,7 @@
                         transactionQr.style.display = 'block';
                         transactionQrLink.href = data.fee_transaction.sign_url;
                         transactionQrLink.style.display = 'block';
-                showNotification(`Please authorize the REMI Service Fee payment of ${serviceFee} XRP in Xaman.`);
+                        showNotification(`Please authorize the REMI Service Fee payment of ${serviceFee} XRP in Xaman.`);
                         await new Promise(resolve => setTimeout(resolve, 1000));
                         const feeSigned = await pollTransaction(data.fee_transaction.payload_uuid, 0, 0, true);
                         if (!feeSigned) {
@@ -1687,14 +1690,14 @@
                         const signed = await pollTransaction(tx.payload_uuid, index, total);
                         if (!signed) {
                             allSigned = false;
-                                break;
+                            break;
                         }
                     }
 
                     if (allSigned) {
                         showNotification('Airdrop transactions authorized successfully!');
                         resultsDiv.innerHTML = '<h2>Airdrop Results</h2>' + data.transactions.map((tx, index) => `
-                         <p>Transaction ${index + 1}: ${tx.status.address} - ${tx.txid || 'Pending'}</p>
+                            <p>Transaction ${index + 1}: ${tx.status.address} - ${tx.txid || 'Pending'}</p>
                         `).join('');
                         resultsDiv.style.display = 'block';
                     } else {
@@ -1717,7 +1720,7 @@
             };
         });
 
-async function refreshAirdropReport() {
+        async function refreshAirdropReport() {
             const refreshIcon = document.querySelector('.refresh-icon');
             refreshIcon.classList.add('spinning');
             try {
@@ -1746,6 +1749,7 @@ async function refreshAirdropReport() {
                     `).join('')}
                     <p>Total Network Fee: ${airdropData.total_fee || 'N/A'} XRP</p>
                     <p>Total REMI Service Fee: ${airdropData.service_fee || 'N/A'} XRP</p>
+                    <button id="back-button" class="button">Back to Airdrop Form</button>
                 `;
                 showNotification('Airdrop report refreshed!');
             } catch (error) {
@@ -1756,7 +1760,6 @@ async function refreshAirdropReport() {
             }
         }
 
-        
         function copyTransactionId(txId) {
             navigator.clipboard.writeText(txId).then(() => {
                 showNotification('Transaction ID copied to clipboard!');
@@ -1766,33 +1769,62 @@ async function refreshAirdropReport() {
             });
         }
 
-
         function showNotification(message, isError = false) {
-    // Clear any existing timeout to prevent overlap
-    if (notificationTimeout) {
-        clearTimeout(notificationTimeout);
-        notificationTimeout = null;
-    }
+            // Clear any existing timeout to prevent overlap
+            if (notificationTimeout) {
+                clearTimeout(notificationTimeout);
+                notificationTimeout = null;
+            }
 
-    // Hide the notification and overlay initially to reset the animation
-    notificationOverlay.style.display = 'none';
-    notification.style.display = 'none';
+            // Hide the notification and overlay initially to reset the animation
+            notificationOverlay.style.display = 'none';
+            notification.style.display = 'none';
 
-    // Set the new message and style
-    notification.innerHTML = message;
-    notification.className = `notification ${isError ? 'error' : ''}`;
+            // Set the new message and style
+            notification.innerHTML = message;
+            notification.className = `notification ${isError ? 'error' : ''}`;
 
-    // Display the notification and overlay
-    notification.style.display = 'block';
-    notificationOverlay.style.display = 'block';
+            // Display the notification and overlay
+            notification.style.display = 'block';
+            notificationOverlay.style.display = 'block';
 
-    // Set a timeout to hide the notification after 5 seconds
-    notificationTimeout = setTimeout(() => {
-        notification.style.display = 'none';
-        notificationOverlay.style.display = 'none';
-        notificationTimeout = null; // Reset the timeout variable
-    }, 5000);
-}
+            // Set a timeout to hide the notification after 5 seconds
+            notificationTimeout = setTimeout(() => {
+                notification.style.display = 'none';
+                notificationOverlay.style.display = 'none';
+                notificationTimeout = null; // Reset the timeout variable
+            }, 5000);
+        }
+
+        function clearForm() {
+            // Clear form fields
+            document.getElementById('token-type').value = 'XRP';
+            document.getElementById('total-amount').value = '';
+            const walletInputs = document.getElementsByClassName('wallet-input');
+            for (const input of walletInputs) {
+                input.querySelector('.wallet-address').value = '';
+                input.querySelector('.wallet-amount').value = '';
+                input.querySelector('.trustline-status-box').classList.remove('valid', 'invalid');
+                input.querySelector('.trustline-status-box').style.display = 'none';
+            }
+            // Clear results and hide results section
+            resultsDiv.innerHTML = `
+                <h2>Airdrop Report <i class="fas fa-sync-alt refresh-icon" onclick="refreshAirdropReport()"></i></h2>
+                <p>Total Network Fee: N/A XRP</p>
+                <p>Total REMI Service Fee: N/A XRP</p>
+                <button id="back-button" class="button">Back to Airdrop Form</button>
+            `;
+            resultsDiv.style.display = 'none';
+            // Show appropriate section based on login state
+            const loginSection = document.querySelector('.form-section.login');
+            if (loginSection.style.display === 'none') {
+                document.getElementById('airdrop-form').style.display = 'block';
+            } else {
+                loginSection.style.display = 'block';
+            }
+        }
+
+        document.getElementById('back-button').addEventListener('click', clearForm);
     </script>
 </body>
 </html>
