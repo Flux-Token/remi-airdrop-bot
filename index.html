@@ -15,8 +15,7 @@
         }
 
         body { 
-            margin: 0; 
-            overflow: hidden; 
+            margin: 0;  
         }
 
         #background-video {
@@ -61,17 +60,21 @@
             100% { transform: scale(1); text-shadow: 0 0 10px rgba(255, 111, 97, 0.5); }
         }
 
+        body { 
+    margin: 0; 
+    
+}
+
         .main-content {
             display: none; 
             font-family: 'Montserrat', sans-serif; 
             flex-direction: column;
             min-height: 100vh; 
-            background: transparent; 
+         background: transparent; 
             color: #fff; 
             position: relative;
             overflow-y: auto;
-            -ms-overflow-style: none;
-            scrollbar-width: none;
+   
         }
 
         .main-content::-webkit-scrollbar {
@@ -1852,31 +1855,61 @@ csvUploadInput.addEventListener('change', (event) => {
         const wallets = [];
         const startIndex = csvHasHeader ? 1 : 0;
         for (let i = startIndex; i < rows.length; i++) {
-            // Split row and handle quoted fields
-            let columns = rows[i].split(delimiter).map(col => {
-                col = col.trim();
-                // Remove surrounding quotes if present
+            // Parse row with support for quoted fields containing delimiters
+            let columns = [];
+            let current = '';
+            let inQuotes = false;
+            const row = rows[i];
+
+            for (let j = 0; j < row.length; j++) {
+                const char = row[j];
+                if (char === '"') {
+                    inQuotes = !inQuotes;
+                } else if (char === delimiter && !inQuotes) {
+                    columns.push(current.trim());
+                    current = '';
+                } else {
+                    current += char;
+                }
+            }
+            // Push the last column
+            if (current) {
+                columns.push(current.trim());
+            }
+
+            // Remove surrounding quotes from columns if present
+            columns = columns.map(col => {
                 if (col.startsWith('"') && col.endsWith('"')) {
-                    col = col.slice(1, -1).trim();
+                    return col.slice(1, -1).trim();
                 }
                 return col;
             });
+
             console.log(`Row ${i} columns:`, columns);
-            if (columns.length === 0 || !columns[0]) continue; // Skip empty rows or rows with no address
+            if (columns.length === 0 || !columns[0]) {
+                console.log(`Skipping row ${i}: Empty or missing address`);
+                continue;
+            }
+
             const address = columns[0];
             let amount = columns.length > 1 ? columns[1] : '';
             if (amount) {
                 try {
                     const parsedAmount = parseFloat(amount);
                     if (isNaN(parsedAmount) || parsedAmount < 0) {
+                        console.log(`Invalid amount in row ${i}: ${amount}, resetting to empty`);
                         amount = '';
                     }
                 } catch (e) {
+                    console.log(`Error parsing amount in row ${i}: ${amount}, resetting to empty`);
                     amount = '';
                 }
             }
+
             if (address) {
                 wallets.push({ address, amount });
+            } else {
+                console.log(`Skipping row ${i}: Address is empty after parsing`);
             }
         }
 
@@ -1885,6 +1918,8 @@ csvUploadInput.addEventListener('change', (event) => {
             return;
         }
 
+        console.log('Parsed wallets:', wallets);
+
         // Change the number 150 below to adjust the wallet limit in the future
         if (wallets.length > 150) {
             showNotification('Too many wallets in CSV. Limit is 150.', true);
@@ -1892,37 +1927,32 @@ csvUploadInput.addEventListener('change', (event) => {
         }
 
         const walletList = document.getElementById('wallet-list');
-        const walletInputs = document.getElementsByClassName('wallet-input');
-        while (walletInputs.length > 1) {
-            walletInputs[walletInputs.length - 1].remove();
-        }
-        const firstWallet = walletInputs[0];
-        if (firstWallet) {
-            firstWallet.querySelector('.wallet-address').value = '';
-            firstWallet.querySelector('.wallet-amount').value = '';
-            const statusBox = firstWallet.querySelector('.trustline-status-box');
-            statusBox.classList.remove('valid', 'invalid');
-            statusBox.style.display = 'none';
-        }
+        // Clear all existing wallet inputs
+        walletList.innerHTML = '';
+        console.log('Cleared wallet list');
 
+        // Create a new wallet input for each wallet in the CSV
         wallets.forEach((wallet, index) => {
-            if (index === 0) {
-                firstWallet.querySelector('.wallet-address').value = wallet.address;
-                firstWallet.querySelector('.wallet-amount').value = wallet.amount;
-            } else {
-                const div = document.createElement('div');
-                div.className = 'wallet-input';
-                div.innerHTML = `
-                    <input type="text" class="wallet-address" placeholder="Wallet Address" value="${wallet.address}">
-                    <div class="trustline-status-box"></div>
-                    <div class="amount-remove-group">
-                        <input type="number" class="wallet-amount" placeholder="Amount" step="0.000001" min="0" value="${wallet.amount}">
-                        <button onclick="removeWallet(this)">Remove</button>
-                    </div>
-                `;
-                walletList.appendChild(div);
-            }
+            const div = document.createElement('div');
+            div.className = 'wallet-input';
+            // Sanitize address and amount to prevent HTML injection and ensure proper rendering
+            const safeAddress = (wallet.address || '').replace(/"/g, '&quot;');
+            const safeAmount = (wallet.amount || '').replace(/"/g, '&quot;');
+            div.innerHTML = `
+                <input type="text" class="wallet-address" placeholder="Wallet Address" value="${safeAddress}">
+                <div class="trustline-status-box"></div>
+                <div class="amount-remove-group">
+                    <input type="number" class="wallet-amount" placeholder="Amount" step="0.000001" min="0" value="${safeAmount}">
+                    <button onclick="removeWallet(this)">Remove</button>
+                </div>
+            `;
+            walletList.appendChild(div);
+            console.log(`Added wallet ${index + 1}: Address=${safeAddress}, Amount=${safeAmount}`);
         });
+
+        // Ensure wallet list is visible
+        walletList.style.display = 'block';
+        console.log('Wallet list display style:', walletList.style.display);
 
         updateTotalAmount();
         showNotification(`Successfully loaded ${wallets.length} wallets from CSV.`);
