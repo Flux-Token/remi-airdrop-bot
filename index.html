@@ -935,6 +935,24 @@
             }
         }
 
+        function decodeHexCurrency(hex) {
+            if (!hex || typeof hex !== 'string' || hex.length !== 40 || !/^[0-9A-Fa-f]{40}$/.test(hex)) {
+                return hex; // Return as-is if not a 40-character hex string
+            }
+            try {
+                let result = '';
+                for (let i = 0; i < hex.length; i += 2) {
+                    const byte = parseInt(hex.substr(i, 2), 16);
+                    if (byte === 0) break; // Stop at padding zeros
+                    result += String.fromCharCode(byte);
+                }
+                return result || hex; // Return decoded name, or original hex if decoding fails
+            } catch (e) {
+                console.warn(`Failed to decode hex currency ${hex}:`, e);
+                return hex; // Fallback to original hex if decoding fails
+            }
+        }
+
         async function populateTokenDropdown() {
             console.log('Fetching token holdings...');
             try {
@@ -959,7 +977,7 @@
                 tokenData.forEach(token => {
                     const option = document.createElement('option');
                     option.value = token.currency;
-                    option.textContent = token.currency; // Display only the currency (e.g., "PAR", "XAH")
+                    option.textContent = decodeHexCurrency(token.currency); // Decode hex to display token name
                     option.dataset.issuer = token.issuer;
                     option.dataset.currency = token.currency;
                     tokenTypeSelect.appendChild(option);
