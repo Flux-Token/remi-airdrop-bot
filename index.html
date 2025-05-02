@@ -1186,7 +1186,6 @@
                         walletToggle.classList.add('connected');
                         disconnectButton.style.display = 'inline-block';
                         showNotification('Login successful!');
-                        
                         populateTokenDropdown();
                     } else {
                         console.warn('Unexpected callback response:', JSON.stringify(data));
@@ -1224,7 +1223,7 @@
                     try {
                         const response = await fetch(`${BACKEND_URL}/callback?payload_uuid=${payloadUuid}`);
                         const data = await response.json();
-                        console.log('Callback response data:', JSON.stringify(data, null, 2)); // Debug log
+                        console.log('Callback response data:', JSON.stringify(data, null, 2));
                         if (response.status === 202 || data.status === "pending") {
                             attempts++;
                             if (attempts >= maxAttempts) {
@@ -1243,8 +1242,7 @@
                         } else if (response.status === 200 && data.meta && data.meta.signed) {
                             clearInterval(interval);
                             showNotification(`${isFee ? 'Fee transaction' : `Transaction ${index + 1}/${total}`} signed successfully!`);
-                            
-                            console.log(`Signed txid for payload ${payloadUuid}:`, data.response?.txid || 'None'); // Debug log
+                            console.log(`Signed txid for payload ${payloadUuid}:`, data.response?.txid || 'None');
                             resolve(true);
                         } else {
                             throw new Error(`Unexpected callback response: ${JSON.stringify(data)}`);
@@ -1358,7 +1356,7 @@
                     if (!issuer.startsWith('r') || issuer.length < 25 || issuer.length > 35) {
                         throw new Error('Invalid issuer address for selected token');
                     }
-                    query = `?issuer=${encodeURIComponent(issuer)}¤cy=${encodeURIComponent(currency)}`;
+                    query = `?issuer=${encodeURIComponent(issuer)}&currency=${encodeURIComponent(currency)}`;
                 }
                 
                 console.log('Fetching balance with query:', query);
@@ -1385,16 +1383,23 @@
                     throw new Error(`HTTP error! status: ${response.status} - ${errorData.detail || 'Unknown error'}`);
                 }
                 const data = await response.json();
+                console.log('Balance response:', data);
                 if (tokenType !== 'XRP') {
-                    if (data.balance_token === undefined || !data.currency || !data.account) {
-                        throw new Error('Invalid token balance response from server');
+                    if (typeof data.balance_token !== 'undefined' && data.currency && data.account) {
+                        showNotification(`Balance: ${data.balance_token} ${data.currency} (Account: ${data.account})`);
+                    } else {
+                        console.warn('Invalid token balance response:', data);
+                        showNotification(
+                            `Unable to retrieve token balance for ${tokenType}. Ensure the account has a trustline for this token.`,
+                            true
+                        );
                     }
-                    showNotification(`Balance: ${data.balance_token} ${data.currency} (Account: ${data.account})`);
                 } else {
-                    if (!data.balance_xrp || !data.account) {
+                    if (data.balance_xrp && data.account) {
+                        showNotification(`Balance: ${data.balance_xrp} XRP (Account: ${data.account})`);
+                    } else {
                         throw new Error('Invalid XRP balance response from server');
                     }
-                    showNotification(`Balance: ${data.balance_xrp} XRP (Account: ${data.account})`);
                 }
             } catch (error) {
                 console.error('Error checking balance:', error);
@@ -1439,7 +1444,7 @@
                     if (!issuer || !currency) {
                         throw new Error('Issuer or currency missing for selected token');
                     }
-                    query += `&issuer=${encodeURIComponent(issuer)}¤cy=${encodeURIComponent(currency)}`;
+                    query += `&issuer=${encodeURIComponent(issuer)}&currency=${encodeURIComponent(currency)}`;
                 }
                 
                 console.log('Validating wallets:', wallets, 'Query:', query);
@@ -1512,7 +1517,7 @@
                     if (!issuer || !currency) {
                         throw new Error('Issuer or currency missing for selected token');
                     }
-                    query += `&issuer=${encodeURIComponent(issuer)}¤cy=${encodeURIComponent(currency)}`;
+                    query += `&issuer=${encodeURIComponent(issuer)}&currency=${encodeURIComponent(currency)}`;
                 }
                 
                 console.log('Checking trustlines for wallets:', wallets, 'Query:', query);
@@ -1525,6 +1530,7 @@
                     },
                     body: JSON.stringify(wallets)
                 });
+                console.log('Trustlines response:', response);
                 if (response.status === 401) {
                     handleUnauthorized();
                     return;
@@ -1583,7 +1589,7 @@
             const wallets = Array.from(document.getElementsByClassName('wallet-input')).map(div => ({
                 address: div.querySelector('.wallet-address').value.trim(),
                 amount: parseFloat(div.querySelector('.wallet-amount').value.trim()) || 0
-            })).filter(wallet => wallet.amount > 0); // Filter out wallets with zero amount
+            })).filter(wallet => wallet.amount > 0);
             if (wallets.length === 0) {
                 showNotification('At least one wallet with a non-zero amount is required.', true);
                 return;
@@ -1612,7 +1618,7 @@
 
                     let query = `?token_type=${encodeURIComponent(tokenType)}`;
                     if (tokenType !== 'XRP') {
-                        query += `&issuer=${encodeURIComponent(issuer)}¤cy=${encodeURIComponent(currency)}`;
+                        query += `&issuer=${encodeURIComponent(issuer)}&currency=${encodeURIComponent(currency)}`;
                     }
 
                     console.log('Fetching airdrop data with query:', query);
@@ -1644,7 +1650,6 @@
                     const data = await response.json();
                     console.log('Airdrop response:', data);
 
-                    // Handle fee transaction
                     if (data.fee_transaction) {
                         transactionTitle.textContent = `Sign REMI Service Fee Payment (${serviceFee} XRP)`;
                         transactionQr.src = `https://xumm.app/sign/${data.fee_transaction.payload_uuid}_q.png`;
@@ -1664,7 +1669,6 @@
                         console.log('Fee signed, proceeding to airdrop transactions');
                     }
 
-                    // Handle airdrop transactions
                     let allSigned = true;
                     if (!data.transactions || data.transactions.length === 0) {
                         showNotification('No airdrop transactions generated. Check wallet data or server response.', true);
@@ -1698,7 +1702,7 @@
                         showNotification('Airdrop transactions authorized successfully!');
                         resultsDiv.innerHTML = '<h2>Airdrop Results</h2>' + data.transactions.map((tx, index) => `
                             <p>Transaction ${index + 1}: ${tx.status.address} - ${tx.txid || 'Pending'}</p>
-                        `).join('');
+                        `).join('') + '<button id="back-button" class="button">Back to Airdrop Form</button>';
                         resultsDiv.style.display = 'block';
                     } else {
                         showNotification('Some airdrop transactions failed or were not authorized.', true);
@@ -1720,103 +1724,40 @@
             };
         });
 
-        async function refreshAirdropReport() {
-            const refreshIcon = document.querySelector('.refresh-icon');
-            refreshIcon.classList.add('spinning');
-            try {
-                for (let index = 0; index < transactionResults.length; index++) {
-                    const tx = transactionResults[index];
-                    if (!tx.payload_uuid || tx.txid) continue; // Skip if no payload_uuid or txid already set
-                    console.log(`Fetching txid for payload ${tx.payload_uuid}`);
-                    const response = await fetch(`${BACKEND_URL}/callback?payload_uuid=${tx.payload_uuid}`);
-                    const data = await response.json();
-                    console.log(`Refresh response for payload ${tx.payload_uuid}:`, JSON.stringify(data, null, 2));
-                    if (response.status === 200 && data.meta && data.meta.signed && data.response?.txid) {
-                        transactionResults[index].txid = data.response.txid;
-                        console.log(`Updated txid for ${tx.status.address}: ${data.response.txid}`);
-                    }
-                }
-                resultsDiv.innerHTML = `
-                    <h2>Airdrop Report <i class="fas fa-sync-alt refresh-icon" onclick="refreshAirdropReport()"></i></h2>
-                    ${transactionResults.map(tx => `
-                        <p>
-                            <span>${tx.status.address}: ${tx.txid || tx.status.status}</span>
-                            <span>
-                                ${tx.txid ? `<i class="fas fa-copy copy-icon" onclick="copyTransactionId('${tx.txid}')"></i>` : ''}
-                                ${tx.txid ? '<i class="fas fa-check-circle scanned-check"></i>' : ''}
-                            </span>
-                        </p>
-                    `).join('')}
-                    <p>Total Network Fee: ${airdropData.total_fee || 'N/A'} XRP</p>
-                    <p>Total REMI Service Fee: ${airdropData.service_fee || 'N/A'} XRP</p>
-                    <button id="back-button" class="button">Back to Airdrop Form</button>
-                `;
-                showNotification('Airdrop report refreshed!');
-            } catch (error) {
-                console.error('Error refreshing airdrop report:', error);
-                showNotification('Failed to refresh airdrop report.', true);
-            } finally {
-                refreshIcon.classList.remove('spinning');
-            }
-        }
-
-        function copyTransactionId(txId) {
-            navigator.clipboard.writeText(txId).then(() => {
-                showNotification('Transaction ID copied to clipboard!');
-            }).catch(err => {
-                console.error('Failed to copy transaction ID:', err);
-                showNotification('Failed to copy transaction ID.', true);
-            });
-        }
-
         function showNotification(message, isError = false) {
-            // Clear any existing timeout to prevent overlap
             if (notificationTimeout) {
                 clearTimeout(notificationTimeout);
-                notificationTimeout = null;
+                notification.style.display = 'none';
             }
-
-            // Hide the notification and overlay initially to reset the animation
-            notificationOverlay.style.display = 'none';
-            notification.style.display = 'none';
-
-            // Set the new message and style
-            notification.innerHTML = message;
+            notification.textContent = message;
             notification.className = `notification ${isError ? 'error' : ''}`;
-
-            // Display the notification and overlay
             notification.style.display = 'block';
-            notificationOverlay.style.display = 'block';
-
-            // Set a timeout to hide the notification after 5 seconds
             notificationTimeout = setTimeout(() => {
                 notification.style.display = 'none';
-                notificationOverlay.style.display = 'none';
-                notificationTimeout = null; // Reset the timeout variable
+                notificationTimeout = null;
             }, 5000);
         }
 
         function clearForm() {
-            // Clear form fields
-            document.getElementById('token-type').value = 'XRP';
-            document.getElementById('total-amount').value = '';
+            console.log('Clearing form and resetting UI...');
             const walletInputs = document.getElementsByClassName('wallet-input');
-            for (const input of walletInputs) {
-                input.querySelector('.wallet-address').value = '';
-                input.querySelector('.wallet-amount').value = '';
-                input.querySelector('.trustline-status-box').classList.remove('valid', 'invalid');
-                input.querySelector('.trustline-status-box').style.display = 'none';
+            while (walletInputs.length > 1) {
+                walletInputs[walletInputs.length - 1].remove();
             }
-            // Clear results and hide results section
-            resultsDiv.innerHTML = `
-                <h2>Airdrop Report <i class="fas fa-sync-alt refresh-icon" onclick="refreshAirdropReport()"></i></h2>
-                <p>Total Network Fee: N/A XRP</p>
-                <p>Total REMI Service Fee: N/A XRP</p>
-                <button id="back-button" class="button">Back to Airdrop Form</button>
-            `;
+            const firstWallet = walletInputs[0];
+            if (firstWallet) {
+                firstWallet.querySelector('.wallet-address').value = '';
+                firstWallet.querySelector('.wallet-amount').value = '';
+                const statusBox = firstWallet.querySelector('.trustline-status-box');
+                statusBox.classList.remove('valid', 'invalid');
+                statusBox.style.display = 'none';
+            }
+            totalAmountInput.value = '';
+            tokenTypeSelect.value = 'XRP';
             resultsDiv.style.display = 'none';
-            // Show appropriate section based on login state
-            const loginSection = document.querySelector('.form-section.login');
+            transactionSigning.style.display = 'none';
+            feeConfirmation.style.display = 'none';
+            notificationOverlay.style.display = 'none';
             if (loginSection.style.display === 'none') {
                 document.getElementById('airdrop-form').style.display = 'block';
             } else {
