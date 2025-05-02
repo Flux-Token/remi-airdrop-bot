@@ -824,6 +824,21 @@
 
     <audio id="loader-audio" src="https://static.wixstatic.com/mp3/15ad31_9eab52a3faee4738927cd3aed4e536d7.mp3" preload="auto" crossorigin="anonymous"></audio>
 
+<script>
+    console.log('Attempting to play audio on page load...');
+    const audio = document.getElementById('loader-audio');
+    audio.volume = 0.5;
+    const playAudio = () => {
+        audio.play().catch(err => {
+            console.warn('Audio playback failed:', err);
+            document.addEventListener('click', () => {
+                audio.play().catch(e => console.warn('Audio playback failed on click:', e));
+            }, { once: true });
+        });
+    };
+    playAudio();
+</script>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/decimal.js/10.3.1/decimal.min.js"></script>
     <script>
         const PRELOADER_TIMEOUT = 6000;
