@@ -284,6 +284,7 @@ xumm = XummSdk(XAMAN_API_KEY, XAMAN_API_SECRET)
 
 @app.post("/initiate-oauth")
 async def initiate_oauth():
+    logger.info("Received request to /initiate-oauth")
     try:
         payload = xumm.payload.create({"TransactionType": "SignIn", "options": {"push": True}})
         logger.info(f"Payload response: {payload.__dict__}")
@@ -300,7 +301,6 @@ async def initiate_oauth():
     except Exception as e:
         logger.error(f"Error in initiate_oauth: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to initiate OAuth: {str(e)}")
-
 # Callback for OAuth polling
 
 @app.get("/callback")
@@ -396,6 +396,7 @@ async def balance(
     currency: Optional[str] = Query(None),
     token_data: dict = Depends(get_access_token)
 ):
+    logger.info(f"Received request to /balance for account: {token_data['account']}, issuer: {issuer}, currency: {currency}")
     client = None
     try:
         client = await get_xrpl_client()
