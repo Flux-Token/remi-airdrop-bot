@@ -1554,6 +1554,7 @@
                 validateLoader.style.display = 'none';
             }
         });
+       
         checkTrustlinesBtn.addEventListener('click', async () => {
     console.log('Check Trustlines clicked, accessToken:', getStorageItem('access_token'));
     checkTrustlinesBtn.disabled = true;
@@ -1584,7 +1585,7 @@
             if (!issuer || !currency) {
                 throw new Error('Issuer or currency missing for selected token');
             }
-            query += `&issuer=${encodeURIComponent(issuer)}¤cy=${encodeURIComponent(currency)}`;
+            query += `&issuer=${encodeURIComponent(issuer)}&currency=${encodeURIComponent(currency)}`;
         }
         
         console.log('Checking trustlines for wallets:', wallets, 'Query:', query);

@@ -202,7 +202,8 @@ async def check_trustlines(
     token_data: dict = Depends(get_access_token)
 ):
     logger.info(f"Checking trustlines for wallets: {wallets}, token_type: {token_type}, issuer: {issuer}, currency: {currency}")
-    if token_type != "XRP" and (not issuer or not currency):
+    decoded_token_type = decode_hex_currency(token_type)  # Decode token_type
+    if decoded_token_type != "XRP" and (not issuer or not currency):
         raise HTTPException(
             status_code=400,
             detail="Issuer and currency are required for token trustline checks"
@@ -214,7 +215,7 @@ async def check_trustlines(
         for wallet in wallets:
             wallet.address = wallet.address.strip()
             try:
-                if token_type == "XRP":
+                if decoded_token_type == "XRP":
                     results.append({
                         "address": wallet.address,
                         "has_trustline": True
@@ -275,7 +276,7 @@ async def check_trustlines(
         )
     finally:
         if client and client.is_open():
-            await client.close()      
+            await client.close() 
 
 # Initiate OAuth with Xumm
 XAMAN_API_KEY = os.getenv("XAMAN_API_KEY")
