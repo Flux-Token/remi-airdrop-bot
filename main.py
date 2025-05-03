@@ -202,9 +202,8 @@ async def check_trustlines(
     token_data: dict = Depends(get_access_token)
 ):
     logger.info(f"Checking trustlines for wallets: {wallets}, token_type: {token_type}, issuer: {issuer}, currency: {currency}")
-    decoded_token_type = decode_hex_currency(token_type)  # Decode token_type
-    decoded_currency = decode_hex_currency(currency) if currency else None  # Decode currency
-    if decoded_token_type != "XRP" and (not issuer or not decoded_currency):
+    decoded_currency = decode_hex_currency(currency) if currency else None
+    if token_type != "XRP" and (not issuer or not decoded_currency):
         raise HTTPException(
             status_code=400,
             detail="Issuer and currency are required for token trustline checks"
@@ -216,7 +215,7 @@ async def check_trustlines(
         for wallet in wallets:
             wallet.address = wallet.address.strip()
             try:
-                if decoded_token_type == "XRP":
+                if token_type == "XRP":
                     results.append({
                         "address": wallet.address,
                         "has_trustline": True
@@ -249,11 +248,13 @@ async def check_trustlines(
 
                     trustlines = response.result.get("lines", [])
                     logger.info(f"Trustlines for wallet {wallet.address}: {trustlines}")
-                    logger.debug(f"Checking trustline: issuer={issuer}, decoded_currency={decoded_currency}")
                     trustline_exists = any(
-                        line["account"] == issuer and decode_hex_currency(line["currency"]) == decoded_currency
+                        line["account"] == issuer and 
+                        decode_hex_currency(line["currency"]) == decoded_currency and
+                        (float(line["limit"]) > 0 or float(line["balance"]) != 0)
                         for line in trustlines
                     )
+                    logger.debug(f"Trustline check for {wallet.address}: issuer={issuer}, currency={decoded_currency}, exists={trustline_exists}, limit={line['limit'] if trustline_exists else 'N/A'}, balance={line['balance'] if trustline_exists else 'N/A'}")
                     results.append({
                         "address": wallet.address,
                         "has_trustline": trustline_exists
