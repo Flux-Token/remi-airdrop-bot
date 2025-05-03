@@ -177,6 +177,34 @@ async def get_current_fee(client: AsyncWebsocketClient) -> int:
         logger.error(f"Fee fetch error: {str(e)}")
         return 12  # Fallback to 12 drops
 
+# Add the decode_hex_currency function here
+def decode_hex_currency(hex_currency: str) -> str:
+    if not hex_currency or len(hex_currency) != 40 or not hex_currency.isalnum():
+        return hex_currency
+    try:
+        result = ''
+        for i in range(0, len(hex_currency), 2):
+            byte = int(hex_currency[i:i+2], 16)
+            if byte == 0:
+                break
+            result += chr(byte)
+        return result or hex_currency
+    except Exception as e:
+        logger.warning(f"Failed to decode hex currency {hex_currency}: {str(e)}")
+        return hex_currency
+
+# Check trustlines
+@app.post("/check-trustlines")
+async def check_trustlines(
+    wallets: List[Wallet],
+    token_type: str = Query(...),
+    issuer: Optional[str] = Query(None),
+    currency: Optional[str] = Query(None),
+    token_data: dict = Depends(get_access_token)
+):
+    logger.info(f"Checking trustlines for wallets: {wallets}, token_type: {token_type}, issuer: {issuer}, currency: {currency}")
+    # ... rest of the endpoint code ...        
+
 # Initiate OAuth with Xumm
 XAMAN_API_KEY = os.getenv("XAMAN_API_KEY")
 XAMAN_API_SECRET = os.getenv("XAMAN_API_SECRET")
@@ -430,7 +458,7 @@ async def check_trustlines(
                     trustlines = response.result.get("lines", [])
                     logger.info(f"Trustlines for wallet {wallet.address}: {trustlines}")
                     trustline_exists = any(
-                        line["account"] == issuer and line["currency"] == currency
+                        line["account"] == issuer and decode_hex_currency(line["currency"]) == currency
                         for line in trustlines
                     )
                     results.append({
