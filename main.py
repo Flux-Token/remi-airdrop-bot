@@ -214,60 +214,42 @@ async def check_trustlines(
         client = await get_xrpl_client()
         results = []
         for wallet in wallets:
-    wallet.address = wallet.address.strip()
-    try:
-        if decoded_token_type == "XRP":
-            results.append({
-                "address": wallet.address,
-                "has_trustline": True
-            })
-        else:
-            # Check if the account exists first
-            account_info_request = AccountInfo(account=wallet.address, ledger_index="validated")
-            account_response = await asyncio.wait_for(client.request(account_info_request), timeout=30)
-            if not account_response.is_successful():
-                logger.warning(f"Account {wallet.address} does not exist or is not funded: {account_response.result}")
-                results.append({
-                    "address": wallet.address,
-                    "has_trustline": False
-                })
-                continue
+            wallet.address = wallet.address.strip()
+            try:
+                if decoded_token_type == "XRP":
+                    results.append({
+                        "address": wallet.address,
+                        "has_trustline": True
+                    })
+                else:
+                    # Check if the account exists first
+                    account_info_request = AccountInfo(account=wallet.address, ledger_index="validated")
+                    account_response = await asyncio.wait_for(client.request(account_info_request), timeout=30)
+                    if not account_response.is_successful():
+                        logger.warning(f"Account {wallet.address} does not exist or is not funded: {account_response.result}")
+                        results.append({
+                            "address": wallet.address,
+                            "has_trustline": False
+                        })
+                        continue
 
-            trustline_request = GenericRequest(
-                command="account_lines",
-                account=wallet.address,
-                ledger_index="validated"
-            )
-            response = await asyncio.wait_for(client.request(trustline_request), timeout=30)
-            if not response.is_successful():
-                logger.error(f"Trustline request failed for {wallet.address}: {response.result}")
-                results.append({
-                    "address": wallet.address,
-                    "has_trustline": False
-                })
-                continue
-
-            trustlines = response.result.get("lines", [])
-            logger.info(f"Trustlines for wallet {wallet.address}: {trustlines}")
-            logger.debug(f"Checking trustline: issuer={issuer}, decoded_currency={decoded_currency}")
-            trustline_exists = any(
-                line["account"] == issuer and decode_hex_currency(line["currency"]) == decoded_currency
-                for line in trustlines
-            )
-            results.append({
-                "address": wallet.address,
-                "has_trustline": trustline_exists
-            })
-    except Exception as e:
-        logger.error(f"Error checking trustline for {wallet.address}: {str(e)}")
-        results.append({
-            "address": wallet.address,
-            "has_trustline": False
-        })
+                    trustline_request = GenericRequest(
+                        command="account_lines",
+                        account=wallet.address,
+                        ledger_index="validated"
+                    )
+                    response = await asyncio.wait_for(client.request(trustline_request), timeout=30)
+                    if not response.is_successful():
+                        logger.error(f"Trustline request failed for {wallet.address}: {response.result}")
+                        results.append({
+                            "address": wallet.address,
+                            "has_trustline": False
+                        })
                         continue
 
                     trustlines = response.result.get("lines", [])
                     logger.info(f"Trustlines for wallet {wallet.address}: {trustlines}")
+                    logger.debug(f"Checking trustline: issuer={issuer}, decoded_currency={decoded_currency}")
                     trustline_exists = any(
                         line["account"] == issuer and decode_hex_currency(line["currency"]) == decoded_currency
                         for line in trustlines
