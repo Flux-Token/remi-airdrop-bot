@@ -87,82 +87,40 @@ async def get_access_token(authorization: str = Header(...), account: str = Head
 
 # Get XRPL client for Mainnet
 async def get_xrpl_client():
-    primary_node = "wss://s1.ripple.com"
-    fallback_node = "wss://s2.ripple.com"
-    logger.info(f"Connecting to primary Mainnet node: {primary_node}")
+    nodes = [
+        "wss://s1.ripple.com",
+        "wss://s2.ripple.com",
+        "wss://xrplcluster.com",
+        "wss://xrpl.ws"
+    ]
     client = None
-    try:
-        client = AsyncWebsocketClient(primary_node)
-        await client.open()
-        if client.is_open():
-            response = await client.request(ServerInfo())
-            if response.is_successful():
-                network_id = response.result.get("info", {}).get("network_id", 0)
-                if network_id != 0:
-                    logger.error(f"Connected to non-Mainnet network (network_id: {network_id})")
+    for node in nodes:
+        logger.info(f"Connecting to node: {node}")
+        try:
+            client = AsyncWebsocketClient(node)
+            await client.open()
+            if client.is_open():
+                response = await client.request(ServerInfo())
+                if response.is_successful():
+                    network_id = response.result.get("info", {}).get("network_id", 0)
+                    if network_id != 0:
+                        logger.error(f"Connected to non-Mainnet network (network_id: {network_id}) at {node}")
+                        await client.close()
+                        continue
+                    logger.info(f"Successfully connected to Mainnet node: {node}")
+                    return client
+                else:
+                    logger.warning(f"Node {node} response invalid, trying next node...")
                     await client.close()
-                    raise HTTPException(
-                        status_code=500,
-                        detail="Connected to incorrect network. Expected XRP Ledger Mainnet."
-                    )
-                logger.info(
-                    f"Connected to primary Mainnet node ({primary_node}): "
-                    f"{response.result}"
-                )
-                return client
-            else:
-                logger.warning(
-                    f"Primary node ({primary_node}) response invalid, "
-                    "trying fallback..."
-                )
+        except Exception as e:
+            logger.warning(f"Failed to connect to node {node}: {str(e)}, trying next node...")
+            if client and client.is_open():
                 await client.close()
-    except Exception as e:
-        logger.warning(
-            f"Failed to connect to primary Mainnet node ({primary_node}): "
-            f"{str(e)}, trying fallback..."
-        )
-        if client and client.is_open():
-            await client.close()
-
-    logger.info(f"Connecting to fallback Mainnet node: {fallback_node}")
-    try:
-        client = AsyncWebsocketClient(fallback_node)
-        await client.open()
-        if client.is_open():
-            response = await client.request(ServerInfo())
-            if response.is_successful():
-                network_id = response.result.get("info", {}).get("network_id", 0)
-                if network_id != 0:
-                    logger.error(f"Connected to non-Mainnet network (network_id: {network_id})")
-                    await client.close()
-                    raise HTTPException(
-                        status_code=500,
-                        detail="Connected to incorrect network. Expected XRP Ledger Mainnet."
-                    )
-                logger.info(
-                    f"Connected to fallback Mainnet node ({fallback_node}): "
-                    f"{response.result}"
-                )
-                return client
-            else:
-                logger.error(
-                    f"Fallback node ({fallback_node}) response invalid."
-                )
-                await client.close()
-    except Exception as e:
-        logger.error(
-            f"Failed to connect to fallback Mainnet node ({fallback_node}): "
-            f"{str(e)}"
-        )
-        if client and client.is_open():
-            await client.close()
     raise HTTPException(
         status_code=500,
-        detail=(
-            "Failed to connect to XRP Ledger Mainnet nodes. Please try again "
-            "later."
-        )
+        detail="Failed to connect to any XRP Ledger Mainnet nodes. Please try again later."
     )
+    
 
 # Get current network fee
 async def get_current_fee(client: AsyncWebsocketClient) -> int:
@@ -542,6 +500,7 @@ async def check_trustlines(
                 for attempt in range(retry_attempts):
                     try:
                         while True:
+                            logger.info(f"Fetching trustlines for {wallet.address}, marker: {marker}")
                             trustline_request = GenericRequest(
                                 command="account_lines",
                                 account=wallet.address,
@@ -575,6 +534,7 @@ async def check_trustlines(
                     continue  # Skip if trustline fetch failed
 
                 logger.info(f"Total trustlines for wallet {wallet.address}: {len(all_trustlines)}")
+                logger.info(f"Trustlines for wallet {wallet.address}: {all_trustlines}")
                 min_reserve = 10  # XRP for account activation
                 trustline_reserve = 2  # XRP per trustline
                 required_xrp = min_reserve + (len(all_trustlines) * trustline_reserve)
@@ -598,7 +558,7 @@ async def check_trustlines(
                     require_auth = (flags & 0x00040000) != 0
                     logger.info(f"Issuer {issuer} RequireAuth flag: {require_auth}")
 
-                # Step 4: Check for trustline
+                # Step 4: Check for trustline in the fetched data
                 if token_type == "XRP":
                     logger.info(f"Wallet {wallet.address} supports XRP (no trustline needed)")
                     results.append({
@@ -607,7 +567,6 @@ async def check_trustlines(
                         "error": None
                     })
                 else:
-                    logger.info(f"Trustlines for wallet {wallet.address}: {all_trustlines}")
                     trustline_exists = False
                     matching_trustline = None
                     for line in all_trustlines:
@@ -627,18 +586,38 @@ async def check_trustlines(
                         decoded_currency = decode_hex_currency(currency)
                         error_msg = f"No trustline for {decoded_currency} with issuer {issuer}"
                         suggestion = "Verify the trustline exists on the XRP Ledger Mainnet using xrpscan.com."
-                        if matching_trustline:
-                            if require_auth and not matching_trustline.get("authorized", False):
-                                error_msg = f"Trustline for {decoded_currency} with issuer {issuer} exists but is not authorized (RequireAuth enabled)"
-                                suggestion = "The issuer must authorize the trustline. Contact the issuer or check xrpl.services for authorization steps."
-                            elif float(matching_trustline["limit"]) == 0 and float(matching_trustline["balance"]) == 0:
-                                error_msg = f"Trustline for {decoded_currency} with issuer {issuer} exists but has zero limit and balance"
-                                suggestion = "Set a non-zero limit on the trustline using xrpl.services or another wallet tool."
-                            logger.info(f"Trustline details for {wallet.address}: {matching_trustline}")
-                        logger.info(f"No usable trustline found for {wallet.address}: issuer={issuer}, currency={currency} ({decoded_currency})")
+                        # Fallback: Check with an external API (e.g., xrpscan.com)
+                        try:
+                            logger.info(f"Fallback: Checking trustline for {wallet.address} via external API")
+                            # Example: Query xrpscan.com API (you'd need to sign up for an API key)
+                            xrpscan_url = f"https://api.xrpscan.com/api/v1/account/{wallet.address}/trustlines"
+                            response = requests.get(xrpscan_url)
+                            if response.status_code == 200:
+                                xrpscan_trustlines = response.json()
+                                for trustline in xrpscan_trustlines:
+                                    if (trustline["counterparty"] == issuer and 
+                                        trustline["currency"] == decoded_currency):
+                                        trustline_exists = True
+                                        matching_trustline = trustline
+                                        error_msg = None
+                                        suggestion = "Trustline found via external API, but not in node response. Consider using a different XRP Ledger node."
+                                        break
+                        except Exception as e:
+                            logger.warning(f"External API check failed for {wallet.address}: {str(e)}")
+
+                        if not trustline_exists:
+                            if matching_trustline:
+                                if require_auth and not matching_trustline.get("authorized", False):
+                                    error_msg = f"Trustline for {decoded_currency} with issuer {issuer} exists but is not authorized (RequireAuth enabled)"
+                                    suggestion = "The issuer must authorize the trustline. Contact the issuer or check xrpl.services for authorization steps."
+                                elif float(matching_trustline["limit"]) == 0 and float(matching_trustline["balance"]) == 0:
+                                    error_msg = f"Trustline for {decoded_currency} with issuer {issuer} exists but has zero limit and balance"
+                                    suggestion = "Set a non-zero limit on the trustline using xrpl.services or another wallet tool."
+                                logger.info(f"Trustline details for {wallet.address}: {matching_trustline}")
+                            logger.info(f"No usable trustline found for {wallet.address}: issuer={issuer}, currency={currency} ({decoded_currency})")
                         results.append({
                             "address": wallet.address,
-                            "has_trustline": False,
+                            "has_trustline": trustline_exists,
                             "error": error_msg,
                             "suggestion": suggestion
                         })
