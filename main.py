@@ -473,13 +473,15 @@ async def check_trustlines(
     client = None
     nodes_tried = 0
     max_nodes_to_try = 4  # Match the number of nodes in get_xrpl_client
+    results = []  # Initialize results outside the loop to ensure it's always defined
+
     while nodes_tried < max_nodes_to_try:
         try:
             if client and client.is_open():
                 await client.close()
             client = await get_xrpl_client()
             nodes_tried += 1
-            results = []
+            results = []  # Reset results for each node attempt
             for wallet in wallets:
                 wallet.address = wallet.address.strip()
                 logger.info(f"Processing wallet: {wallet.address} using node {client.url}")
@@ -628,20 +630,24 @@ async def check_trustlines(
                 logger.info(f"Trustline not found for any wallet, retrying with a different node (attempt {nodes_tried + 1}/{max_nodes_to_try})")
                 continue
             else:
-                return results
+                break  # Exit the while loop if trustlines are found or max retries reached
 
-        logger.info("Trustline check completed.")
-        return results
-    except Exception as e:
-        logger.error(f"Trustline check error: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=(
-                "Failed to check trustlines: Ensure wallets are valid and have "
-                "trustlines set up on the XRP Ledger Mainnet. Acquire XRP from "
-                "an exchange like Coinbase or Bitstamp."
-            )
-        )
+        except Exception as e:
+            logger.error(f"Trustline check error on attempt {nodes_tried}: {str(e)}")
+            if nodes_tried == max_nodes_to_try:
+                raise HTTPException(
+                    status_code=500,
+                    detail=(
+                        "Failed to check trustlines after trying all nodes: Ensure wallets are valid and have "
+                        "trustlines set up on the XRP Ledger Mainnet. Acquire XRP from "
+                        "an exchange like Coinbase or Bitstamp."
+                    )
+                )
+            continue
+
+    logger.info("Trustline check completed.")
+    return results
+
     finally:
         if client and client.is_open():
             await client.close()
