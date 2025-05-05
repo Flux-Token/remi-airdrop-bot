@@ -13,11 +13,11 @@
             --results-transparency: 0.1;
             --fee-confirmation-transparency: 0.9;
         }
-    
+
         body { 
             margin: 0;  
         }
-    
+
         #background-video {
             position: fixed; 
             top: 0; 
@@ -28,7 +28,7 @@
             z-index: -2; 
             pointer-events: none;
         }
-    
+
         #preloader {
             position: fixed; 
             top: 0; 
@@ -41,7 +41,7 @@
             z-index: 9999;
             transition: opacity 0.5s ease;
         }
-    
+
         .preloader-logo {
             font-family: 'Montserrat', sans-serif; 
             font-size: 2.5em; 
@@ -53,28 +53,34 @@
             -webkit-text-fill-color: transparent;
             animation: pulse 2s infinite;
         }
-    
+
         @keyframes pulse {
             0% { transform: scale(1); text-shadow: 0 0 10px rgba(255, 111, 97, 0.5); }
             50% { transform: scale(1.1); text-shadow: 0 0 20px rgba(255, 111, 97, 0.8); }
             100% { transform: scale(1); text-shadow: 0 0 10px rgba(255, 111, 97, 0.5); }
         }
+
+        body { 
+    margin: 0; 
     
+}
+
         .main-content {
             display: none; 
             font-family: 'Montserrat', sans-serif; 
             flex-direction: column;
             min-height: 100vh; 
-            background: transparent; 
+         background: transparent; 
             color: #fff; 
             position: relative;
             overflow-y: auto;
+   
         }
-    
+
         .main-content::-webkit-scrollbar {
             display: none;
         }
-    
+
         header {
             padding: 20px 0; 
             text-align: center; 
@@ -83,7 +89,7 @@
             position: relative; 
             z-index: 1;
         }
-    
+
         header h1 {
             font-family: 'Montserrat', sans-serif; 
             font-size: 2.2em; 
@@ -96,7 +102,7 @@
             animation: pulse 2s infinite; 
             margin: 0;
         }
-    
+
         .wallet-toggle {
             position: absolute; 
             top: 24px; 
@@ -106,15 +112,15 @@
             cursor: pointer; 
             transition: color 0.3s ease;
         }
-    
+
         .wallet-toggle.disconnected { 
             color: #6c757d; 
         }
-    
+
         .wallet-toggle.connected { 
             color: #28a745; 
         }
-    
+
         .disconnect-button {
             position: absolute; 
             top: 18px; 
@@ -134,12 +140,43 @@
             text-transform: uppercase; 
             letter-spacing: 1px;
         }
-    
+
         .disconnect-button:hover {
             transform: translateY(-2px); 
             box-shadow: 0 5px 15px rgba(255, 111, 97, 0.6);
         }
-    
+
+        #results p {
+            background: rgba(255, 255, 255, 0.1); 
+            color: #fff; 
+            padding: 10px; 
+            border-radius: 8px;
+            margin: 5px 0; 
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: nowrap;
+        }
+
+        #results p .scanned-check {
+            color: #28a745;
+            font-size: 1.2em;
+            margin-left: 10px;
+        }
+
+        #results p .copy-icon {
+            color: #00d4ff;
+            font-size: 1em;
+            cursor: pointer;
+            margin-right: 10px;
+            transition: color 0.3s ease;
+        }
+
+        #results p .copy-icon:hover {
+            color: #ff6f61;
+        }
+
         .wallet-address-display {
             z-index: 1; 
             margin: 0;
@@ -155,7 +192,7 @@
             text-align: center; 
             white-space: nowrap;
         }
-    
+
         .wallet-address-container {
             background: rgba(255, 255, 255, var(--wallet-address-transparency)); 
             padding: 15px; 
@@ -170,7 +207,7 @@
             width: auto; 
             max-width: 90%;
         }
-    
+
         .container {
             flex: 1; 
             display: flex; 
@@ -182,7 +219,7 @@
             margin: 0 auto; 
             z-index: 1;
         }
-    
+
         h2 {
             font-size: 1.5em; 
             margin-bottom: 20px; 
@@ -194,7 +231,7 @@
             text-overflow: ellipsis;
             white-space: nowrap;
         }
-    
+
         button {
             background: linear-gradient(90deg, #ff6f61, #ff00ff); 
             color: #fff; 
@@ -210,7 +247,7 @@
             position: relative; 
             overflow: hidden;
         }
-    
+
         button::before {
             content: ''; 
             position: absolute; 
@@ -221,23 +258,23 @@
             background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
             transition: 0.5s;
         }
-    
+
         button:hover::before { 
             left: 100%; 
         }
-    
+
         button:hover {
             transform: translateY(-3px); 
             box-shadow: 0 8px 20px rgba(255, 111, 97, 0.6);
         }
-    
+
         button:disabled {
             background: #6c757d; 
             cursor: not-allowed; 
             transform: none; 
             box-shadow: none;
         }
-    
+
         input, select {
             padding: 12px; 
             margin: 10px 0; 
@@ -255,34 +292,33 @@
             display: block;
             box-sizing: border-box;
         }
-    
+
         input:focus, select:focus {
             outline: none; 
             box-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
             background: rgba(255, 255, 255, 0.2);
         }
-    
+
         input::placeholder { 
             color: #aaa; 
         }
-    
+
         .form-section {
-    background: rgba(255, 255, 255, var(--form-section-transparency)); 
-    padding: 25px 45px; /* Increased right/left padding to accommodate status box */
-    border-radius: 15px;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3); 
-    margin-bottom: 20px;
-    backdrop-filter: blur(10px); 
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    display: flex; 
-    flex-direction: column; 
-    align-items: center;
-    width: 100%; 
-    max-width: 500px;
-    box-sizing: border-box;
-    position: relative; /* Ensure positioning context for child elements */
-}
-    
+            background: rgba(255, 255, 255, var(--form-section-transparency)); 
+            padding: 25px; 
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3); 
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px); 
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex; 
+            flex-direction: column; 
+            align-items: center;
+            width: 100%; 
+            max-width: 500px;
+            box-sizing: border-box;
+        }
+
         .form-section.login {
             margin: 0 auto;
             width: auto;
@@ -293,22 +329,22 @@
             align-items: center;
             padding: 15px;
         }
-    
+
         .form-section.login button {
             margin: 0;
         }
-    
+
         .form-section.login #qr-link {
             text-align: center;
             width: 100%;
         }
-    
+
         .form-section:not(.login) {
             width: 100%; 
             max-width: 500px;
             align-items: center;
         }
-    
+
         .button-row {
             display: flex; 
             flex-wrap: wrap; 
@@ -317,7 +353,7 @@
             width: 100%; 
             margin-top: 10px;
         }
-    
+
         .button-row button {
             flex: 1; 
             min-width: 100px; 
@@ -325,221 +361,92 @@
             padding: 10px 10px; 
             font-size: 0.85em;
         }
-    
+
         .wallet-input {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin-bottom: 15px;
-    width: 100%;
-    max-width: 400px;
-    margin-left: auto;
-    margin-right: auto;
-    box-sizing: border-box;
-    position: relative;
-    padding-right: 30px; /* Add padding to ensure space for status box */
-}
-    
-.wallet-input input.wallet-address {
-    width: 100%;
-    max-width: 400px;
-    margin: 10px 0;
-    box-sizing: border-box;
-    padding: 12px 40px 12px 12px; /* Right padding ensures space for the status box */
-    border: none;
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.1);
-    color: #fff;
-    font-size: 1em; /* 16px in most browsers */
-    line-height: 24px; /* Explicitly set to center text vertically; matches typical input height */
-    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.2);
-    transition: all 0.3s ease;
-    overflow-x: auto;
-    white-space: nowrap;
-    position: relative;
-    height: 48px; /* Fixed height to ensure consistent centering */
-}
-    
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 15px;
+            width: 100%;
+            max-width: 400px;
+            margin-left: auto;
+            margin-right: auto;
+            box-sizing: border-box;
+            position: relative;
+        }
+
+        .wallet-input input.wallet-address {
+            width: 100%;
+            max-width: 400px;
+            margin: 10px 0;
+            box-sizing: border-box;
+            padding: 12px 30px 12px 12px;
+            border: none;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            font-size: 1em;
+            box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+
         .wallet-input .amount-remove-group {
             display: flex;
             justify-content: center;
             align-items: center;
             gap: 5px;
         }
-    
+
         .wallet-input input.wallet-amount {
             width: 120px;
             max-width: 120px;
             margin: 0;
         }
-    
+
         .wallet-input button {
             padding: 8px 15px;
             font-size: 0.9em;
             margin: 0;
         }
-    
-        /* Consolidated trustline-status-box styles */
-        .trustline-status-box {
-    display: none;
-    width: 16px; /* Matches text height for visual consistency */
-    height: 16px;
-    border-radius: 3px;
-    position: absolute;
-    right: 12px;
-    top: 16px; /* (input height - square height) / 2 + top padding: (48px - 16px) / 2 + 12px = 16px + 12px = 28px, but adjusted to align with text */
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    box-sizing: border-box;
-}
-    
-        .trustline-status-box.valid {
-            background-color: #28a745;
+
+        .wallet-input .trustline-status-box {
+            position: absolute;
+            right: 10px;
+            top: 22px;
+            width: 16px;
+            height: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            background: transparent;
+            border-radius: 3px;
+            display: none;
+        }
+
+        .wallet-input .trustline-status-box.valid {
+            background: #28a745;
             display: block;
         }
-    
-        .trustline-status-box.invalid {
-            background-color: #dc3545;
+
+        .wallet-input .trustline-status-box.invalid {
+            background: #dc3545;
             display: block;
         }
-    
-        .trustline-status-box.balance-only {
-            background-color: #ffc107; /* Yellow for balance-only wallets */
-            display: block;
-        }
-    
-        /* Style for the legend in the popup */
-        .status-legend {
-            margin-top: 10px;
-            font-size: 14px;
-        }
-    
-        .status-legend span {
-            display: inline-block;
-            width: 15px;
-            height: 15px;
-            margin-right: 5px;
-            vertical-align: middle;
-        }
-    
-        .status-legend .valid {
-            background-color: #28a745;
-        }
-    
-        .status-legend .balance-only {
-            background-color: #ffc107;
-        }
-    
-        .status-legend .invalid {
-            background-color: #dc3545;
-        }
-    
+
         @media (max-width: 600px) {
-    .wallet-input input.wallet-address {
-        padding: 10px 30px 10px 10px; /* Adjusted padding for mobile */
-        font-size: 0.9em; /* Slightly smaller font size */
-        line-height: 20px; /* Adjusted for smaller input */
-        height: 40px; /* Adjusted height for mobile */
-    }
-    .wallet-input .trustline-status-box {
-        right: 10px;
-        top: 12px; /* (input height - square height) / 2 + top padding: (40px - 12px) / 2 + 10px = 14px + 10px = 24px, but adjusted to align with text */
-        width: 12px;
-        height: 12px;
-    }
-    
-            .container { 
-                padding: 10px; 
-            }
-    
-            h1 {
-                margin-top: 50px;
-                font-size: 2em;
-            }
-    
-            .wallet-input { 
-                max-width: 100%; 
-            }
-    
-            .wallet-input input.wallet-address {
-                max-width: 100%;
-                margin-bottom: 8px;
-                padding: 10px 25px 10px 10px;
-            }
-    
-            .wallet-input .amount-remove-group {
-                gap: 3px;
-                flex-wrap: wrap;
-                justify-content: center;
-            }
-    
-            .wallet-input input.wallet-amount {
-                margin-left: 0; 
-                margin-bottom: 8px;
-                width: 80px;
-                max-width: 80px;
-            }
-    
-            .wallet-input button { 
-                margin-left: 0; 
-                padding: 6px 10px;
-                font-size: 0.8em;
-            }
-    
-            .notification, .fee-confirmation { 
-                padding: 8px 15px;
-                font-size: 0.85em; 
-            }
-    
-            .wallet-address-display { 
-                font-size: 0.7em;
-                max-width: 80%;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                white-space: nowrap;
-                padding: 8px 12px;
-            }
-    
-            .wallet-toggle { 
-                top: 12px;
-                right: 8px; 
-                font-size: 1em;
-            }
-    
-            .disconnect-button { 
-                top: 6px;
-                right: 30px;
-                font-size: 0.6em; 
-                padding: 3px 6px;
-            }
-    
-            .form-section { 
-                max-width: 100%; 
-                padding: 15px 25px; /* Adjusted padding for mobile */
-            }
-    
-            .button-row {
-                gap: 5px;
-            }
-    
-            .button-row button { 
-                min-width: 70px;
-                max-width: 90px;
-                font-size: 0.7em;
-                padding: 6px 6px;
-                margin: 2px;
-            }
-    
-            input, select {
-                max-width: 100%;
-                padding: 10px;
+            .wallet-input .trustline-status-box {
+                right: 10px;
+                top: 22px;
+                width: 14px;
+                height: 14px;
             }
         }
-    
+
         #airdrop-form, #results { 
             display: none; 
             width: 100%; 
         }
-    
+
         #results {
             margin-top: 20px; 
             text-align: left;
@@ -553,13 +460,7 @@
             backdrop-filter: blur(10px); 
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
-    
-        #results h2 {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-    
+
         #results p {
             background: rgba(255, 255, 255, 0.1); 
             color: #fff; 
@@ -570,43 +471,14 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            flex-wrap: nowrap;
         }
-    
+
         #results p .scanned-check {
             color: #28a745;
             font-size: 1.2em;
             margin-left: 10px;
         }
-    
-        #results p .copy-icon {
-            color: #00d4ff;
-            font-size: 1em;
-            cursor: pointer;
-            margin-right: 10px;
-            transition: color 0.3s ease;
-        }
-    
-        #results p .copy-icon:hover {
-            color: #ff6f61;
-        }
-    
-        #results .refresh-icon {
-            color: #00d4ff;
-            font-size: 1em;
-            cursor: pointer;
-            transition: color 0.3s ease, transform 0.3s ease;
-        }
-    
-        #results .refresh-icon:hover {
-            color: #ff6f61;
-            transform: rotate(360deg);
-        }
-    
-        #results .refresh-icon.spinning {
-            animation: spin 1s linear infinite;
-        }
-    
+
         .notification-overlay {
             position: fixed;
             top: 0;
@@ -617,7 +489,7 @@
             z-index: 10000;
             display: none;
         }
-    
+
         .notification {
             position: fixed; 
             top: 50%; 
@@ -634,11 +506,11 @@
             text-align: center;
             animation: fadeInOut 5s;
         }
-    
+
         .notification.error {
             background: linear-gradient(90deg, #dc3545, #ff6f61);
         }
-    
+
         .fee-confirmation {
             position: fixed; 
             top: 50%; 
@@ -659,26 +531,26 @@
             color: #fff;
             font-family: 'Montserrat', sans-serif;
         }
-    
+
         .fee-confirmation p {
             font-size: 1em; 
             margin: 0 0 15px; 
             color: #00d4ff;
             text-shadow: 0 0 5px rgba(0, 212, 255, 0.5);
         }
-    
+
         .fee-confirmation .disclaimer {
             font-size: 0.8em; 
             color: #aaa; 
             margin: 10px 0;
         }
-    
+
         .fee-confirmation .button-row {
             display: flex; 
             gap: 10px; 
             justify-content: center;
         }
-    
+
         .loader {
             display: none; 
             border: 4px solid rgba(255, 255, 255, 0.2);
@@ -689,7 +561,7 @@
             animation: spin 1s linear infinite; 
             margin: 0 10px;
         }
-    
+
         #qr-code, .transaction-qr {
             display: none; 
             margin: 20px auto; 
@@ -698,7 +570,7 @@
             border-radius: 10px; 
             box-shadow: 0 0 15px rgba(0, 212, 255, 0.5);
         }
-    
+
         .qr-link {
             color: #00d4ff; 
             text-decoration: none; 
@@ -708,18 +580,18 @@
             transition: all 0.3s ease;
             text-align: center;
         }
-    
+
         .qr-link:hover { 
             text-decoration: underline; 
             color: #ff6f61; 
         }
-    
+
         .transaction-qr-link {
             text-align: center;
             display: block;
             width: 100%;
         }
-    
+
         footer {
             background: linear-gradient(90deg, #ff6f61, #ff00ff); 
             padding: 15px 0; 
@@ -727,30 +599,148 @@
             font-size: 0.9em; 
             box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
         }
-    
+
         footer a {
             color: #fff; 
             text-decoration: none; 
             transition: all 0.3s ease;
         }
-    
+
         footer a:hover { 
             color: #00d4ff; 
             text-decoration: underline; 
         }
-    
+
+        @media (max-width: 600px) {
+    .container { 
+        padding: 10px; 
+    }
+
+    h1 {
+        margin-top: 50px; /* Increased top margin to avoid overlap with header elements */
+        font-size: 2em; /* Slightly reduced font size for better fit */
+    }
+
+    .wallet-input { 
+        max-width: 100%; 
+    }
+
+    .wallet-input input.wallet-address {
+        max-width: 100%;
+        margin-bottom: 8px;
+        padding: 10px 25px 10px 10px;
+    }
+
+    .wallet-input .amount-remove-group {
+        gap: 3px;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .wallet-input input.wallet-amount {
+        margin-left: 0; 
+        margin-bottom: 8px;
+        width: 80px;
+        max-width: 80px;
+    }
+
+    .wallet-input button { 
+        margin-left: 0; 
+        padding: 6px 10px;
+        font-size: 0.8em;
+    }
+
+    .wallet-input .trustline-status-box {
+        right: 8px;
+        top: 20px;
+        width: 12px;
+        height: 12px;
+    }
+
+    .notification, .fee-confirmation { 
+        padding: 8px 15px;
+        font-size: 0.85em; 
+    }
+
+    .wallet-address-display { 
+        font-size: 0.7em; /* Further reduced font size */
+        max-width: 80%; /* Reduced max-width to fit within shadow box */
+        overflow: hidden; /* Reinforced overflow handling */
+        text-overflow: ellipsis; /* Ensure truncation with ellipsis */
+        white-space: nowrap; /* Prevent wrapping */
+        padding: 8px 12px; /* Adjusted padding */
+    }
+
+    .wallet-toggle { 
+        top: 12px; /* Adjusted position */
+        right: 8px; 
+        font-size: 1em; /* Slightly smaller */
+    }
+
+    .disconnect-button { 
+        top: 6px; /* Adjusted position */
+        right: 30px; /* Moved closer to edge */
+        font-size: 0.6em; 
+        padding: 3px 6px; /* Further reduced padding */
+    }
+
+    .form-section { 
+        max-width: 100%; 
+        padding: 15px; 
+    }
+
+    .button-row {
+        gap: 5px;
+    }
+
+    .button-row button { 
+        min-width: 70px;
+        max-width: 90px;
+        font-size: 0.7em;
+        padding: 6px 6px;
+        margin: 2px;
+    }
+
+    input, select {
+        max-width: 100%;
+        padding: 10px;
+    }
+}
+
+        #results h2 {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #results .refresh-icon {
+            color: #00d4ff;
+            font-size: 1em;
+            cursor: pointer;
+            transition: color 0.3s ease, transform 0.3s ease;
+        }
+
+        #results .refresh-icon:hover {
+            color: #ff6f61;
+            transform: rotate(360deg);
+        }
+
+        #results .refresh-icon.spinning {
+            animation: spin 1s linear infinite;
+        }
+
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-    
+
         @keyframes fadeInOut {
             0% { opacity: 0; transform: translate(-50%, -60%); }
             10% { opacity: 1; transform: translate(-50%, -50%); }
             90% { opacity: 1; transform: translate(-50%, -50%); }
             100% { opacity: 0; transform: translate(-50%, -60%); }
         }
-    
+
         .icon { 
             margin-right: 8px; 
         }
@@ -834,20 +824,20 @@
 
     <audio id="loader-audio" src="https://static.wixstatic.com/mp3/15ad31_9eab52a3faee4738927cd3aed4e536d7.mp3" preload="auto" crossorigin="anonymous"></audio>
 
-    <script>
-        console.log('Attempting to play audio on page load...');
-        const audio = document.getElementById('loader-audio');
-        audio.volume = 0.5;
-        const playAudio = () => {
-            audio.play().catch(err => {
-                console.warn('Audio playback failed:', err);
-                document.addEventListener('click', () => {
-                    audio.play().catch(e => console.warn('Audio playback failed on click:', e));
-                }, { once: true });
-            });
-        };
-        playAudio();
-    </script>
+<script>
+    console.log('Attempting to play audio on page load...');
+    const audio = document.getElementById('loader-audio');
+    audio.volume = 0.5;
+    const playAudio = () => {
+        audio.play().catch(err => {
+            console.warn('Audio playback failed:', err);
+            document.addEventListener('click', () => {
+                audio.play().catch(e => console.warn('Audio playback failed on click:', e));
+            }, { once: true });
+        });
+    };
+    playAudio();
+</script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/decimal.js/10.3.1/decimal.min.js"></script>
     <script>
@@ -1009,6 +999,7 @@
         }
 
         async function populateTokenDropdown() {
+            console.log('Fetching token holdings...');
             try {
                 const response = await fetch(`${BACKEND_URL}/get-tokens`, {
                     headers: {
@@ -1021,34 +1012,38 @@
                     return;
                 }
                 if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(`HTTP error! status: ${response.status} - ${errorData.detail || 'Unknown error'}`);
                 }
-                const tokenData = await response.json();
-                console.log('Token data:', tokenData);
-                const tokenSelect = document.getElementById('token-type');
-                tokenSelect.innerHTML = '<option value="XRP">XRP</option>';
-                if (tokenData.tokens && Array.isArray(tokenData.tokens)) {
-                    tokenData.tokens.forEach(token => {
-                        const option = document.createElement('option');
-                        const decodedName = decodeHexCurrency(token.name);
-                        option.value = token.name;
-                        option.text = decodedName;
-                        option.dataset.issuer = token.issuer;
-                        option.dataset.currency = token.currency;
-                        console.log(`Adding token to dropdown: value=${option.value}, issuer=${option.dataset.issuer}, currency=${option.dataset.currency}`);
-                        tokenSelect.appendChild(option);
-                    });
+                const data = await response.json();
+                tokenData = data.tokens || [];
+                console.log('Token holdings:', tokenData);
+                tokenTypeSelect.innerHTML = '<option value="XRP">XRP</option>';
+                tokenData.forEach(token => {
+                    const option = document.createElement('option');
+                    option.value = token.currency;
+                    option.textContent = decodeHexCurrency(token.currency);
+                    option.dataset.issuer = token.issuer;
+                    option.dataset.currency = token.currency;
+                    tokenTypeSelect.appendChild(option);
+                });
+                if (tokenData.length === 0) {
+                    showNotification('No tokens found in your wallet. Airdrop XRP or add trustlines on Mainnet.', true);
                 }
             } catch (error) {
-                console.error('Error populating token dropdown:', error);
-                showNotification('Error loading tokens. Please try again.', true);
+                console.error('Error fetching tokens:', error);
+                showNotification(
+                    `Error fetching token holdings: ${error.message}. Ensure your account is funded on the XRP Ledger Mainnet. ` +
+                    `Acquire XRP from an exchange like Coinbase or Bitstamp.`,
+                    true
+                );
             }
         }
 
         function clearTrustlineStatus() {
             const statusBoxes = document.querySelectorAll('.trustline-status-box');
             statusBoxes.forEach(box => {
-                box.classList.remove('valid', 'invalid', 'balance-only');
+                box.classList.remove('valid', 'invalid');
                 box.style.display = 'none';
             });
         }
@@ -1417,16 +1412,15 @@
                 const currency = selectedOption.dataset.currency || '';
                 
                 let query = '';
-if (tokenType !== 'XRP') {
-    if (!issuer || !currency) {
-        throw new Error('Issuer or currency missing for selected token');
-    }
-    if (!issuer.startsWith('r') || issuer.length < 25 || issuer.length > 35) {
-        throw new Error('Invalid issuer address for selected token');
-    }
-    const decodedCurrency = decodeHexCurrency(currency); // Decode the hex currency
-    query = `?issuer=${encodeURIComponent(issuer)}&currency=${encodeURIComponent(decodedCurrency)}`;
-}
+                if (tokenType !== 'XRP') {
+                    if (!issuer || !currency) {
+                        throw new Error('Issuer or currency missing for selected token');
+                    }
+                    if (!issuer.startsWith('r') || issuer.length < 25 || issuer.length > 35) {
+                        throw new Error('Invalid issuer address for selected token');
+                    }
+                    query = `?issuer=${encodeURIComponent(issuer)}&currency=${encodeURIComponent(currency)}`;
+                }
                 
                 console.log('Fetching balance with query:', query);
                 const response = await fetch(`${BACKEND_URL}/balance${query}`, {
@@ -1513,17 +1507,13 @@ if (tokenType !== 'XRP') {
                 const issuer = selectedOption.dataset.issuer || '';
                 const currency = selectedOption.dataset.currency || '';
         
-                let query = '';
-if (tokenType !== 'XRP') {
-    if (!issuer || !currency) {
-        throw new Error('Issuer or currency missing for selected token');
-    }
-    if (!issuer.startsWith('r') || issuer.length < 25 || issuer.length > 35) {
-        throw new Error('Invalid issuer address for selected token');
-    }
-    const decodedCurrency = decodeHexCurrency(currency); // Decode the hex currency
-    query = `?issuer=${encodeURIComponent(issuer)}&currency=${encodeURIComponent(decodedCurrency)}`;
-}
+                let query = `?token_type=${encodeURIComponent(tokenType)}`;
+                if (tokenType !== 'XRP') {
+                    if (!issuer || !currency) {
+                        throw new Error('Issuer or currency missing for selected token');
+                    }
+                    query += `&issuer=${encodeURIComponent(issuer)}¤cy=${encodeURIComponent(currency)}`;
+                }
         
                 console.log('Validating wallets:', wallets, 'Query:', query);
                 const response = await fetch(`${BACKEND_URL}/validate-wallets${query}`, {
@@ -1540,8 +1530,8 @@ if (tokenType !== 'XRP') {
                     return;
                 }
                 if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}));
-                    throw new Error(`HTTP error! status: ${response.status} - ${errorData.detail || 'Unknown error'}`);
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(`HTTP error! status: ${response.status} - ${errorData.detail || 'Unknown error'}`);
                 }
                 const data = await response.json();
                 if (!Array.isArray(data)) {
@@ -1566,112 +1556,94 @@ if (tokenType !== 'XRP') {
         });
        
         checkTrustlinesBtn.addEventListener('click', async () => {
-            console.log('Check Trustlines clicked, accessToken:', getStorageItem('access_token'));
-            checkTrustlinesBtn.disabled = true;
-            trustlinesLoader.style.display = 'inline-block';
-            try {
-                const wallets = Array.from(document.getElementsByClassName('wallet-input')).map(div => {
-                    const address = div.querySelector('.wallet-address').value.trim();
-                    const amountInput = div.querySelector('.wallet-amount').value.trim();
-                    if (!address) {
-                        throw new Error('Wallet address cannot be empty');
-                    }
-                    // Validate XRPL address format
-                    const xrplAddressRegex = /^r[0-9a-zA-Z]{24,34}$/;
-                    if (!xrplAddressRegex.test(address)) {
-                        throw new Error(`Invalid XRPL address format: ${address}. Must start with 'r' and be 25-35 alphanumeric characters.`);
-                    }
-                    const amount = amountInput ? parseFloat(amountInput) : 0;
-                    if (isNaN(amount) || amount < 0) {
-                        throw new Error(`Invalid amount for address ${address}: ${amountInput}`);
-                    }
-                    return { address, amount };
-                });
-                if (wallets.length === 0) {
-                    throw new Error('At least one wallet is required');
-                }
-                const tokenType = tokenTypeSelect.value;
-                const selectedOption = tokenTypeSelect.selectedOptions[0];
-                const issuer = selectedOption.dataset.issuer || '';
-                const currency = selectedOption.dataset.currency || '';
-        
-                let query = `?token_type=${encodeURIComponent(tokenType)}`;
-if (tokenType !== 'XRP') {
-    if (!issuer || !currency) {
-        throw new Error('Issuer or currency missing for selected token');
-    }
-    const decodedCurrency = decodeHexCurrency(currency); // Decode the hex currency
-    query += `&issuer=${encodeURIComponent(issuer)}&currency=${encodeURIComponent(decodedCurrency)}`;
-}
-        
-                console.log('Checking trustlines for wallets:', wallets, 'Query:', query);
-                const response = await fetch(`${BACKEND_URL}/check-trustlines${query}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${getStorageItem('access_token')}`,
-                        'account': getStorageItem('account')
-                    },
-                    body: JSON.stringify(wallets)
-                });
-                console.log('Trustlines response:', response);
-                if (response.status === 401) {
-                    handleUnauthorized();
-                    return;
-                }
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}));
-                    throw new Error(`HTTP error! status: ${response.status} - ${errorData.detail || 'Unknown error'}`);
-                }
-                const data = await response.json();
-                if (!Array.isArray(data)) {
-                    throw new Error('Invalid trustline check response from server: Expected an array of results');
-                }
-        
-                const walletInputs = document.getElementsByClassName('wallet-input');
-                for (const input of walletInputs) {
-                    const address = input.querySelector('.wallet-address').value.trim();
-                    const result = data.find(w => w.address === address);
-                    const statusBox = input.querySelector('.trustline-status-box');
-                    if (result) {
-                        statusBox.classList.remove('valid', 'invalid', 'balance-only');
-                        statusBox.style.display = 'block';
-                        statusBox.classList.add(result.status === 'valid' ? 'valid' : result.status === 'balance_only' ? 'balance-only' : 'invalid');
-                    } else {
-                        statusBox.classList.remove('valid', 'invalid', 'balance-only');
-                        statusBox.style.display = 'none';
-                    }
-                }
-        
-                const allHaveTrustlines = data.every(w => w.status === 'valid');
-                const someHaveBalanceOnly = data.some(w => w.status === 'balance_only');
-                let message = '';
-                if (allHaveTrustlines) {
-                    message = 'All wallets have trustlines for the selected token.';
-                } else {
-                    message = 'Some wallets lack trustlines or are not funded on the XRP Ledger Mainnet. Check the markers.';
-                    if (someHaveBalanceOnly) {
-                        message += ' Wallets marked in yellow hold a balance but lack an active trustline and may not be able to receive the airdrop without setting a trustline.';
-                    }
-                }
-                // Add legend to the message
-                message += '<div class="status-legend">' +
-                          '<p><span class="valid"></span> Green: Wallet has an active trustline.</p>' +
-                          '<p><span class="balance-only"></span> Yellow: Wallet holds a balance but lacks an active trustline.</p>' +
-                          '<p><span class="invalid"></span> Red: Wallet has no trustline and no balance, or is not funded.</p>' +
-                          '</div>';
-                showNotification(message, !allHaveTrustlines);
-            } catch (error) {
-                console.error('Error checking trustlines:', error);
-                showNotification(
-                    `Error checking trustlines: ${error.message}. Ensure addresses are valid and funded on the XRP Ledger Mainnet.`,
-                    true
-                );
-            } finally {
-                checkTrustlinesBtn.disabled = false;
-                trustlinesLoader.style.display = 'none';
+    console.log('Check Trustlines clicked, accessToken:', getStorageItem('access_token'));
+    checkTrustlinesBtn.disabled = true;
+    trustlinesLoader.style.display = 'inline-block';
+    try {
+        const wallets = Array.from(document.getElementsByClassName('wallet-input')).map(div => {
+            const address = div.querySelector('.wallet-address').value.trim();
+            const amountInput = div.querySelector('.wallet-amount').value.trim();
+            if (!address) {
+                throw new Error('Wallet address cannot be empty');
             }
+            const amount = amountInput ? parseFloat(amountInput) : 0;
+            if (isNaN(amount) || amount < 0) {
+                throw new Error(`Invalid amount for address ${address}: ${amountInput}`);
+            }
+            return { address, amount };
         });
+        if (wallets.length === 0) {
+            throw new Error('At least one wallet is required');
+        }
+        const tokenType = tokenTypeSelect.value;
+        const selectedOption = tokenTypeSelect.selectedOptions[0];
+        const issuer = selectedOption.dataset.issuer || '';
+        const currency = selectedOption.dataset.currency || '';
+        
+        let query = `?token_type=${encodeURIComponent(tokenType)}`;
+        if (tokenType !== 'XRP') {
+            if (!issuer || !currency) {
+                throw new Error('Issuer or currency missing for selected token');
+            }
+            query += `&issuer=${encodeURIComponent(issuer)}&currency=${encodeURIComponent(currency)}`;
+        }
+        
+        console.log('Checking trustlines for wallets:', wallets, 'Query:', query);
+        const response = await fetch(`${BACKEND_URL}/check-trustlines${query}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${getStorageItem('access_token')}`,
+                'account': getStorageItem('account')
+            },
+            body: JSON.stringify(wallets)
+        });
+        console.log('Trustlines response:', response);
+        if (response.status === 401) {
+            handleUnauthorized();
+            return;
+        }
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(`HTTP error! status: ${response.status} - ${errorData.detail || 'Unknown error'}`);
+        }
+        const data = await response.json();
+        if (!Array.isArray(data)) {
+            throw new Error('Invalid trustline check response from server: Expected an array of results');
+        }
+        
+        const walletInputs = document.getElementsByClassName('wallet-input');
+        for (const input of walletInputs) {
+            const address = input.querySelector('.wallet-address').value.trim();
+            const result = data.find(w => w.address === address);
+            const statusBox = input.querySelector('.trustline-status-box');
+            if (result) {
+                statusBox.classList.remove('valid', 'invalid');
+                statusBox.style.display = 'block';
+                statusBox.classList.add(result.has_trustline ? 'valid' : 'invalid');
+            } else {
+                statusBox.classList.remove('valid', 'invalid');
+                statusBox.style.display = 'none';
+            }
+        }
+        
+        const allHaveTrustlines = data.every(w => w.has_trustline);
+        if (allHaveTrustlines) {
+            showNotification('All wallets have trustlines for the selected token.');
+        } else {
+            showNotification('Some wallets lack trustlines or are not funded on the XRP Ledger Mainnet. Check the red markers.', true);
+        }
+    } catch (error) {
+        console.error('Error checking trustlines:', error);
+        showNotification(
+            `Error checking trustlines: ${error.message}. Ensure addresses are valid and funded on the XRP Ledger Mainnet.`,
+            true
+        );
+    } finally {
+        checkTrustlinesBtn.disabled = false;
+        trustlinesLoader.style.display = 'none';
+    }
+});
 
         function calculateServiceFee(walletCount) {
             const feePerWallet = 0.05;
@@ -1712,13 +1684,9 @@ if (tokenType !== 'XRP') {
                     const account = getStorageItem('account');
 
                     let query = `?token_type=${encodeURIComponent(tokenType)}`;
-if (tokenType !== 'XRP') {
-    if (!issuer || !currency) {
-        throw new Error('Issuer or currency missing for selected token');
-    }
-    const decodedCurrency = decodeHexCurrency(currency); // Decode the hex currency
-    query += `&issuer=${encodeURIComponent(issuer)}&currency=${encodeURIComponent(decodedCurrency)}`;
-}
+                    if (tokenType !== 'XRP') {
+                        query += `&issuer=${encodeURIComponent(issuer)}&currency=${encodeURIComponent(currency)}`;
+                    }
 
                     console.log('Fetching airdrop data with query:', query);
                     const response = await fetch(`${BACKEND_URL}/airdrop${query}`, {
@@ -1838,13 +1806,11 @@ if (tokenType !== 'XRP') {
                 clearTimeout(notificationTimeout);
                 notification.style.display = 'none';
             }
-            notificationOverlay.style.display = 'block';
-            notification.innerHTML = message; // Changed from textContent to innerHTML to render HTML
+            notification.textContent = message;
             notification.className = `notification ${isError ? 'error' : ''}`;
             notification.style.display = 'block';
             notificationTimeout = setTimeout(() => {
                 notification.style.display = 'none';
-                notificationOverlay.style.display = 'none';
                 notificationTimeout = null;
             }, 5000);
         }
@@ -1860,7 +1826,7 @@ if (tokenType !== 'XRP') {
                 firstWallet.querySelector('.wallet-address').value = '';
                 firstWallet.querySelector('.wallet-amount').value = '';
                 const statusBox = firstWallet.querySelector('.trustline-status-box');
-                statusBox.classList.remove('valid', 'invalid', 'balance-only');
+                statusBox.classList.remove('valid', 'invalid');
                 statusBox.style.display = 'none';
             }
             totalAmountInput.value = '';
@@ -1896,148 +1862,148 @@ if (tokenType !== 'XRP') {
         });
 
         const csvUploadInput = document.getElementById('csv-upload-input');
-        csvUploadInput.addEventListener('change', (event) => {
-            const file = event.target.files[0];
-            if (!file) {
-                showNotification('No file selected.', true);
-                return;
+csvUploadInput.addEventListener('change', (event) => {
+    const file = event.target.files[0];
+    if (!file) {
+        showNotification('No file selected.', true);
+        return;
+    }
+    if (!file.name.endsWith('.csv')) {
+        showNotification('Please upload a CSV file.', true);
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const text = e.target.result;
+        // Normalize line endings and split into rows
+        const rows = text.replace(/\r\n|\r/g, '\n').split('\n').map(row => row.trim()).filter(row => row);
+        console.log('Parsed CSV rows:', rows);
+        if (rows.length === 0) {
+            showNotification('CSV file appears empty. Please ensure it contains wallet addresses.', true);
+            return;
+        }
+
+        // Detect delimiter by checking the first row for common CSV delimiters
+        const firstRow = rows[0];
+        let delimiter = ',';
+        if (firstRow.includes(';') && !firstRow.includes(',')) {
+            delimiter = ';';
+        } else if (firstRow.includes('\t') && !firstRow.includes(',')) {
+            delimiter = '\t';
+        }
+        console.log('Detected CSV delimiter:', delimiter);
+
+        const wallets = [];
+        const startIndex = csvHasHeader ? 1 : 0;
+        for (let i = startIndex; i < rows.length; i++) {
+            // Parse row with support for quoted fields containing delimiters
+            let columns = [];
+            let current = '';
+            let inQuotes = false;
+            const row = rows[i];
+
+            for (let j = 0; j < row.length; j++) {
+                const char = row[j];
+                if (char === '"') {
+                    inQuotes = !inQuotes;
+                } else if (char === delimiter && !inQuotes) {
+                    columns.push(current.trim());
+                    current = '';
+                } else {
+                    current += char;
+                }
             }
-            if (!file.name.endsWith('.csv')) {
-                showNotification('Please upload a CSV file.', true);
-                return;
+            // Push the last column
+            if (current) {
+                columns.push(current.trim());
             }
 
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const text = e.target.result;
-                // Normalize line endings and split into rows
-                const rows = text.replace(/\r\n|\r/g, '\n').split('\n').map(row => row.trim()).filter(row => row);
-                console.log('Parsed CSV rows:', rows);
-                if (rows.length === 0) {
-                    showNotification('CSV file appears empty. Please ensure it contains wallet addresses.', true);
-                    return;
+            // Remove surrounding quotes from columns if present
+            columns = columns.map(col => {
+                if (col.startsWith('"') && col.endsWith('"')) {
+                    return col.slice(1, -1).trim();
                 }
+                return col;
+            });
 
-                // Detect delimiter by checking the first row for common CSV delimiters
-                const firstRow = rows[0];
-                let delimiter = ',';
-                if (firstRow.includes(';') && !firstRow.includes(',')) {
-                    delimiter = ';';
-                } else if (firstRow.includes('\t') && !firstRow.includes(',')) {
-                    delimiter = '\t';
+            console.log(`Row ${i} columns:`, columns);
+            if (columns.length === 0 || !columns[0]) {
+                console.log(`Skipping row ${i}: Empty or missing address`);
+                continue;
+            }
+
+            const address = columns[0];
+            let amount = columns.length > 1 ? columns[1] : '';
+            if (amount) {
+                try {
+                    const parsedAmount = parseFloat(amount);
+                    if (isNaN(parsedAmount) || parsedAmount < 0) {
+                        console.log(`Invalid amount in row ${i}: ${amount}, resetting to empty`);
+                        amount = '';
+                    }
+                } catch (e) {
+                    console.log(`Error parsing amount in row ${i}: ${amount}, resetting to empty`);
+                    amount = '';
                 }
-                console.log('Detected CSV delimiter:', delimiter);
+            }
 
-                const wallets = [];
-                const startIndex = csvHasHeader ? 1 : 0;
-                for (let i = startIndex; i < rows.length; i++) {
-                    // Parse row with support for quoted fields containing delimiters
-                    let columns = [];
-                    let current = '';
-                    let inQuotes = false;
-                    const row = rows[i];
+            if (address) {
+                wallets.push({ address, amount });
+            } else {
+                console.log(`Skipping row ${i}: Address is empty after parsing`);
+            }
+        }
 
-                    for (let j = 0; j < row.length; j++) {
-                        const char = row[j];
-                        if (char === '"') {
-                            inQuotes = !inQuotes;
-                        } else if (char === delimiter && !inQuotes) {
-                            columns.push(current.trim());
-                            current = '';
-                        } else {
-                            current += char;
-                        }
-                    }
-                    // Push the last column
-                    if (current) {
-                        columns.push(current.trim());
-                    }
+        if (wallets.length === 0) {
+            showNotification('No valid wallet addresses found in CSV. Please ensure the file contains wallet addresses in the first column.', true);
+            return;
+        }
 
-                    // Remove surrounding quotes from columns if present
-                    columns = columns.map(col => {
-                        if (col.startsWith('"') && col.endsWith('"')) {
-                            return col.slice(1, -1).trim();
-                        }
-                        return col;
-                    });
+        console.log('Parsed wallets:', wallets);
 
-                    console.log(`Row ${i} columns:`, columns);
-                    if (columns.length === 0 || !columns[0]) {
-                        console.log(`Skipping row ${i}: Empty or missing address`);
-                        continue;
-                    }
+        // Change the number 150 below to adjust the wallet limit in the future
+        if (wallets.length > 150) {
+            showNotification('Too many wallets in CSV. Limit is 150.', true);
+            return;
+        }
 
-                    const address = columns[0];
-                    let amount = columns.length > 1 ? columns[1] : '';
-                    if (amount) {
-                        try {
-                            const parsedAmount = parseFloat(amount);
-                            if (isNaN(parsedAmount) || parsedAmount < 0) {
-                                console.log(`Invalid amount in row ${i}: ${amount}, resetting to empty`);
-                                amount = '';
-                            }
-                        } catch (e) {
-                            console.log(`Error parsing amount in row ${i}: ${amount}, resetting to empty`);
-                            amount = '';
-                        }
-                    }
+        const walletList = document.getElementById('wallet-list');
+        // Clear all existing wallet inputs
+        walletList.innerHTML = '';
+        console.log('Cleared wallet list');
 
-                    if (address) {
-                        wallets.push({ address, amount });
-                    } else {
-                        console.log(`Skipping row ${i}: Address is empty after parsing`);
-                    }
-                }
-
-                if (wallets.length === 0) {
-                    showNotification('No valid wallet addresses found in CSV. Please ensure the file contains wallet addresses in the first column.', true);
-                    return;
-                }
-
-                console.log('Parsed wallets:', wallets);
-
-                // Change the number 150 below to adjust the wallet limit in the future
-                if (wallets.length > 150) {
-                    showNotification('Too many wallets in CSV. Limit is 150.', true);
-                    return;
-                }
-
-                const walletList = document.getElementById('wallet-list');
-                // Clear all existing wallet inputs
-                walletList.innerHTML = '';
-                console.log('Cleared wallet list');
-
-                // Create a new wallet input for each wallet in the CSV
-                wallets.forEach((wallet, index) => {
-                    const div = document.createElement('div');
-                    div.className = 'wallet-input';
-                    // Sanitize address and amount to prevent HTML injection and ensure proper rendering
-                    const safeAddress = (wallet.address || '').replace(/"/g, '"');
-                    const safeAmount = (wallet.amount || '').replace(/"/g, '"');
-                    div.innerHTML = `
-                        <input type="text" class="wallet-address" placeholder="Wallet Address" value="${safeAddress}">
-                        <div class="trustline-status-box"></div>
-                        <div class="amount-remove-group">
-                            <input type="number" class="wallet-amount" placeholder="Amount" step="0.000001" min="0" value="${safeAmount}">
-                            <button onclick="removeWallet(this)">Remove</button>
-                        </div>
-                    `;
-                    walletList.appendChild(div);
-                    console.log(`Added wallet ${index + 1}: Address=${safeAddress}, Amount=${safeAmount}`);
-                });
-
-                // Ensure wallet list is visible
-                walletList.style.display = 'block';
-                console.log('Wallet list display style:', walletList.style.display);
-
-                updateTotalAmount();
-                showNotification(`Successfully loaded ${wallets.length} wallets from CSV.`);
-            };
-            reader.onerror = () => {
-                showNotification('Error reading CSV file. It may be corrupted or not accessible.', true);
-            };
-            reader.readAsText(file);
+        // Create a new wallet input for each wallet in the CSV
+        wallets.forEach((wallet, index) => {
+            const div = document.createElement('div');
+            div.className = 'wallet-input';
+            // Sanitize address and amount to prevent HTML injection and ensure proper rendering
+            const safeAddress = (wallet.address || '').replace(/"/g, '&quot;');
+            const safeAmount = (wallet.amount || '').replace(/"/g, '&quot;');
+            div.innerHTML = `
+                <input type="text" class="wallet-address" placeholder="Wallet Address" value="${safeAddress}">
+                <div class="trustline-status-box"></div>
+                <div class="amount-remove-group">
+                    <input type="number" class="wallet-amount" placeholder="Amount" step="0.000001" min="0" value="${safeAmount}">
+                    <button onclick="removeWallet(this)">Remove</button>
+                </div>
+            `;
+            walletList.appendChild(div);
+            console.log(`Added wallet ${index + 1}: Address=${safeAddress}, Amount=${safeAmount}`);
         });
+
+        // Ensure wallet list is visible
+        walletList.style.display = 'block';
+        console.log('Wallet list display style:', walletList.style.display);
+
+        updateTotalAmount();
+        showNotification(`Successfully loaded ${wallets.length} wallets from CSV.`);
+    };
+    reader.onerror = () => {
+        showNotification('Error reading CSV file. It may be corrupted or not accessible.', true);
+    };
+    reader.readAsText(file);
+});
     </script>
 </body>
 </html>
