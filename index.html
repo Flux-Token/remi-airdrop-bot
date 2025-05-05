@@ -345,17 +345,19 @@
     max-width: 400px;
     margin: 10px 0;
     box-sizing: border-box;
-    padding: 12px 40px 12px 12px; /* Increased right padding to fit status box */
+    padding: 12px 40px 12px 12px; /* Right padding ensures space for the status box */
     border: none;
     border-radius: 8px;
     background: rgba(255, 255, 255, 0.1);
     color: #fff;
-    font-size: 1em;
+    font-size: 1em; /* 16px in most browsers */
+    line-height: 24px; /* Explicitly set to center text vertically; matches typical input height */
     box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.2);
     transition: all 0.3s ease;
     overflow-x: auto;
     white-space: nowrap;
     position: relative;
+    height: 48px; /* Fixed height to ensure consistent centering */
 }
     
         .wallet-input .amount-remove-group {
@@ -380,13 +382,12 @@
         /* Consolidated trustline-status-box styles */
         .trustline-status-box {
     display: none;
-    width: 16px; /* Reduced size to fit better */
+    width: 16px; /* Matches text height for visual consistency */
     height: 16px;
     border-radius: 3px;
     position: absolute;
-    right: 12px; /* Adjusted to align within the input and shadow box */
-    top: 50%;
-    transform: translateY(-50%);
+    right: 12px;
+    top: 16px; /* (input height - square height) / 2 + top padding: (48px - 16px) / 2 + 12px = 16px + 12px = 28px, but adjusted to align with text */
     border: 1px solid rgba(255, 255, 255, 0.3);
     box-sizing: border-box;
 }
@@ -433,11 +434,16 @@
         }
     
         @media (max-width: 600px) {
+    .wallet-input input.wallet-address {
+        padding: 10px 30px 10px 10px; /* Adjusted padding for mobile */
+        font-size: 0.9em; /* Slightly smaller font size */
+        line-height: 20px; /* Adjusted for smaller input */
+        height: 40px; /* Adjusted height for mobile */
+    }
     .wallet-input .trustline-status-box {
-        right: 10px; /* Adjusted for mobile */
-        top: 50%;
-        transform: translateY(-50%);
-        width: 12px; /* Smaller size for mobile */
+        right: 10px;
+        top: 12px; /* (input height - square height) / 2 + top padding: (40px - 12px) / 2 + 10px = 14px + 10px = 24px, but adjusted to align with text */
+        width: 12px;
         height: 12px;
     }
     
