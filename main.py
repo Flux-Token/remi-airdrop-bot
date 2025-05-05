@@ -412,6 +412,7 @@ async def check_trustlines(
                         results.append({
                             "address": wallet.address,
                             "has_trustline": False,
+                            "status": "invalid",
                             "error": "Invalid XRPL address format",
                             "suggestion": "Address must start with 'r' and be 25-35 alphanumeric characters."
                         })
@@ -427,6 +428,7 @@ async def check_trustlines(
                             results.append({
                                 "address": wallet.address,
                                 "has_trustline": False,
+                                "status": "invalid",
                                 "error": f"Account does not exist or is not funded: {error_message}",
                                 "suggestion": "Ensure the wallet is funded with at least 10 XRP on the XRP Ledger Mainnet."
                             })
@@ -438,6 +440,7 @@ async def check_trustlines(
                             results.append({
                                 "address": wallet.address,
                                 "has_trustline": True,
+                                "status": "valid",
                                 "error": None
                             })
                             continue  # Skip further checks for XRP
@@ -457,7 +460,7 @@ async def check_trustlines(
                                         ledger_index="validated",
                                         marker=marker
                                     )
-                                    trustline_response = await asyncio.wait_for(client.request(trustline_request), timeout=45)  # Increased timeout
+                                    trustline_response = await asyncio.wait_for(client.request(trustline_request), timeout=45)
                                     if not trustline_response.is_successful():
                                         logger.error(f"Trustline request failed for {wallet.address}: {trustline_response.result}")
                                         break
@@ -474,6 +477,7 @@ async def check_trustlines(
                                     results.append({
                                         "address": wallet.address,
                                         "has_trustline": False,
+                                        "status": "invalid",
                                         "error": "Failed to fetch trustlines after retries",
                                         "suggestion": "Try again later or check the wallet on xrpscan.com."
                                     })
@@ -493,6 +497,7 @@ async def check_trustlines(
                             results.append({
                                 "address": wallet.address,
                                 "has_trustline": False,
+                                "status": "invalid",
                                 "error": f"Insufficient XRP balance ({xrp_balance} < {required_xrp}) to support trustlines",
                                 "suggestion": "Fund the wallet with more XRP to meet the reserve requirement."
                             })
@@ -512,6 +517,7 @@ async def check_trustlines(
                             results.append({
                                 "address": wallet.address,
                                 "has_trustline": False,
+                                "status": "invalid",
                                 "error": "Failed to fetch issuer information",
                                 "suggestion": "Ensure the issuer account is valid and try again."
                             })
@@ -531,26 +537,7 @@ async def check_trustlines(
                                     trustline_exists = False
                                 break
 
-                        if not trustline_exists:
-                            decoded_currency = decode_hex_currency(currency)
-                            error_msg = f"No trustline for {decoded_currency} with issuer {issuer}"
-                            suggestion = "Set a trustline to this token using a wallet tool like xrpl.services or Xaman."
-                            if matching_trustline:
-                                if require_auth and not matching_trustline.get("authorized", False):
-                                    error_msg = f"Trustline for {decoded_currency} with issuer {issuer} exists but is not authorized (RequireAuth enabled)"
-                                    suggestion = "The issuer must authorize the trustline. Contact the issuer or check xrpl.services for authorization steps."
-                                logger.info(f"Trustline details for {wallet.address}: {matching_trustline}")
-                            else:
-                                error_msg += f". Note: No trustline found in the ledger, even though a balance may appear on explorers like xrpscan.com."
-                                suggestion += " This may indicate a node sync issue or a removed trustline. Verify on xrpscan.com and ensure an active trustline exists."
-                            logger.info(f"No usable trustline found for {wallet.address}: issuer={issuer}, currency={currency} ({decoded_currency})")
-                            results.append({
-                                "address": wallet.address,
-                                "has_trustline": trustline_exists,
-                                "error": error_msg,
-                                "suggestion": suggestion
-                            })
-                        else:
+                        if trustline_exists:
                             logger.info(f"Trustline found for {wallet.address}: issuer={issuer}, currency={currency}")
                             # Include additional trustline details for debugging
                             trustline_details = {
@@ -561,25 +548,79 @@ async def check_trustlines(
                             results.append({
                                 "address": wallet.address,
                                 "has_trustline": True,
+                                "status": "valid",
                                 "error": None,
                                 "trustline_details": trustline_details
                             })
+                        else:
+                            # Step 6: Edge case - check if the wallet holds a balance of the token despite no trustline
+                            balance_exists = False
+                            balance_amount = "0"
+                            if all_trustlines:  # If trustlines were fetched, check for balance in the response
+                                for line in all_trustlines:
+                                    if line["account"] == issuer and line["currency"] == currency:
+                                        balance_amount = line["balance"]
+                                        balance_exists = float(balance_amount) != 0
+                                        break
+                            # If no trustline was found, double-check balance with a fresh request (edge case)
+                            if not balance_exists:
+                                balance_check_request = AccountLines(
+                                    account=wallet.address,
+                                    ledger_index="validated"
+                                )
+                                balance_response = await asyncio.wait_for(client.request(balance_check_request), timeout=30)
+                                if balance_response.is_successful():
+                                    for line in balance_response.result.get("lines", []):
+                                        if line["account"] == issuer and line["currency"] == currency:
+                                            balance_amount = line["balance"]
+                                            balance_exists = float(balance_amount) != 0
+                                            break
+
+                            decoded_currency = decode_hex_currency(currency)
+                            if balance_exists:
+                                # Edge case: No trustline but holds a balance
+                                logger.info(f"Edge case for {wallet.address}: No trustline but holds balance of {decoded_currency}: {balance_amount}")
+                                results.append({
+                                    "address": wallet.address,
+                                    "has_trustline": False,
+                                    "status": "balance_only",
+                                    "error": f"No trustline for {decoded_currency} with issuer {issuer}, but the wallet holds a balance of {balance_amount}.",
+                                    "suggestion": "This wallet may not be able to receive the airdrop without setting an active trustline. Verify on xrpscan.com and set a trustline using a wallet tool like xrpl.services or Xaman if needed."
+                                })
+                            else:
+                                # No trustline and no balance
+                                error_msg = f"No trustline for {decoded_currency} with issuer {issuer}"
+                                suggestion = "Set a trustline to this token using a wallet tool like xrpl.services or Xaman."
+                                if matching_trustline:
+                                    if require_auth and not matching_trustline.get("authorized", False):
+                                        error_msg = f"Trustline for {decoded_currency} with issuer {issuer} exists but is not authorized (RequireAuth enabled)"
+                                        suggestion = "The issuer must authorize the trustline. Contact the issuer or check xrpl.services for authorization steps."
+                                    logger.info(f"Trustline details for {wallet.address}: {matching_trustline}")
+                                logger.info(f"No usable trustline or balance found for {wallet.address}: issuer={issuer}, currency={currency} ({decoded_currency})")
+                                results.append({
+                                    "address": wallet.address,
+                                    "has_trustline": False,
+                                    "status": "invalid",
+                                    "error": error_msg,
+                                    "suggestion": suggestion
+                                })
 
                     except Exception as e:
                         logger.error(f"Error checking trustline for {wallet.address}: {str(e)}")
                         results.append({
                             "address": wallet.address,
                             "has_trustline": False,
+                            "status": "invalid",
                             "error": str(e),
                             "suggestion": "Try again later or check the wallet on xrpscan.com."
                         })
 
-                # If all wallets failed to find the trustline, try a different node
-                if all(not result["has_trustline"] for result in results) and nodes_tried < max_nodes_to_try:
-                    logger.info(f"Trustline not found for any wallet, retrying with a different node (attempt {nodes_tried + 1}/{max_nodes_to_try})")
+                # If all wallets failed to find a trustline or balance, try a different node
+                if all(result["status"] != "valid" for result in results) and nodes_tried < max_nodes_to_try:
+                    logger.info(f"No valid trustlines found for any wallet, retrying with a different node (attempt {nodes_tried + 1}/{max_nodes_to_try})")
                     continue
                 else:
-                    break  # Exit the while loop if trustlines are found or max retries reached
+                    break  # Exit the while loop if at least one valid trustline is found or max retries reached
 
             except Exception as e:
                 logger.error(f"Trustline check error on attempt {nodes_tried}: {str(e)}")

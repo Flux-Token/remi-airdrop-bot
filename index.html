@@ -433,6 +433,47 @@
             display: block;
         }
 
+        .trustline-status-box {
+        display: none;
+        width: 20px;
+        height: 20px;
+        border-radius: 3px;
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+    }
+    .trustline-status-box.valid {
+        background-color: #28a745;
+    }
+    .trustline-status-box.invalid {
+        background-color: #dc3545;
+    }
+    .trustline-status-box.balance-only {
+        background-color: #ffc107; /* Yellow for balance-only wallets */
+    }
+    /* Style for the legend in the popup */
+    .status-legend {
+        margin-top: 10px;
+        font-size: 14px;
+    }
+    .status-legend span {
+        display: inline-block;
+        width: 15px;
+        height: 15px;
+        margin-right: 5px;
+        vertical-align: middle;
+    }
+    .status-legend .valid {
+        background-color: #28a745;
+    }
+    .status-legend .balance-only {
+        background-color: #ffc107;
+    }
+    .status-legend .invalid {
+        background-color: #dc3545;
+    }        
+
         @media (max-width: 600px) {
             .wallet-input .trustline-status-box {
                 right: 10px;
@@ -1566,6 +1607,11 @@
             if (!address) {
                 throw new Error('Wallet address cannot be empty');
             }
+            // Validate XRPL address format
+            const xrplAddressRegex = /^r[0-9a-zA-Z]{24,34}$/;
+            if (!xrplAddressRegex.test(address)) {
+                throw new Error(`Invalid XRPL address format: ${address}. Must start with 'r' and be 25-35 alphanumeric characters.`);
+            }
             const amount = amountInput ? parseFloat(amountInput) : 0;
             if (isNaN(amount) || amount < 0) {
                 throw new Error(`Invalid amount for address ${address}: ${amountInput}`);
@@ -1585,7 +1631,7 @@
             if (!issuer || !currency) {
                 throw new Error('Issuer or currency missing for selected token');
             }
-            query += `&issuer=${encodeURIComponent(issuer)}&currency=${encodeURIComponent(currency)}`;
+            query += `&issuer=${encodeURIComponent(issuer)}¤cy=${encodeURIComponent(currency)}`;
         }
         
         console.log('Checking trustlines for wallets:', wallets, 'Query:', query);
@@ -1618,21 +1664,33 @@
             const result = data.find(w => w.address === address);
             const statusBox = input.querySelector('.trustline-status-box');
             if (result) {
-                statusBox.classList.remove('valid', 'invalid');
+                statusBox.classList.remove('valid', 'invalid', 'balance-only');
                 statusBox.style.display = 'block';
-                statusBox.classList.add(result.has_trustline ? 'valid' : 'invalid');
+                statusBox.classList.add(result.status === 'valid' ? 'valid' : result.status === 'balance_only' ? 'balance-only' : 'invalid');
             } else {
-                statusBox.classList.remove('valid', 'invalid');
+                statusBox.classList.remove('valid', 'invalid', 'balance-only');
                 statusBox.style.display = 'none';
             }
         }
         
-        const allHaveTrustlines = data.every(w => w.has_trustline);
+        const allHaveTrustlines = data.every(w => w.status === 'valid');
+        const someHaveBalanceOnly = data.some(w => w.status === 'balance_only');
+        let message = '';
         if (allHaveTrustlines) {
-            showNotification('All wallets have trustlines for the selected token.');
+            message = 'All wallets have trustlines for the selected token.';
         } else {
-            showNotification('Some wallets lack trustlines or are not funded on the XRP Ledger Mainnet. Check the red markers.', true);
+            message = 'Some wallets lack trustlines or are not funded on the XRP Ledger Mainnet. Check the markers.';
+            if (someHaveBalanceOnly) {
+                message += ' Wallets marked in yellow hold a balance but lack an active trustline and may not be able to receive the airdrop without setting a trustline.';
+            }
         }
+        // Add legend to the message
+        message += '<div class="status-legend">' +
+                  '<p><span class="valid"></span> Green: Wallet has an active trustline.</p>' +
+                  '<p><span class="balance-only"></span> Yellow: Wallet holds a balance but lacks an active trustline.</p>' +
+                  '<p><span class="invalid"></span> Red: Wallet has no trustline and no balance, or is not funded.</p>' +
+                  '</div>';
+        showNotification(message, !allHaveTrustlines);
     } catch (error) {
         console.error('Error checking trustlines:', error);
         showNotification(
