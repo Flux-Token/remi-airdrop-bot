@@ -60,21 +60,15 @@
             100% { transform: scale(1); text-shadow: 0 0 10px rgba(255, 111, 97, 0.5); }
         }
 
-        body { 
-    margin: 0; 
-    
-}
-
         .main-content {
             display: none; 
             font-family: 'Montserrat', sans-serif; 
             flex-direction: column;
             min-height: 100vh; 
-         background: transparent; 
+            background: transparent; 
             color: #fff; 
             position: relative;
             overflow-y: auto;
-   
         }
 
         .main-content::-webkit-scrollbar {
@@ -433,6 +427,11 @@
             display: block;
         }
 
+        .wallet-input .trustline-status-box.balance-only {
+            background: #ffa500; /* Orange for balance-only wallets */
+            display: block;
+        }
+
         @media (max-width: 600px) {
             .wallet-input .trustline-status-box {
                 right: 10px;
@@ -612,100 +611,100 @@
         }
 
         @media (max-width: 600px) {
-    .container { 
-        padding: 10px; 
-    }
+            .container { 
+                padding: 10px; 
+            }
 
-    h1 {
-        margin-top: 50px; /* Increased top margin to avoid overlap with header elements */
-        font-size: 2em; /* Slightly reduced font size for better fit */
-    }
+            h1 {
+                margin-top: 50px;
+                font-size: 2em;
+            }
 
-    .wallet-input { 
-        max-width: 100%; 
-    }
+            .wallet-input { 
+                max-width: 100%; 
+            }
 
-    .wallet-input input.wallet-address {
-        max-width: 100%;
-        margin-bottom: 8px;
-        padding: 10px 25px 10px 10px;
-    }
+            .wallet-input input.wallet-address {
+                max-width: 100%;
+                margin-bottom: 8px;
+                padding: 10px 25px 10px 10px;
+            }
 
-    .wallet-input .amount-remove-group {
-        gap: 3px;
-        flex-wrap: wrap;
-        justify-content: center;
-    }
+            .wallet-input .amount-remove-group {
+                gap: 3px;
+                flex-wrap: wrap;
+                justify-content: center;
+            }
 
-    .wallet-input input.wallet-amount {
-        margin-left: 0; 
-        margin-bottom: 8px;
-        width: 80px;
-        max-width: 80px;
-    }
+            .wallet-input input.wallet-amount {
+                margin-left: 0; 
+                margin-bottom: 8px;
+                width: 80px;
+                max-width: 80px;
+            }
 
-    .wallet-input button { 
-        margin-left: 0; 
-        padding: 6px 10px;
-        font-size: 0.8em;
-    }
+            .wallet-input button { 
+                margin-left: 0; 
+                padding: 6px 10px;
+                font-size: 0.8em;
+            }
 
-    .wallet-input .trustline-status-box {
-        right: 8px;
-        top: 20px;
-        width: 12px;
-        height: 12px;
-    }
+            .wallet-input .trustline-status-box {
+                right: 8px;
+                top: 20px;
+                width: 12px;
+                height: 12px;
+            }
 
-    .notification, .fee-confirmation { 
-        padding: 8px 15px;
-        font-size: 0.85em; 
-    }
+            .notification, .fee-confirmation { 
+                padding: 8px 15px;
+                font-size: 0.85em; 
+            }
 
-    .wallet-address-display { 
-        font-size: 0.7em; /* Further reduced font size */
-        max-width: 80%; /* Reduced max-width to fit within shadow box */
-        overflow: hidden; /* Reinforced overflow handling */
-        text-overflow: ellipsis; /* Ensure truncation with ellipsis */
-        white-space: nowrap; /* Prevent wrapping */
-        padding: 8px 12px; /* Adjusted padding */
-    }
+            .wallet-address-display { 
+                font-size: 0.7em;
+                max-width: 80%;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                padding: 8px 12px;
+            }
 
-    .wallet-toggle { 
-        top: 12px; /* Adjusted position */
-        right: 8px; 
-        font-size: 1em; /* Slightly smaller */
-    }
+            .wallet-toggle { 
+                top: 12px;
+                right: 8px; 
+                font-size: 1em;
+            }
 
-    .disconnect-button { 
-        top: 6px; /* Adjusted position */
-        right: 30px; /* Moved closer to edge */
-        font-size: 0.6em; 
-        padding: 3px 6px; /* Further reduced padding */
-    }
+            .disconnect-button { 
+                top: 6px;
+                right: 30px;
+                font-size: 0.6em; 
+                padding: 3px 6px;
+            }
 
-    .form-section { 
-        max-width: 100%; 
-        padding: 15px; 
-    }
+            .form-section { 
+                max-width: 100%; 
+                padding: 15px; 
+            }
 
-    .button-row {
-        gap: 5px;
-    }
+            .button-row {
+                gap: 5px;
+            }
 
-    .button-row button { 
-        min-width: 70px;
-        max-width: 90px;
-        font-size: 0.7em;
-        padding: 6px 6px;
-        margin: 2px;
-    }
+            .button-row button { 
+                min-width: 70px;
+                max-width: 90px;
+                font-size: 0.7em;
+                padding: 6px 6px;
+                margin: 2px;
+            }
 
-    input, select {
-        max-width: 100%;
-        padding: 10px;
-    }
-}
+            input, select {
+                max-width: 100%;
+                padding: 10px;
+            }
+        }
 
         #results h2 {
             display: flex;
@@ -768,12 +767,12 @@
                 <img id="qr-code" src="" alt="QR Code for Login">
                 <a id="qr-link" class="qr-link" href="#" target="_blank" style="display: none;">Open in Xaman</a>
             </div>
-            <!-- Updated #airdrop-form with CSV upload elements -->
             <div id="airdrop-form" class="form-section">
                 <select id="token-type">
                     <option value="XRP">XRP</option>
                 </select>
                 <input type="number" id="total-amount" placeholder="Total Amount" step="0.000001" min="0" readonly>
+                <label><input type="checkbox" id="xpmarket-mode"> Include XPmarket Wallets (Balance-Based)</label>
                 <div id="wallet-list">
                     <div class="wallet-input">
                         <input type="text" class="wallet-address" placeholder="Wallet Address">
@@ -790,7 +789,7 @@
                     <button id="validate-wallets-btn"><i class="fas fa-check-circle icon"></i> Validate Wallets <span class="loader" id="validate-loader"></span></button>
                     <button id="check-trustlines-btn"><i class="fas fa-link icon"></i> Check TrustLine <span class="loader" id="trustlines-loader"></span></button>
                     <button id="proceed-btn"><i class="fas fa-paper-plane icon"></i> Proceed to Signing <span class="loader" id="proceed-loader"></span></button>
-                    <button id="csv-header-toggle" class="button"><i class="fas fa-table icon"></i> CSV Has Header: Yes</button>
+                    <button id="csv-header-toggle"><i class="fas fa-table icon"></i> CSV Has Header: Yes</button>
                     <label for="csv-upload-input" class="button"><i class="fas fa-upload icon"></i> Upload CSV</label>
                     <input type="file" id="csv-upload-input" accept=".csv" style="display: none;">
                 </div>
@@ -823,21 +822,6 @@
     </div>
 
     <audio id="loader-audio" src="https://static.wixstatic.com/mp3/15ad31_9eab52a3faee4738927cd3aed4e536d7.mp3" preload="auto" crossorigin="anonymous"></audio>
-
-<script>
-    console.log('Attempting to play audio on page load...');
-    const audio = document.getElementById('loader-audio');
-    audio.volume = 0.5;
-    const playAudio = () => {
-        audio.play().catch(err => {
-            console.warn('Audio playback failed:', err);
-            document.addEventListener('click', () => {
-                audio.play().catch(e => console.warn('Audio playback failed on click:', e));
-            }, { once: true });
-        });
-    };
-    playAudio();
-</script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/decimal.js/10.3.1/decimal.min.js"></script>
     <script>
@@ -947,7 +931,8 @@
         const walletAddressContainer = document.getElementById('wallet-address-container');
         const walletToggle = document.getElementById('wallet-toggle');
         const disconnectButton = document.getElementById('disconnect-button');
-        
+        const xpmarketModeCheckbox = document.getElementById('xpmarket-mode');
+
         let storage = {};
         let tokenData = [];
         let transactionResults = [];
@@ -1043,7 +1028,7 @@
         function clearTrustlineStatus() {
             const statusBoxes = document.querySelectorAll('.trustline-status-box');
             statusBoxes.forEach(box => {
-                box.classList.remove('valid', 'invalid');
+                box.classList.remove('valid', 'invalid', 'balance-only');
                 box.style.display = 'none';
             });
         }
@@ -1419,7 +1404,7 @@
                     if (!issuer.startsWith('r') || issuer.length < 25 || issuer.length > 35) {
                         throw new Error('Invalid issuer address for selected token');
                     }
-                    query = `?issuer=${encodeURIComponent(issuer)}&currency=${encodeURIComponent(currency)}`;
+                    query = `?issuer=${encodeURIComponent(issuer)}¤cy=${encodeURIComponent(currency)}`;
                 }
                 
                 console.log('Fetching balance with query:', query);
@@ -1488,7 +1473,6 @@
                     if (!address) {
                         throw new Error('Wallet address cannot be empty');
                     }
-                    // Basic XRPL address validation
                     const xrplAddressRegex = /^r[0-9a-zA-Z]{24,34}$/;
                     if (!xrplAddressRegex.test(address)) {
                         throw new Error(`Invalid XRPL address format: ${address}. Must start with 'r' and be 25-35 alphanumeric characters.`);
@@ -1530,8 +1514,8 @@
                     return;
                 }
                 if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(`HTTP error! status: ${response.status} - ${errorData.detail || 'Unknown error'}`);
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(`HTTP error! status: ${response.status} - ${errorData.detail || 'Unknown error'}`);
                 }
                 const data = await response.json();
                 if (!Array.isArray(data)) {
@@ -1554,96 +1538,102 @@
                 validateLoader.style.display = 'none';
             }
         });
-       
+
         checkTrustlinesBtn.addEventListener('click', async () => {
-    console.log('Check Trustlines clicked, accessToken:', getStorageItem('access_token'));
-    checkTrustlinesBtn.disabled = true;
-    trustlinesLoader.style.display = 'inline-block';
-    try {
-        const wallets = Array.from(document.getElementsByClassName('wallet-input')).map(div => {
-            const address = div.querySelector('.wallet-address').value.trim();
-            const amountInput = div.querySelector('.wallet-amount').value.trim();
-            if (!address) {
-                throw new Error('Wallet address cannot be empty');
+            console.log('Check Trustlines clicked, accessToken:', getStorageItem('access_token'));
+            checkTrustlinesBtn.disabled = true;
+            trustlinesLoader.style.display = 'inline-block';
+            try {
+                const wallets = Array.from(document.getElementsByClassName('wallet-input')).map(div => {
+                    const address = div.querySelector('.wallet-address').value.trim();
+                    const amountInput = div.querySelector('.wallet-amount').value.trim();
+                    if (!address) {
+                        throw new Error('Wallet address cannot be empty');
+                    }
+                    const amount = amountInput ? parseFloat(amountInput) : 0;
+                    if (isNaN(amount) || amount < 0) {
+                        throw new Error(`Invalid amount for address ${address}: ${amountInput}`);
+                    }
+                    return { address, amount };
+                });
+                if (wallets.length === 0) {
+                    throw new Error('At least one wallet is required');
+                }
+                const tokenType = tokenTypeSelect.value;
+                const selectedOption = tokenTypeSelect.selectedOptions[0];
+                const issuer = selectedOption.dataset.issuer || '';
+                const currency = selectedOption.dataset.currency || '';
+                const xpmarketMode = xpmarketModeCheckbox.checked;
+                const endpoint = xpmarketMode ? '/check-balances' : '/check-trustlines';
+                
+                let query = `?token_type=${encodeURIComponent(tokenType)}`;
+                if (tokenType !== 'XRP') {
+                    if (!issuer || !currency) {
+                        throw new Error('Issuer or currency missing for selected token');
+                    }
+                    query += `&issuer=${encodeURIComponent(issuer)}¤cy=${encodeURIComponent(currency)}`;
+                }
+        
+                console.log(`Checking ${xpmarketMode ? 'balances' : 'trustlines'} for wallets:`, wallets, 'Query:', query);
+                const response = await fetch(`${BACKEND_URL}${endpoint}${query}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${getStorageItem('access_token')}`,
+                        'account': getStorageItem('account')
+                    },
+                    body: JSON.stringify(wallets)
+                });
+                console.log(`${xpmarketMode ? 'Balances' : 'Trustlines'} response:`, response);
+                if (response.status === 401) {
+                    handleUnauthorized();
+                    return;
+                }
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(`HTTP error! status: ${response.status} - ${errorData.detail || 'Unknown error'}`);
+                }
+                const data = await response.json();
+                if (!Array.isArray(data)) {
+                    throw new Error(`Invalid ${xpmarketMode ? 'balance' : 'trustline'} check response from server: Expected an array of results`);
+                }
+        
+                const walletInputs = document.getElementsByClassName('wallet-input');
+                for (const input of walletInputs) {
+                    const address = input.querySelector('.wallet-address').value.trim();
+                    const result = data.find(w => w.address === address);
+                    const statusBox = input.querySelector('.trustline-status-box');
+                    if (result) {
+                        statusBox.classList.remove('valid', 'invalid', 'balance-only');
+                        statusBox.style.display = 'block';
+                        if (xpmarketMode) {
+                            statusBox.classList.add(result.has_balance ? 'balance-only' : 'invalid');
+                        } else {
+                            statusBox.classList.add(result.has_trustline ? 'valid' : 'invalid');
+                        }
+                    } else {
+                        statusBox.classList.remove('valid', 'invalid', 'balance-only');
+                        statusBox.style.display = 'none';
+                    }
+                }
+        
+                const allEligible = data.every(w => xpmarketMode ? w.has_balance : w.has_trustline);
+                if (allEligible) {
+                    showNotification(`All wallets are eligible for airdrop${xpmarketMode ? ' (have token balances)' : ' (have trustlines)'}.`);
+                } else {
+                    showNotification(`Some wallets are not eligible. Check the ${xpmarketMode ? 'orange (balance)' : 'red (trustline)'} markers.`, true);
+                }
+            } catch (error) {
+                console.error(`Error checking ${xpmarketMode ? 'balances' : 'trustlines'}:`, error);
+                showNotification(
+                    `Error checking ${xpmarketMode ? 'balances' : 'trustlines'}: ${error.message}. Ensure addresses are valid and funded on the XRP Ledger Mainnet.`,
+                    true
+                );
+            } finally {
+                checkTrustlinesBtn.disabled = false;
+                trustlinesLoader.style.display = 'none';
             }
-            const amount = amountInput ? parseFloat(amountInput) : 0;
-            if (isNaN(amount) || amount < 0) {
-                throw new Error(`Invalid amount for address ${address}: ${amountInput}`);
-            }
-            return { address, amount };
         });
-        if (wallets.length === 0) {
-            throw new Error('At least one wallet is required');
-        }
-        const tokenType = tokenTypeSelect.value;
-        const selectedOption = tokenTypeSelect.selectedOptions[0];
-        const issuer = selectedOption.dataset.issuer || '';
-        const currency = selectedOption.dataset.currency || '';
-        
-        let query = `?token_type=${encodeURIComponent(tokenType)}`;
-        if (tokenType !== 'XRP') {
-            if (!issuer || !currency) {
-                throw new Error('Issuer or currency missing for selected token');
-            }
-            query += `&issuer=${encodeURIComponent(issuer)}&currency=${encodeURIComponent(currency)}`;
-        }
-        
-        console.log('Checking trustlines for wallets:', wallets, 'Query:', query);
-        const response = await fetch(`${BACKEND_URL}/check-trustlines${query}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${getStorageItem('access_token')}`,
-                'account': getStorageItem('account')
-            },
-            body: JSON.stringify(wallets)
-        });
-        console.log('Trustlines response:', response);
-        if (response.status === 401) {
-            handleUnauthorized();
-            return;
-        }
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(`HTTP error! status: ${response.status} - ${errorData.detail || 'Unknown error'}`);
-        }
-        const data = await response.json();
-        if (!Array.isArray(data)) {
-            throw new Error('Invalid trustline check response from server: Expected an array of results');
-        }
-        
-        const walletInputs = document.getElementsByClassName('wallet-input');
-        for (const input of walletInputs) {
-            const address = input.querySelector('.wallet-address').value.trim();
-            const result = data.find(w => w.address === address);
-            const statusBox = input.querySelector('.trustline-status-box');
-            if (result) {
-                statusBox.classList.remove('valid', 'invalid');
-                statusBox.style.display = 'block';
-                statusBox.classList.add(result.has_trustline ? 'valid' : 'invalid');
-            } else {
-                statusBox.classList.remove('valid', 'invalid');
-                statusBox.style.display = 'none';
-            }
-        }
-        
-        const allHaveTrustlines = data.every(w => w.has_trustline);
-        if (allHaveTrustlines) {
-            showNotification('All wallets have trustlines for the selected token.');
-        } else {
-            showNotification('Some wallets lack trustlines or are not funded on the XRP Ledger Mainnet. Check the red markers.', true);
-        }
-    } catch (error) {
-        console.error('Error checking trustlines:', error);
-        showNotification(
-            `Error checking trustlines: ${error.message}. Ensure addresses are valid and funded on the XRP Ledger Mainnet.`,
-            true
-        );
-    } finally {
-        checkTrustlinesBtn.disabled = false;
-        trustlinesLoader.style.display = 'none';
-    }
-});
 
         function calculateServiceFee(walletCount) {
             const feePerWallet = 0.05;
@@ -1661,6 +1651,7 @@
                 showNotification('At least one wallet with a non-zero amount is required.', true);
                 return;
             }
+            const xpmarketMode = xpmarketModeCheckbox.checked;
             const serviceFee = calculateServiceFee(wallets.length);
             feeMessage.textContent = `You will be charged a REMI service fee of ${serviceFee} XRP to proceed with the airdrop. MAX 5 XRP`;
             feeConfirmation.style.display = 'flex';
@@ -1685,8 +1676,9 @@
 
                     let query = `?token_type=${encodeURIComponent(tokenType)}`;
                     if (tokenType !== 'XRP') {
-                        query += `&issuer=${encodeURIComponent(issuer)}&currency=${encodeURIComponent(currency)}`;
+                        query += `&issuer=${encodeURIComponent(issuer)}¤cy=${encodeURIComponent(currency)}`;
                     }
+                    query += `&xpmarket_mode=${xpmarketMode}`;
 
                     console.log('Fetching airdrop data with query:', query);
                     const response = await fetch(`${BACKEND_URL}/airdrop${query}`, {
@@ -1826,11 +1818,12 @@
                 firstWallet.querySelector('.wallet-address').value = '';
                 firstWallet.querySelector('.wallet-amount').value = '';
                 const statusBox = firstWallet.querySelector('.trustline-status-box');
-                statusBox.classList.remove('valid', 'invalid');
+                statusBox.classList.remove('valid', 'invalid', 'balance-only');
                 statusBox.style.display = 'none';
             }
             totalAmountInput.value = '';
             tokenTypeSelect.value = 'XRP';
+            xpmarketModeCheckbox.checked = false;
             resultsDiv.style.display = 'none';
             transactionSigning.style.display = 'none';
             feeConfirmation.style.display = 'none';
@@ -1852,7 +1845,7 @@
             }
         }
 
-        // New CSV Upload Logic
+        // CSV Upload Logic
         let csvHasHeader = true;
         const csvHeaderToggle = document.getElementById('csv-header-toggle');
         csvHeaderToggle.addEventListener('click', () => {
@@ -1862,148 +1855,156 @@
         });
 
         const csvUploadInput = document.getElementById('csv-upload-input');
-csvUploadInput.addEventListener('change', (event) => {
-    const file = event.target.files[0];
-    if (!file) {
-        showNotification('No file selected.', true);
-        return;
-    }
-    if (!file.name.endsWith('.csv')) {
-        showNotification('Please upload a CSV file.', true);
-        return;
-    }
+        csvUploadInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (!file) {
+                showNotification('No file selected.', true);
+                return;
+            }
+            if (!file.name.endsWith('.csv')) {
+                showNotification('Please upload a CSV file.', true);
+                return;
+            }
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        const text = e.target.result;
-        // Normalize line endings and split into rows
-        const rows = text.replace(/\r\n|\r/g, '\n').split('\n').map(row => row.trim()).filter(row => row);
-        console.log('Parsed CSV rows:', rows);
-        if (rows.length === 0) {
-            showNotification('CSV file appears empty. Please ensure it contains wallet addresses.', true);
-            return;
-        }
-
-        // Detect delimiter by checking the first row for common CSV delimiters
-        const firstRow = rows[0];
-        let delimiter = ',';
-        if (firstRow.includes(';') && !firstRow.includes(',')) {
-            delimiter = ';';
-        } else if (firstRow.includes('\t') && !firstRow.includes(',')) {
-            delimiter = '\t';
-        }
-        console.log('Detected CSV delimiter:', delimiter);
-
-        const wallets = [];
-        const startIndex = csvHasHeader ? 1 : 0;
-        for (let i = startIndex; i < rows.length; i++) {
-            // Parse row with support for quoted fields containing delimiters
-            let columns = [];
-            let current = '';
-            let inQuotes = false;
-            const row = rows[i];
-
-            for (let j = 0; j < row.length; j++) {
-                const char = row[j];
-                if (char === '"') {
-                    inQuotes = !inQuotes;
-                } else if (char === delimiter && !inQuotes) {
-                    columns.push(current.trim());
-                    current = '';
-                } else {
-                    current += char;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const text = e.target.result;
+                // Normalize line endings and split into rows
+                const rows = text.replace(/\r\n|\r/g, '\n').split('\n').map(row => row.trim()).filter(row => row);
+                console.log('Parsed CSV rows:', rows);
+                if (rows.length === 0) {
+                    showNotification('CSV file appears empty. Please ensure it contains wallet addresses.', true);
+                    return;
                 }
-            }
-            // Push the last column
-            if (current) {
-                columns.push(current.trim());
-            }
 
-            // Remove surrounding quotes from columns if present
-            columns = columns.map(col => {
-                if (col.startsWith('"') && col.endsWith('"')) {
-                    return col.slice(1, -1).trim();
+                // Detect delimiter by checking the first row for common CSV delimiters
+                const firstRow = rows[0];
+                let delimiter = ',';
+                if (firstRow.includes(';') && !firstRow.includes(',')) {
+                    delimiter = ';';
+                } else if (firstRow.includes('\t') && !firstRow.includes(',')) {
+                    delimiter = '\t';
                 }
-                return col;
-            });
+                console.log('Detected CSV delimiter:', delimiter);
 
-            console.log(`Row ${i} columns:`, columns);
-            if (columns.length === 0 || !columns[0]) {
-                console.log(`Skipping row ${i}: Empty or missing address`);
-                continue;
-            }
+                const wallets = [];
+                const startIndex = csvHasHeader ? 1 : 0;
+                for (let i = startIndex; i < rows.length; i++) {
+                    // Parse row with support for quoted fields containing delimiters
+                    let columns = [];
+                    let current = '';
+                    let inQuotes = false;
+                    const row = rows[i];
 
-            const address = columns[0];
-            let amount = columns.length > 1 ? columns[1] : '';
-            if (amount) {
-                try {
-                    const parsedAmount = parseFloat(amount);
-                    if (isNaN(parsedAmount) || parsedAmount < 0) {
-                        console.log(`Invalid amount in row ${i}: ${amount}, resetting to empty`);
-                        amount = '';
+                    for (let j = 0; j < row.length; j++) {
+                        const char = row[j];
+                        if (char === '"') {
+                            inQuotes = !inQuotes;
+                        } else if (char === delimiter && !inQuotes) {
+                            columns.push(current.trim());
+                            current = '';
+                        } else {
+                            current += char;
+                        }
                     }
-                } catch (e) {
-                    console.log(`Error parsing amount in row ${i}: ${amount}, resetting to empty`);
-                    amount = '';
+                    // Push the last column
+                    if (current) {
+                        columns.push(current.trim());
+                    }
+
+                    // Remove surrounding quotes from columns if present
+                    columns = columns.map(col => {
+                        if (col.startsWith('"') && col.endsWith('"')) {
+                            return col.slice(1, -1).trim();
+                        }
+                        return col;
+                    });
+
+                    console.log(`Row ${i} columns:`, columns);
+                    if (columns.length === 0 || !columns[0]) {
+                        console.log(`Skipping row ${i}: Empty or missing address`);
+                        continue;
+                    }
+
+                    const address = columns[0];
+                    let amount = columns.length > 1 ? columns[1] : '';
+                    if (amount) {
+                        try {
+                            const parsedAmount = parseFloat(amount);
+                            if (isNaN(parsedAmount) || parsedAmount < 0) {
+                                console.log(`Invalid amount in row ${i}: ${amount}, resetting to empty`);
+                                amount = '';
+                            }
+                        } catch (e) {
+                            console.log(`Error parsing amount in row ${i}: ${amount}, resetting to empty`);
+                            amount = '';
+                        }
+                    }
+
+                    if (address) {
+                        wallets.push({ address, amount });
+                    } else {
+                        console.log(`Skipping row ${i}: Address is empty after parsing`);
+                    }
                 }
-            }
 
-            if (address) {
-                wallets.push({ address, amount });
-            } else {
-                console.log(`Skipping row ${i}: Address is empty after parsing`);
-            }
-        }
+                if (wallets.length === 0) {
+                    showNotification('No valid wallet addresses found in CSV. Please ensure the file contains wallet addresses in the first column.', true);
+                    return;
+                }
 
-        if (wallets.length === 0) {
-            showNotification('No valid wallet addresses found in CSV. Please ensure the file contains wallet addresses in the first column.', true);
-            return;
-        }
+                console.log('Parsed wallets:', wallets);
 
-        console.log('Parsed wallets:', wallets);
+                if (wallets.length > 150) {
+                    showNotification('Too many wallets in CSV. Limit is 150.', true);
+                    return;
+                }
 
-        // Change the number 150 below to adjust the wallet limit in the future
-        if (wallets.length > 150) {
-            showNotification('Too many wallets in CSV. Limit is 150.', true);
-            return;
-        }
+                const walletList = document.getElementById('wallet-list');
+                // Clear all existing wallet inputs
+                walletList.innerHTML = '';
+                console.log('Cleared wallet list');
 
-        const walletList = document.getElementById('wallet-list');
-        // Clear all existing wallet inputs
-        walletList.innerHTML = '';
-        console.log('Cleared wallet list');
+                // Create a new wallet input for each wallet in the CSV
+                wallets.forEach((wallet, index) => {
+                    const div = document.createElement('div');
+                    div.className = 'wallet-input';
+                    const safeAddress = (wallet.address || '').replace(/"/g, '"');
+                    const safeAmount = (wallet.amount || '').replace(/"/g, '"');
+                    div.innerHTML = `
+                        <input type="text" class="wallet-address" placeholder="Wallet Address" value="${safeAddress}">
+                        <div class="trustline-status-box"></div>
+                        <div class="amount-remove-group">
+                            <input type="number" class="wallet-amount" placeholder="Amount" step="0.000001" min="0" value="${safeAmount}">
+                            <button onclick="removeWallet(this)">Remove</button>
+                        </div>
+                    `;
+                    walletList.appendChild(div);
+                    console.log(`Added wallet ${index + 1}: Address=${safeAddress}, Amount=${safeAmount}`);
+                });
 
-        // Create a new wallet input for each wallet in the CSV
-        wallets.forEach((wallet, index) => {
-            const div = document.createElement('div');
-            div.className = 'wallet-input';
-            // Sanitize address and amount to prevent HTML injection and ensure proper rendering
-            const safeAddress = (wallet.address || '').replace(/"/g, '&quot;');
-            const safeAmount = (wallet.amount || '').replace(/"/g, '&quot;');
-            div.innerHTML = `
-                <input type="text" class="wallet-address" placeholder="Wallet Address" value="${safeAddress}">
-                <div class="trustline-status-box"></div>
-                <div class="amount-remove-group">
-                    <input type="number" class="wallet-amount" placeholder="Amount" step="0.000001" min="0" value="${safeAmount}">
-                    <button onclick="removeWallet(this)">Remove</button>
-                </div>
-            `;
-            walletList.appendChild(div);
-            console.log(`Added wallet ${index + 1}: Address=${safeAddress}, Amount=${safeAmount}`);
+                // Ensure wallet list is visible
+                walletList.style.display = 'block';
+                console.log('Wallet list display style:', walletList.style.display);
+
+                updateTotalAmount();
+                showNotification(`Successfully loaded ${wallets.length} wallets from CSV.`);
+            };
+            reader.onerror = () => {
+                showNotification('Error reading CSV file. It may be corrupted or not accessible.', true);
+            };
+            reader.readAsText(file);
         });
 
-        // Ensure wallet list is visible
-        walletList.style.display = 'block';
-        console.log('Wallet list display style:', walletList.style.display);
-
-        updateTotalAmount();
-        showNotification(`Successfully loaded ${wallets.length} wallets from CSV.`);
-    };
-    reader.onerror = () => {
-        showNotification('Error reading CSV file. It may be corrupted or not accessible.', true);
-    };
-    reader.readAsText(file);
-});
+        window.refreshAirdropReport = function() {
+            console.log('Refreshing airdrop report...');
+            const refreshIcon = document.querySelector('.refresh-icon');
+            refreshIcon.classList.add('spinning');
+            setTimeout(() => {
+                refreshIcon.classList.remove('spinning');
+                showNotification('Airdrop report refreshed.');
+            }, 1000);
+        };
     </script>
 </body>
 </html>
