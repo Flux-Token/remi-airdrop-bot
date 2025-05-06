@@ -1645,7 +1645,7 @@
             }
         }
 
-        // Step 3: Combine results and prioritize trustlines
+        // Step 3: Combine results and prioritize trustlines or XPmarket balances
         const walletInputs = document.getElementsByClassName('wallet-input');
         for (const input of walletInputs) {
             const address = input.querySelector('.wallet-address').value.trim();
@@ -1661,9 +1661,9 @@
                 statusBox.classList.add('valid');
                 showNotification(`Wallet ${address}: Has trustline, eligible for airdrop`, false);
             } else if (xpmarketMode && balanceResult && balanceResult.has_balance) {
-                // XPmarket Mode: Wallets with balance but no trustline are orange
-                statusBox.classList.add('balance-only');
-                showNotification(`Wallet ${address}: Has ${tokenType} balance without trustline, eligible for airdrop (XPmarket mode)`, false);
+                // XPmarket Mode: Wallets with balance are green (treated as trustline-equivalent)
+                statusBox.classList.add('valid');
+                showNotification(`Wallet ${address}: Has ${tokenType} balance, eligible for airdrop (XPmarket mode)`, false);
             } else {
                 // No trustline or balance
                 statusBox.classList.add('invalid');
@@ -1675,9 +1675,9 @@
         const allEligible = trustlineData.every(result => result.has_trustline) || 
                            (xpmarketMode && balanceData.some(result => result.has_balance));
         if (allEligible) {
-            showNotification(`All wallets are eligible for airdrop${xpmarketMode ? ' (trustlines or XPmarket balances)' : ' (trustlines)'}.`);
+            showNotification(`All wallets are eligible for airdrop${xpmarketMode ? ' (trustlines or balances)' : ' (trustlines)'}.`);
         } else {
-            showNotification(`Some wallets are not eligible. Check the ${xpmarketMode ? 'orange (XPmarket balance) or red (ineligible)' : 'red (ineligible)'} markers.`, true);
+            showNotification(`Some wallets are not eligible. Check the red (ineligible) markers.`, true);
         }
     } catch (error) {
         console.error(`Error checking trustlines/balances:`, error);
