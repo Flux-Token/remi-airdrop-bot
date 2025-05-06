@@ -210,7 +210,7 @@ def decode_hex_currency(hex_currency: str) -> str:
 
 
 # Ensure the /check-trustlines endpoint is included and updated
-# Replace the existing /check-trustlines endpoint with this updated version
+# Updated /check-trustlines endpoint
 @app.post("/check-trustlines")
 async def check_trustlines(
     wallets: List[Wallet],
@@ -280,14 +280,14 @@ async def check_trustlines(
                 for line in trustlines:
                     line_issuer = line["account"].strip()
                     line_currency = decode_hex_currency(line["currency"]).strip().upper()
-                    target_issuer = issuer.strip()
+                    target_issuer = issuer.strip() if issuer else ""
                     target_currency = decoded_currency.strip().upper()
                     logger.debug(f"Comparing trustline for {wallet.address}: line_issuer={line_issuer}, target_issuer={target_issuer}, line_currency={line_currency}, target_currency={target_currency}")
                     if line_issuer == target_issuer and line_currency == target_currency:
                         trustline_exists = True
-                        logger.debug(f"Trustline match found for {wallet.address}: {line}")
+                        logger.info(f"Trustline match found for {wallet.address}: {line}")
                         break
-                logger.debug(f"Trustline exists for {wallet.address}: {trustline_exists}")
+                logger.info(f"Trustline result for {wallet.address}: {trustline_exists}")
                 results.append({
                     "address": wallet.address,
                     "has_trustline": trustline_exists,
@@ -312,7 +312,7 @@ async def check_trustlines(
         if client and client.is_open():
             await client.close()
 
-# Ensure the latest /check-balances endpoint is deployed
+# Updated /check-balances endpoint with additional logging
 @app.post("/check-balances")
 async def check_balances(
     wallets: List[Wallet],
@@ -391,7 +391,7 @@ async def check_balances(
                             has_balance = True
                             balance_value = float(trustline["balance"])
                             balance_source = "account_lines"
-                            logger.debug(f"Balance found via account_lines for {wallet.address}: {balance_value}")
+                            logger.info(f"Balance found via account_lines for {wallet.address}: {balance_value}")
                     else:
                         logger.warning(f"account_lines request failed for {wallet.address}: {trustline_response.result}")
 
@@ -408,7 +408,7 @@ async def check_balances(
                                     has_balance = True
                                     balance_value = float(asset["value"])
                                     balance_source = "GatewayBalances"
-                                    logger.debug(f"Balance found via GatewayBalances for {wallet.address}: {balance_value}")
+                                    logger.info(f"Balance found via GatewayBalances for {wallet.address}: {balance_value}")
                                     break
                         else:
                             logger.warning(f"GatewayBalances request failed for {wallet.address}: {gateway_response.result}")
@@ -428,13 +428,14 @@ async def check_balances(
                                         has_balance = True
                                         balance_value = float(line["state"]["balance"])
                                         balance_source = "XRPScan"
-                                        logger.debug(f"Balance found via XRPScan for {wallet.address}: {balance_value}")
+                                        logger.info(f"Balance found via XRPScan for {wallet.address}: {balance_value}")
                                         break
                             else:
                                 logger.warning(f"XRPScan API failed for {wallet.address}: {response.status_code} - {response.text}")
                         except Exception as e:
                             logger.error(f"XRPScan API error for {wallet.address}: {str(e)}")
 
+                    logger.info(f"Balance result for {wallet.address}: has_balance={has_balance}, balance={balance_value}, source={balance_source}")
                     results.append({
                         "address": wallet.address,
                         "has_balance": has_balance,

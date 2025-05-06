@@ -1653,20 +1653,22 @@
             const balanceResult = balanceData.find(w => w.address === address);
             const statusBox = input.querySelector('.trustline-status-box');
             
-            statusBox.classList.remove('valid', 'invalid', 'balance-only');
+            statusBox.classList.remove('valid', 'invalid');
             statusBox.style.display = 'block';
-            
-            if (trustlineResult && trustlineResult.has_trustline) {
-                // Wallets with trustlines are always green
+
+            const hasTrustline = trustlineResult && trustlineResult.has_trustline;
+            const hasBalance = xpmarketMode && balanceResult && balanceResult.has_balance;
+
+            if (hasTrustline || hasBalance) {
+                // Green box: Wallet has a trustline OR a balance (in XPmarket mode)
                 statusBox.classList.add('valid');
-                showNotification(`Wallet ${address}: Has trustline, eligible for airdrop`, false);
-            } else if (xpmarketMode && balanceResult && balanceResult.has_balance) {
-                // XPmarket Mode: Wallets with balance are green
-                statusBox.classList.add('valid');
-                const source = balanceResult.balance_source || 'unknown';
-                showNotification(`Wallet ${address}: Has ${decodeHexCurrency(tokenType)} balance (via ${source}), eligible for airdrop (XPmarket mode)`, false);
+                if (hasTrustline) {
+                    showNotification(`Wallet ${address}: Has trustline for ${decodeHexCurrency(tokenType)}, eligible for airdrop`, false);
+                } else {
+                    showNotification(`Wallet ${address}: Has ${decodeHexCurrency(tokenType)} balance (${balanceResult.balance} via ${balanceResult.balance_source}), eligible for airdrop (XPmarket mode)`, false);
+                }
             } else {
-                // No trustline or balance
+                // Red box: Wallet has neither a trustline nor a balance
                 statusBox.classList.add('invalid');
                 const error = (trustlineResult?.error || balanceResult?.error || 'No trustline or balance found');
                 showNotification(`Wallet ${address}: ${error}`, true);
@@ -1674,9 +1676,9 @@
         }
 
         const allEligible = trustlineData.every(result => result.has_trustline) || 
-                           (xpmarketMode && balanceData.some(result => result.has_balance));
+                           (xpmarketMode && balanceData.every(result => result.has_balance));
         if (allEligible && trustlineData.length > 0) {
-            showNotification(`All wallets are eligible for airdrop${xpmarketMode ? ' (trustlines or balances)' : ' (trustlines)'}.`);
+            showNotification(`All wallets are eligible for airdrop${xpmarketMode ? ' (trustlines or balances)' : ' (trustlines)'}.`, false);
         } else {
             showNotification(`Some wallets are not eligible. Check the red (ineligible) markers.`, true);
         }
