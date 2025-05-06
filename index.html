@@ -1663,7 +1663,8 @@
             } else if (xpmarketMode && balanceResult && balanceResult.has_balance) {
                 // XPmarket Mode: Wallets with balance are green
                 statusBox.classList.add('valid');
-                showNotification(`Wallet ${address}: Has ${decodeHexCurrency(tokenType)} balance, eligible for airdrop (XPmarket mode)`, false);
+                const source = balanceResult.balance_source || 'unknown';
+                showNotification(`Wallet ${address}: Has ${decodeHexCurrency(tokenType)} balance (via ${source}), eligible for airdrop (XPmarket mode)`, false);
             } else {
                 // No trustline or balance
                 statusBox.classList.add('invalid');
