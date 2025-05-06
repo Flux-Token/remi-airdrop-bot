@@ -210,6 +210,7 @@ def decode_hex_currency(hex_currency: str) -> str:
 
 
 # Ensure the /check-trustlines endpoint is included and updated
+# Replace the existing /check-trustlines endpoint with this updated version
 @app.post("/check-trustlines")
 async def check_trustlines(
     wallets: List[Wallet],
@@ -275,11 +276,17 @@ async def check_trustlines(
 
                 trustlines = response.result.get("lines", [])
                 logger.info(f"Trustlines for wallet {wallet.address}: {trustlines}")
-                trustline_exists = any(
-                    line["account"].strip() == issuer.strip() and 
-                    decode_hex_currency(line["currency"]).strip().upper() == decoded_currency.strip().upper()
-                    for line in trustlines
-                )
+                trustline_exists = False
+                for line in trustlines:
+                    line_issuer = line["account"].strip()
+                    line_currency = decode_hex_currency(line["currency"]).strip().upper()
+                    target_issuer = issuer.strip()
+                    target_currency = decoded_currency.strip().upper()
+                    logger.debug(f"Comparing trustline for {wallet.address}: line_issuer={line_issuer}, target_issuer={target_issuer}, line_currency={line_currency}, target_currency={target_currency}")
+                    if line_issuer == target_issuer and line_currency == target_currency:
+                        trustline_exists = True
+                        logger.debug(f"Trustline match found for {wallet.address}: {line}")
+                        break
                 logger.debug(f"Trustline exists for {wallet.address}: {trustline_exists}")
                 results.append({
                     "address": wallet.address,
