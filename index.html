@@ -1597,16 +1597,15 @@
             body: JSON.stringify(wallets)
         });
         console.log(`${xpmarketMode ? 'Balances' : 'Trustlines'} response status:`, response.status);
+        const data = await response.json();
+        console.log(`${xpmarketMode ? 'Balances' : 'Trustlines'} response data:`, JSON.stringify(data, null, 2));
         if (response.status === 401) {
             handleUnauthorized();
             return;
         }
         if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(`HTTP error! status: ${response.status} - ${errorData.detail || 'Unknown error'}`);
+            throw new Error(`HTTP error! status: ${response.status} - ${data.detail || 'Unknown error'}`);
         }
-        const data = await response.json();
-        console.log(`${xpmarketMode ? 'Balances' : 'Trustlines'} response data:`, data);
         if (!Array.isArray(data)) {
             throw new Error(`Invalid ${xpmarketMode ? 'balance' : 'trustline'} check response from server: Expected an array of results`);
         }
@@ -1622,18 +1621,26 @@
                 if (xpmarketMode) {
                     if (result.has_balance) {
                         statusBox.classList.add('balance-only');
-                    } else if (result.error && result.error.includes('Insufficient XRP')) {
-                        statusBox.classList.add('invalid');
-                        showNotification(`Wallet ${address}: ${result.error}`, true);
                     } else {
                         statusBox.classList.add('invalid');
+                        if (result.error) {
+                            showNotification(`Wallet ${address}: ${result.error}`, true);
+                        }
                     }
                 } else {
-                    statusBox.classList.add(result.has_trustline ? 'valid' : 'invalid');
+                    if (result.has_trustline) {
+                        statusBox.classList.add('valid');
+                    } else {
+                        statusBox.classList.add('invalid');
+                        if (result.error) {
+                            showNotification(`Wallet ${address}: ${result.error}`, true);
+                        }
+                    }
                 }
             } else {
                 statusBox.classList.remove('valid', 'invalid', 'balance-only');
                 statusBox.style.display = 'none';
+                showNotification(`No result for wallet ${address}`, true);
             }
         }
 
