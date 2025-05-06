@@ -438,6 +438,32 @@
             background: #ffa500; /* Orange for balance-only wallets */
             display: block;
         }
+        #footer-container {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1;
+}
+
+footer {
+    background: linear-gradient(90deg, #ff6f61, #ff00ff);
+    padding: 15px 0;
+    text-align: center;
+    font-size: 0.9em;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
+}
+
+footer a {
+    color: #fff;
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+
+footer a:hover {
+    color: #00d4ff;
+    text-decoration: underline;
+}
 
         @media (max-width: 600px) {
             .wallet-input .trustline-status-box {
@@ -867,24 +893,26 @@
         }
 
         function showMainContent() {
-            const preloader = document.getElementById('preloader');
-            const mainContent = document.querySelector('.main-content');
-            const audio = document.getElementById('loader-audio');
-            const fadeOut = setInterval(() => {
-                if (audio.volume > 0.1) {
-                    audio.volume -= 0.1;
-                } else {
-                    audio.pause();
-                    audio.currentTime = 0;
-                    clearInterval(fadeOut);
-                }
-            }, 100);
-            preloader.style.opacity = '0';
-            setTimeout(() => {
-                preloader.style.display = 'none';
-                mainContent.style.display = 'block';
-            }, 500);
+    const preloader = document.getElementById('preloader');
+    const mainContent = document.querySelector('.main-content');
+    const footerContainer = document.getElementById('footer-container');
+    const audio = document.getElementById('loader-audio');
+    const fadeOut = setInterval(() => {
+        if (audio.volume > 0.1) {
+            audio.volume -= 0.1;
+        } else {
+            audio.pause();
+            audio.currentTime = 0;
+            clearInterval(fadeOut);
         }
+    }, 100);
+    preloader.style.opacity = '0';
+    setTimeout(() => {
+        preloader.style.display = 'none';
+        mainContent.style.display = 'block';
+        footerContainer.style.display = 'block'; // Show footer when main content is displayed
+    }, 500);
+}
 
         document.addEventListener('DOMContentLoaded', () => {
             console.log('DOM loaded, attempting to play audio...');
