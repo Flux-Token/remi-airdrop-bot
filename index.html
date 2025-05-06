@@ -821,25 +821,8 @@
                         <input type="text" class="wallet-address" placeholder="Wallet Address">
                         <div class="trustline-status-box"></div>
                         <div class="amount-remove-group">
-                            <div id="feeModal" class="modal">
-                                <div class="modal-content">
-                                    <p>You will be charged a REMI service fee...</p>
-                                    <div class="modal-buttons">
-                                        <button id="feeCancelBtn" class="cancel-btn">Cancel</button>
-                                        <button id="feeProceedBtn" class="proceed-btn">Proceed</button>
-                                    </div>
-                                </div>
-                            </div>               <input type="number" class="wallet-amount" placeholder="Amount" step="0.000001" min="0">
+                            <input type="number" class="wallet-amount" placeholder="Amount" step="0.000001" min="0">
                             <button onclick="removeWallet(this)">Remove</button>
-                        </div>
-                        <div id="redWalletModal" class="modal">
-                            <div class="modal-content">
-                                <p><span class="warning-text">Warning:</span> You’re sending to wallets flagged in <span style="color: red;">RED</span> for not having a mainnet trust line. You may proceed with the transaction, but we recommend checking each flagged wallet for a token balance first.</p>
-                                <div class="modal-buttons">
-                                    <button id="redWalletCancelBtn" class="cancel-btn">Cancel</button>
-                                    <button id="redWalletProceedBtn" class="proceed-btn">Proceed</button>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -874,6 +857,24 @@
             <div class="button-row">
                 <button id="fee-agree-btn"><i class="fas fa-check icon"></i> Agree</button>
                 <button id="fee-disagree-btn"><i class="fas fa-times icon"></i> Disagree</button>
+            </div>
+        </div>
+        <div id="feeModal" class="modal">
+            <div class="modal-content">
+                <p>You will be charged a REMI service fee...</p>
+                <div class="modal-buttons">
+                    <button id="feeCancelBtn" class="cancel-btn">Cancel</button>
+                    <button id="feeProceedBtn" class="proceed-btn">Proceed</button>
+                </div>
+            </div>
+        </div>
+        <div id="redWalletModal" class="modal">
+            <div class="modal-content">
+                <p><span class="warning-text">Warning:</span> You’re sending to wallets flagged in <span style="color: red;">RED</span> for not having a mainnet trust line. You may proceed with the transaction, but we recommend checking each flagged wallet for a token balance first.</p>
+                <div class="modal-buttons">
+                    <button id="redWalletCancelBtn" class="cancel-btn">Cancel</button>
+                    <button id="redWalletProceedBtn" class="proceed-btn">Proceed</button>
+                </div>
             </div>
         </div>
         <footer>
