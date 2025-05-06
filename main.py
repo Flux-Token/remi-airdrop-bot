@@ -208,6 +208,7 @@ def decode_hex_currency(hex_currency: str) -> str:
         logger.warning(f"Failed to decode hex currency {hex_currency}: {str(e)}")
         return hex_currency
 
+# Replace all existing /check-balances endpoints with this single version
 @app.post("/check-balances")
 async def check_balances(
     wallets: List[Wallet],
@@ -236,7 +237,7 @@ async def check_balances(
             for wallet in wallets:
                 wallet.address = wallet.address.strip()
                 try:
-                    # Check account existence and XRP balance
+                    # Verify account exists and has sufficient XRP
                     account_info_request = AccountInfo(account=wallet.address, ledger_index="validated")
                     account_response = await asyncio.wait_for(client.request(account_info_request), timeout=30)
                     if not account_response.is_successful():
@@ -255,13 +256,15 @@ async def check_balances(
                             "address": wallet.address,
                             "has_balance": False,
                             "balance": 0.0,
-                            "error": f"Insufficient XRP balance ({xrp_balance} XRP) for trustline creation (requires {TRUSTLINE_RESERVE_XRP} XRP)"
+                            "error": f"Insufficient XRP balance ({xrp_balance} XRP) for trustline creation"
                         })
                         continue
 
-                    # Try account_lines first (since GatewayBalances may be unreliable)
+                    # Initialize balance check
                     has_balance = False
                     balance_value = 0.0
+
+                    # Try account_lines first for balance
                     trustline_request = GenericRequest(
                         command="account_lines",
                         account=wallet.address,
@@ -284,7 +287,7 @@ async def check_balances(
                             balance_value = float(trustline["balance"])
                             logger.debug(f"Balance found via account_lines for {wallet.address}: {balance_value}")
 
-                    # Try GatewayBalances if account_lines fails
+                    # Try GatewayBalances if account_lines finds no balance
                     if not has_balance:
                         gateway_request = GatewayBalances(account=issuer, hotwallet=[wallet.address], ledger_index="validated")
                         gateway_response = await asyncio.wait_for(client.request(gateway_request), timeout=30)
@@ -299,11 +302,13 @@ async def check_balances(
                                     logger.debug(f"Balance found via GatewayBalances for {wallet.address}: {balance_value}")
                                     break
 
-                    # Fallback to XRPScan API if both fail (optional, requires API key)
+                    # Optional XRPScan API fallback (uncomment if needed and add XRPSCAN_API_KEY to .env)
+                    """
                     if not has_balance:
                         try:
                             xrpscan_url = f"https://api.xrpscan.com/api/v1/account/{wallet.address}/trustlines"
-                            response = await http_client.get(xrpscan_url, timeout=10)
+                            headers = {"apiKey": os.getenv("XRPSCAN_API_KEY")} if os.getenv("XRPSCAN_API_KEY") else {}
+                            response = await http_client.get(xrpscan_url, headers=headers, timeout=10)
                             if response.status_code == 200:
                                 trustlines = response.json()
                                 logger.debug(f"XRPScan trustlines for {wallet.address}: {trustlines}")
@@ -319,6 +324,7 @@ async def check_balances(
                                 logger.warning(f"XRPScan API failed for {wallet.address}: {response.status_code}")
                         except Exception as e:
                             logger.error(f"XRPScan API error for {wallet.address}: {str(e)}")
+                    """
 
                     results.append({
                         "address": wallet.address,
@@ -340,343 +346,13 @@ async def check_balances(
         logger.error(f"Balance check error: {str(e)}")
         raise HTTPException(
             status_code=500,
-            detail=(
-                "Failed to check balances: Ensure wallets are valid and funded on "
-                "the XRP Ledger Mainnet. Acquire XRP from an exchange like Coinbase or Bitstamp."
-            )
+            detail="Failed to check balances: Ensure wallets are valid and funded on the XRP Ledger Mainnet."
         )
     finally:
         if client and client.is_open():
             await client.close()
 
-@app.post("/check-balances")
-async def check_balances(
-    wallets: List[Wallet],
-    token_type: str = Query(...),
-    issuer: Optional[str] = Query(None),
-    currency: Optional[str] = Query(None),
-    token_data: dict = Depends(get_access_token),
-    request: Request = None
-):
-    logger.debug(f"Raw query string: {request.query_params}")
-    logger.info(f"Checking balances for wallets: {wallets}, token_type: {token_type}, issuer: {issuer}, currency: {currency}")
-    decoded_token_type = decode_hex_currency(token_type)
-    decoded_currency = decode_hex_currency(currency) if currency else decode_hex_currency(token_type)
-    logger.debug(f"Decoded parameters: token_type={decoded_token_type}, currency={decoded_currency}, issuer={issuer}")
-    
-    if decoded_token_type != "XRP" and (not issuer or not decoded_currency):
-        raise HTTPException(
-            status_code=400,
-            detail="Issuer and currency are required for token balance checks"
-        )
-    client = None
-    try:
-        client = await get_xrpl_client()
-        results = []
-        for wallet in wallets:
-            wallet.address = wallet.address.strip()
-            try:
-                account_info_request = AccountInfo(account=wallet.address, ledger_index="validated")
-                account_response = await asyncio.wait_for(client.request(account_info_request), timeout=30)
-                if not account_response.is_successful():
-                    logger.warning(f"Account {wallet.address} does not exist or is not funded: {account_response.result}")
-                    results.append({
-                        "address": wallet.address,
-                        "has_balance": False,
-                        "balance": 0.0,
-                        "error": "Account not found or not funded"
-                    })
-                    continue
-                xrp_balance = float(account_response.result["account_data"]["Balance"]) / 1_000_000
-                if xrp_balance < TRUSTLINE_RESERVE_XRP:
-                    logger.warning(f"Insufficient XRP balance for {wallet.address}: {xrp_balance} XRP")
-                    results.append({
-                        "address": wallet.address,
-                        "has_balance": False,
-                        "balance": 0.0,
-                        "error": f"Insufficient XRP balance ({xrp_balance} XRP) for trustline creation (requires {TRUSTLINE_RESERVE_XRP} XRP)"
-                    })
-                    continue
-
-                # Try GatewayBalances
-                gateway_request = GatewayBalances(account=issuer, hotwallet=[wallet.address], ledger_index="validated")
-                gateway_response = await asyncio.wait_for(client.request(gateway_request), timeout=30)
-                balances = []
-                if gateway_response.is_successful():
-                    balances = gateway_response.result.get("assets", {}).get(wallet.address, [])
-                    logger.debug(f"Gateway balances for {wallet.address}: {balances}")
-                
-                has_balance = any(
-                    asset["currency"].strip().upper() == decoded_currency.strip().upper() and 
-                    float(asset["value"]) > 0
-                    for asset in balances
-                )
-                balance_value = next(
-                    (float(asset["value"]) for asset in balances if asset["currency"].strip().upper() == decoded_currency.strip().upper() and float(asset["value"]) > 0),
-                    0.0
-                )
-                
-                # Fallback to account_lines
-                if not has_balance:
-                    trustline_request = GenericRequest(
-                        command="account_lines",
-                        account=wallet.address,
-                        ledger_index="validated"
-                    )
-                    trustline_response = await asyncio.wait_for(client.request(trustline_request), timeout=30)
-                    if trustline_response.is_successful():
-                        trustlines = trustline_response.result.get("lines", [])
-                        logger.debug(f"Fallback trustlines for {wallet.address}: {trustlines}")
-                        trustline = next(
-                            (
-                                line for line in trustlines
-                                if line["account"].strip() == issuer.strip() and 
-                                   decode_hex_currency(line["currency"]).strip().upper() == decoded_currency.strip().upper()
-                            ),
-                            None
-                        )
-                        if trustline and float(trustline.get("balance", 0.0)) > 0:
-                            has_balance = True
-                            balance_value = float(trustline["balance"])
-
-                results.append({
-                    "address": wallet.address,
-                    "has_balance": has_balance,
-                    "balance": balance_value,
-                    "error": None if has_balance else "No balance found"
-                })
-            except Exception as e:
-                logger.error(f"Error checking balance for {wallet.address}: {str(e)}")
-                results.append({
-                    "address": wallet.address,
-                    "has_balance": False,
-                    "balance": 0.0,
-                    "error": str(e)
-                })
-        logger.info("Balance check completed.")
-        return results
-    except Exception as e:
-        logger.error(f"Balance check error: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=(
-                "Failed to check balances: Ensure wallets are valid and funded on "
-                "the XRP Ledger Mainnet. Acquire XRP from an exchange like Coinbase or Bitstamp."
-            )
-        )
-    finally:
-        if client and client.is_open():
-            await client.close()
-
-@app.post("/check-balances")
-async def check_balances(
-    wallets: List[Wallet],
-    token_type: str = Query(...),
-    issuer: Optional[str] = Query(None),
-    currency: Optional[str] = Query(None),
-    token_data: dict = Depends(get_access_token),
-    request: Request = None
-):
-    logger.debug(f"Raw query string: {request.query_params}")
-    logger.info(f"Checking balances for wallets: {wallets}, token_type: {token_type}, issuer: {issuer}, currency: {currency}")
-    decoded_token_type = decode_hex_currency(token_type)
-    decoded_currency = decode_hex_currency(currency) if currency else decode_hex_currency(token_type)
-    logger.debug(f"Decoded parameters: token_type={decoded_token_type}, currency={decoded_currency}, issuer={issuer}")
-    
-    if decoded_token_type != "XRP" and (not issuer or not decoded_currency):
-        raise HTTPException(
-            status_code=400,
-            detail="Issuer and currency are required for token balance checks"
-        )
-    client = None
-    try:
-        client = await get_xrpl_client()
-        results = []
-        for wallet in wallets:
-            wallet.address = wallet.address.strip()
-            try:
-                account_info_request = AccountInfo(account=wallet.address, ledger_index="validated")
-                account_response = await asyncio.wait_for(client.request(account_info_request), timeout=30)
-                if not account_response.is_successful():
-                    logger.warning(f"Account {wallet.address} does not exist or is not funded: {account_response.result}")
-                    results.append({
-                        "address": wallet.address,
-                        "has_balance": False,
-                        "balance": 0.0,
-                        "error": "Account not found or not funded"
-                    })
-                    continue
-                xrp_balance = float(account_response.result["account_data"]["Balance"]) / 1_000_000
-                if xrp_balance < TRUSTLINE_RESERVE_XRP:
-                    logger.warning(f"Insufficient XRP balance for {wallet.address}: {xrp_balance} XRP")
-                    results.append({
-                        "address": wallet.address,
-                        "has_balance": False,
-                        "balance": 0.0,
-                        "error": f"Insufficient XRP balance ({xrp_balance} XRP) for trustline creation (requires {TRUSTLINE_RESERVE_XRP} XRP)"
-                    })
-                    continue
-
-                # Try GatewayBalances first
-                gateway_request = GatewayBalances(account=issuer, hotwallet=[wallet.address], ledger_index="validated")
-                gateway_response = await asyncio.wait_for(client.request(gateway_request), timeout=30)
-                balances = []
-                if gateway_response.is_successful():
-                    balances = gateway_response.result.get("assets", {}).get(wallet.address, [])
-                    logger.debug(f"Gateway balances for {wallet.address}: {balances}")
-                
-                has_balance = any(
-                    asset["currency"].strip().upper() == decoded_currency.strip().upper() and 
-                    float(asset["value"]) > 0
-                    for asset in balances
-                )
-                
-                # Fallback to account_lines if GatewayBalances fails or is empty
-                balance_value = 0.0
-                if not has_balance:
-                    trustline_request = GenericRequest(
-                        command="account_lines",
-                        account=wallet.address,
-                        ledger_index="validated"
-                    )
-                    trustline_response = await asyncio.wait_for(client.request(trustline_request), timeout=30)
-                    if trustline_response.is_successful():
-                        trustlines = trustline_response.result.get("lines", [])
-                        logger.debug(f"Fallback trustlines for {wallet.address}: {trustlines}")
-                        trustline = next(
-                            (
-                                line for line in trustlines
-                                if line["account"].strip() == issuer.strip() and 
-                                   decode_hex_currency(line["currency"]).strip().upper() == decoded_currency.strip().upper()
-                            ),
-                            None
-                        )
-                        if trustline and float(trustline.get("balance", 0.0)) > 0:
-                            has_balance = True
-                            balance_value = float(trustline["balance"])
-
-                results.append({
-                    "address": wallet.address,
-                    "has_balance": has_balance,
-                    "balance": balance_value,
-                    "error": None if has_balance else "No balance found"
-                })
-            except Exception as e:
-                logger.error(f"Error checking balance for {wallet.address}: {str(e)}")
-                results.append({
-                    "address": wallet.address,
-                    "has_balance": False,
-                    "balance": 0.0,
-                    "error": str(e)
-                })
-        logger.info("Balance check completed.")
-        return results
-    except Exception as e:
-        logger.error(f"Balance check error: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=(
-                "Failed to check balances: Ensure wallets are valid and funded on "
-                "the XRP Ledger Mainnet. Acquire XRP from an exchange like Coinbase or Bitstamp."
-            )
-        )
-    finally:
-        if client and client.is_open():
-            await client.close()
-
-@app.post("/check-balances")
-async def check_balances(
-    wallets: List[Wallet],
-    token_type: str = Query(...),
-    issuer: Optional[str] = Query(None),
-    currency: Optional[str] = Query(None),
-    token_data: dict = Depends(get_access_token),
-    request: Request = None
-):
-    logger.debug(f"Raw query string: {request.query_params}")
-    logger.info(f"Checking balances for wallets: {wallets}, token_type: {token_type}, issuer: {issuer}, currency: {currency}")
-    decoded_token_type = decode_hex_currency(token_type)
-    decoded_currency = decode_hex_currency(currency) if currency else decode_hex_currency(token_type)
-    logger.debug(f"Decoded parameters: token_type={decoded_token_type}, currency={decoded_currency}, issuer={issuer}")
-    
-    if decoded_token_type != "XRP" and (not issuer or not decoded_currency):
-        raise HTTPException(
-            status_code=400,
-            detail="Issuer and currency are required for token balance checks"
-        )
-    client = None
-    try:
-        client = await get_xrpl_client()
-        results = []
-        for wallet in wallets:
-            wallet.address = wallet.address.strip()
-            try:
-                account_info_request = AccountInfo(account=wallet.address, ledger_index="validated")
-                account_response = await asyncio.wait_for(client.request(account_info_request), timeout=30)
-                if not account_response.is_successful():
-                    logger.warning(f"Account {wallet.address} does not exist or is not funded: {account_response.result}")
-                    results.append({
-                        "address": wallet.address,
-                        "has_balance": False,
-                        "error": "Account not found or not funded"
-                    })
-                    continue
-                xrp_balance = float(account_response.result["account_data"]["Balance"]) / 1_000_000
-                if xrp_balance < TRUSTLINE_RESERVE_XRP:
-                    logger.warning(f"Insufficient XRP balance for {wallet.address}: {xrp_balance} XRP")
-                    results.append({
-                        "address": wallet.address,
-                        "has_balance": False,
-                        "error": f"Insufficient XRP balance ({xrp_balance} XRP) for trustline creation (requires {TRUSTLINE_RESERVE_XRP} XRP)"
-                    })
-                    continue
-
-                gateway_request = GatewayBalances(account=FLUX_ISSUER, hotwallet=[wallet.address], ledger_index="validated")
-                gateway_response = await asyncio.wait_for(client.request(gateway_request), timeout=30)
-                if not gateway_response.is_successful():
-                    logger.error(f"Gateway balances request failed for {wallet.address}: {gateway_response.result}")
-                    results.append({
-                        "address": wallet.address,
-                        "has_balance": False,
-                        "error": "Failed to fetch gateway balances"
-                    })
-                    continue
-
-                balances = gateway_response.result.get("assets", {}).get(wallet.address, [])
-                logger.debug(f"Gateway balances for {wallet.address}: {balances}")
-                has_balance = any(
-                    asset["currency"].strip().upper() == FLUX_CURRENCY.strip().upper() and 
-                    float(asset["value"]) > 0
-                    for asset in balances
-                )
-                results.append({
-                    "address": wallet.address,
-                    "has_balance": has_balance,
-                    "error": None if has_balance else "No FLUX balance found"
-                })
-            except Exception as e:
-                logger.error(f"Error checking balance for {wallet.address}: {str(e)}")
-                results.append({
-                    "address": wallet.address,
-                    "has_balance": False,
-                    "error": str(e)
-                })
-        logger.info("Balance check completed.")
-        return results
-    except Exception as e:
-        logger.error(f"Balance check error: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=(
-                "Failed to check balances: Ensure wallets are valid and funded on "
-                "the XRP Ledger Mainnet. Acquire XRP from an exchange like Coinbase or Bitstamp."
-            )
-        )
-    finally:
-        if client and client.is_open():
-            await client.close()
-
-# Replace the /check-trustlines endpoint
+# Update /check-trustlines to align with balance checks
 @app.post("/check-trustlines")
 async def check_trustlines(
     wallets: List[Wallet],
@@ -687,7 +363,7 @@ async def check_trustlines(
 ):
     logger.info(f"Checking trustlines for wallets: {wallets}, token_type: {token_type}, issuer: {issuer}, currency: {currency}")
     decoded_token_type = decode_hex_currency(token_type)
-    decoded_currency = decode_hex_currency(currency) if currency else decode_hex_currency(token_type)  # Fallback to token_type
+    decoded_currency = decode_hex_currency(currency) if currency else decode_hex_currency(token_type)
     if decoded_token_type != "XRP" and (not issuer or not decoded_currency):
         raise HTTPException(
             status_code=400,
@@ -703,7 +379,8 @@ async def check_trustlines(
                 if decoded_token_type == "XRP":
                     results.append({
                         "address": wallet.address,
-                        "has_trustline": True
+                        "has_trustline": True,
+                        "error": None
                     })
                 else:
                     account_info_request = AccountInfo(account=wallet.address, ledger_index="validated")
@@ -712,7 +389,8 @@ async def check_trustlines(
                         logger.warning(f"Account {wallet.address} does not exist or is not funded: {account_response.result}")
                         results.append({
                             "address": wallet.address,
-                            "has_trustline": False
+                            "has_trustline": False,
+                            "error": "Account not found or not funded"
                         })
                         continue
 
@@ -726,25 +404,29 @@ async def check_trustlines(
                         logger.error(f"Trustline request failed for {wallet.address}: {response.result}")
                         results.append({
                             "address": wallet.address,
-                            "has_trustline": False
+                            "has_trustline": False,
+                            "error": "Failed to fetch trustlines"
                         })
                         continue
 
                     trustlines = response.result.get("lines", [])
                     logger.info(f"Trustlines for wallet {wallet.address}: {trustlines}")
                     trustline_exists = any(
-                        line["account"] == issuer and decode_hex_currency(line["currency"]) == decoded_currency
+                        line["account"].strip() == issuer.strip() and 
+                        decode_hex_currency(line["currency"]).strip().upper() == decoded_currency.strip().upper()
                         for line in trustlines
                     )
                     results.append({
                         "address": wallet.address,
-                        "has_trustline": trustline_exists
+                        "has_trustline": trustline_exists,
+                        "error": None if trustline_exists else "No trustline found"
                     })
             except Exception as e:
                 logger.error(f"Error checking trustline for {wallet.address}: {str(e)}")
                 results.append({
                     "address": wallet.address,
-                    "has_trustline": False
+                    "has_trustline": False,
+                    "error": str(e)
                 })
         logger.info("Trustline check completed.")
         return results
@@ -752,15 +434,12 @@ async def check_trustlines(
         logger.error(f"Trustline check error: {str(e)}")
         raise HTTPException(
             status_code=500,
-            detail=(
-                "Failed to check trustlines: Ensure wallets are valid and have "
-                "trustlines set up on the XRP Ledger Mainnet. Acquire XRP from "
-                "an exchange like Coinbase or Bitstamp."
-            )
+            detail="Failed to check trustlines: Ensure wallets are valid on the XRP Ledger Mainnet."
         )
     finally:
         if client and client.is_open():
             await client.close()
+
 
 # Initiate OAuth with Xumm
 xumm = XummSdk(XAMAN_API_KEY, XAMAN_API_SECRET)

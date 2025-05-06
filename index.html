@@ -1565,7 +1565,7 @@
         const selectedOption = tokenTypeSelect.selectedOptions[0];
         const issuer = selectedOption.dataset.issuer || '';
         const currency = selectedOption.dataset.currency || tokenType;
-        
+
         console.log('Selected token details:', {
             tokenType,
             issuer,
@@ -1645,7 +1645,7 @@
             }
         }
 
-        // Step 3: Combine results and prioritize trustlines or XPmarket balances
+        // Step 3: Update UI based on trustline and balance results
         const walletInputs = document.getElementsByClassName('wallet-input');
         for (const input of walletInputs) {
             const address = input.querySelector('.wallet-address').value.trim();
@@ -1661,9 +1661,9 @@
                 statusBox.classList.add('valid');
                 showNotification(`Wallet ${address}: Has trustline, eligible for airdrop`, false);
             } else if (xpmarketMode && balanceResult && balanceResult.has_balance) {
-                // XPmarket Mode: Wallets with balance are green (treated as trustline-equivalent)
+                // XPmarket Mode: Wallets with balance are green
                 statusBox.classList.add('valid');
-                showNotification(`Wallet ${address}: Has ${tokenType} balance, eligible for airdrop (XPmarket mode)`, false);
+                showNotification(`Wallet ${address}: Has ${decodeHexCurrency(tokenType)} balance, eligible for airdrop (XPmarket mode)`, false);
             } else {
                 // No trustline or balance
                 statusBox.classList.add('invalid');
@@ -1674,7 +1674,7 @@
 
         const allEligible = trustlineData.every(result => result.has_trustline) || 
                            (xpmarketMode && balanceData.some(result => result.has_balance));
-        if (allEligible) {
+        if (allEligible && trustlineData.length > 0) {
             showNotification(`All wallets are eligible for airdrop${xpmarketMode ? ' (trustlines or balances)' : ' (trustlines)'}.`);
         } else {
             showNotification(`Some wallets are not eligible. Check the red (ineligible) markers.`, true);
