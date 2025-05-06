@@ -1642,7 +1642,11 @@
                 if (!Array.isArray(balanceData)) {
                     throw new Error('Invalid balance check response from server: Expected an array of results');
                 }
+            } else {
+                console.log('No wallets need balance check; all have trustlines or XPmarket mode is off.');
             }
+        } else {
+            console.log('XPmarket mode is off or token is XRP; skipping balance check.');
         }
 
         // Step 3: Update UI based on trustline and balance results
@@ -1659,12 +1663,14 @@
             const hasTrustline = trustlineResult && trustlineResult.has_trustline;
             const hasBalance = xpmarketMode && balanceResult && balanceResult.has_balance;
 
+            console.log(`Wallet ${address}: hasTrustline=${hasTrustline}, hasBalance=${hasBalance}, xpmarketMode=${xpmarketMode}`);
+
             if (hasTrustline || hasBalance) {
                 // Green box: Wallet has a trustline OR a balance (in XPmarket mode)
                 statusBox.classList.add('valid');
                 if (hasTrustline) {
                     showNotification(`Wallet ${address}: Has trustline for ${decodeHexCurrency(tokenType)}, eligible for airdrop`, false);
-                } else {
+                } else if (hasBalance) {
                     showNotification(`Wallet ${address}: Has ${decodeHexCurrency(tokenType)} balance (${balanceResult.balance} via ${balanceResult.balance_source}), eligible for airdrop (XPmarket mode)`, false);
                 }
             } else {
@@ -1676,7 +1682,7 @@
         }
 
         const allEligible = trustlineData.every(result => result.has_trustline) || 
-                           (xpmarketMode && balanceData.every(result => result.has_balance));
+                           (xpmarketMode && balanceData.length > 0 && balanceData.every(result => result.has_balance));
         if (allEligible && trustlineData.length > 0) {
             showNotification(`All wallets are eligible for airdrop${xpmarketMode ? ' (trustlines or balances)' : ' (trustlines)'}.`, false);
         } else {
