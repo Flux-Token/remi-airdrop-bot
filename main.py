@@ -334,15 +334,8 @@ async def check_balances(
                         "balance": 0.0,
                         "error": str(e)
                     })
-                            logger.error(f"Error checking balance for {wallet.address}: {str(e)}")
-                    results.append({
-                        "address": wallet.address,
-                        "has_balance": False,
-                        "balance": 0.0,
-                        "error": str(e)
-                    })
-        logger.info("Balance check completed.")
-        return results
+            logger.info("Balance check completed.")
+            return results
     except Exception as e:
         logger.error(f"Balance check error: {str(e)}")
         raise HTTPException(
