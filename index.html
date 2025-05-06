@@ -1577,14 +1577,16 @@
         const xpmarketMode = xpmarketModeCheckbox.checked;
         const endpoint = xpmarketMode ? '/check-balances' : '/check-trustlines';
         
-        let queryParams = `token_type=${encodeURIComponent(tokenType)}`;
+        const queryParams = new URLSearchParams();
+        queryParams.append('token_type', tokenType);
         if (tokenType !== 'XRP') {
             if (!issuer || !currency) {
                 throw new Error('Issuer or currency missing for selected token');
             }
-            queryParams += `&issuer=${encodeURIComponent(issuer)}¤cy=${encodeURIComponent(currency)}`;
+            queryParams.append('issuer', issuer);
+            queryParams.append('currency', currency);
         }
-        const query = `?${queryParams}`;
+        const query = `?${queryParams.toString()}`;
         
         console.log(`Checking ${xpmarketMode ? 'balances' : 'trustlines'} for wallets:`, wallets, 'Query:', query);
         const response = await fetch(`${BACKEND_URL}${endpoint}${query}`, {
