@@ -953,23 +953,40 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
-            console.log('DOM loaded, initializing...');
-            const audio = document.getElementById('loader-audio');
-            audio.volume = 0.5;
-            const playAudio = () => {
-                audio.play().catch(err => {
+    console.log('DOM loaded, initializing...');
+    try {
+        const audio = document.getElementById('loader-audio');
+        audio.volume = 0.5;
+
+        // Simplified audio playback logic with better error handling
+        const playAudio = () => {
+            const playPromise = audio.play();
+            if (playPromise !== undefined) {
+                playPromise.catch(err => {
                     console.warn('Audio playback failed:', err);
+                    // Add a click handler to retry audio playback on user interaction
                     document.addEventListener('click', () => {
                         audio.play().catch(e => console.warn('Audio playback failed on click:', e));
                     }, { once: true });
                 });
-            };
-            playAudio();
+            }
+        };
+        playAudio();
 
-            setTimeout(() => {
-                console.log('Preloader timeout reached, forcing main content display...');
-                showMainContent();
-            }, PRELOADER_TIMEOUT);
+        // Ensure the preloader timeout always executes, even if there are errors
+        setTimeout(() => {
+            console.log('Preloader timeout reached, forcing main content display...');
+            showMainContent();
+        }, PRELOADER_TIMEOUT);
+    } catch (error) {
+        console.error('Error in DOMContentLoaded event listener:', error);
+        // Ensure the preloader is hidden even if an error occurs
+        setTimeout(() => {
+            console.log('Preloader timeout reached (error fallback), forcing main content display...');
+            showMainContent();
+        }, PRELOADER_TIMEOUT);
+    }
+});
 
             const loginBtn = document.getElementById('login-btn');
             const loginLoader = document.getElementById('login-loader');
