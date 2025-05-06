@@ -220,7 +220,7 @@ async def check_balances(
         for wallet in wallets:
             wallet.address = wallet.address.strip()
             try:
-                # Check if the account exists
+                # Check if the account exists and has sufficient XRP
                 account_info_request = AccountInfo(account=wallet.address, ledger_index="validated")
                 account_response = await asyncio.wait_for(client.request(account_info_request), timeout=30)
                 if not account_response.is_successful():
@@ -229,6 +229,15 @@ async def check_balances(
                         "address": wallet.address,
                         "has_balance": False,
                         "error": "Account not found or not funded"
+                    })
+                    continue
+                xrp_balance = float(account_response.result["account_data"]["Balance"]) / 1_000_000
+                if xrp_balance < TRUSTLINE_RESERVE_XRP:
+                    logger.warning(f"Insufficient XRP balance for {wallet.address}: {xrp_balance} XRP")
+                    results.append({
+                        "address": wallet.address,
+                        "has_balance": False,
+                        "error": f"Insufficient XRP balance ({xrp_balance} XRP) for trustline creation (requires {TRUSTLINE_RESERVE_XRP} XRP)"
                     })
                     continue
 
@@ -249,18 +258,8 @@ async def check_balances(
                     continue
 
                 trustlines = trustline_response.result.get("lines", [])
-                trustline_exists = any(
-                    line["account"] == FLUX_ISSUER and decode_hex_currency(line["currency"]) == decode_hex_currency(FLUX_CURRENCY)
-                    for line in trustlines
-                )
-                if trustline_exists:
-                    results.append({
-                        "address": wallet.address,
-                        "has_balance": False,
-                        "error": "Trustline exists, not an XPmarket wallet"
-                    })
-                    continue
-
+                logger.debug(f"Trustlines for {wallet.address}: {trustlines}")
+                
                 # Check FLUX balance via gateway_balances
                 gateway_request = GatewayBalances(account=FLUX_ISSUER, hotwallet=[wallet.address], ledger_index="validated")
                 gateway_response = await asyncio.wait_for(client.request(gateway_request), timeout=30)
@@ -274,6 +273,7 @@ async def check_balances(
                     continue
 
                 balances = gateway_response.result.get("assets", {}).get(wallet.address, [])
+                logger.debug(f"Gateway balances for {wallet.address}: {balances}")
                 has_balance = any(
                     asset["currency"] == FLUX_CURRENCY and float(asset["value"]) > 0
                     for asset in balances

@@ -1540,6 +1540,7 @@
         });
 
         // Inside the DOMContentLoaded event listener, replace the checkTrustlinesBtn event listener
+        
         checkTrustlinesBtn.addEventListener('click', async () => {
     console.log('Check Trustlines/Balances clicked, accessToken:', getStorageItem('access_token'));
     checkTrustlinesBtn.disabled = true;
@@ -1563,9 +1564,8 @@
         const tokenType = tokenTypeSelect.value;
         const selectedOption = tokenTypeSelect.selectedOptions[0];
         const issuer = selectedOption.dataset.issuer || '';
-        const currency = selectedOption.dataset.currency || tokenType; // Fallback to tokenType
+        const currency = selectedOption.dataset.currency || tokenType;
         
-        // Debugging: Log token selection details
         console.log('Selected token details:', {
             tokenType,
             issuer,
@@ -1577,13 +1577,12 @@
         const xpmarketMode = xpmarketModeCheckbox.checked;
         const endpoint = xpmarketMode ? '/check-balances' : '/check-trustlines';
         
-        // Construct query string correctly
         let queryParams = `token_type=${encodeURIComponent(tokenType)}`;
         if (tokenType !== 'XRP') {
             if (!issuer || !currency) {
                 throw new Error('Issuer or currency missing for selected token');
             }
-            queryParams += `&issuer=${encodeURIComponent(issuer)}&currency=${encodeURIComponent(currency)}`;
+            queryParams += `&issuer=${encodeURIComponent(issuer)}¤cy=${encodeURIComponent(currency)}`;
         }
         const query = `?${queryParams}`;
         
@@ -1607,6 +1606,7 @@
             throw new Error(`HTTP error! status: ${response.status} - ${errorData.detail || 'Unknown error'}`);
         }
         const data = await response.json();
+        console.log(`${xpmarketMode ? 'Balances' : 'Trustlines'} response data:`, data);
         if (!Array.isArray(data)) {
             throw new Error(`Invalid ${xpmarketMode ? 'balance' : 'trustline'} check response from server: Expected an array of results`);
         }
@@ -1620,7 +1620,14 @@
                 statusBox.classList.remove('valid', 'invalid', 'balance-only');
                 statusBox.style.display = 'block';
                 if (xpmarketMode) {
-                    statusBox.classList.add(result.has_balance ? 'balance-only' : 'invalid');
+                    if (result.has_balance) {
+                        statusBox.classList.add('balance-only');
+                    } else if (result.error && result.error.includes('Insufficient XRP')) {
+                        statusBox.classList.add('invalid');
+                        showNotification(`Wallet ${address}: ${result.error}`, true);
+                    } else {
+                        statusBox.classList.add('invalid');
+                    }
                 } else {
                     statusBox.classList.add(result.has_trustline ? 'valid' : 'invalid');
                 }
