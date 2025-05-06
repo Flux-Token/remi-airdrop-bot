@@ -1575,7 +1575,6 @@
         });
 
         const xpmarketMode = xpmarketModeCheckbox.checked;
-        const endpoint = xpmarketMode ? '/check-balances' : '/check-trustlines';
         
         const queryParams = new URLSearchParams();
         queryParams.append('token_type', tokenType);
@@ -1588,8 +1587,9 @@
         }
         const query = `?${queryParams.toString()}`;
         
-        console.log(`Checking ${xpmarketMode ? 'balances' : 'trustlines'} for wallets:`, wallets, 'Query:', query);
-        const response = await fetch(`${BACKEND_URL}${endpoint}${query}`, {
+        // Step 1: Check trustlines for all wallets
+        console.log(`Checking trustlines for wallets:`, wallets, 'Query:', query);
+        const trustlineResponse = await fetch(`${BACKEND_URL}/check-trustlines${query}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -1598,64 +1598,91 @@
             },
             body: JSON.stringify(wallets)
         });
-        console.log(`${xpmarketMode ? 'Balances' : 'Trustlines'} response status:`, response.status);
-        const data = await response.json();
-        console.log(`${xpmarketMode ? 'Balances' : 'Trustlines'} response data:`, JSON.stringify(data, null, 2));
-        if (response.status === 401) {
+        console.log('Trustlines response status:', trustlineResponse.status);
+        const trustlineData = await trustlineResponse.json();
+        console.log('Trustlines response data:', JSON.stringify(trustlineData, null, 2));
+        if (trustlineResponse.status === 401) {
             handleUnauthorized();
             return;
         }
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status} - ${data.detail || 'Unknown error'}`);
+        if (!trustlineResponse.ok) {
+            throw new Error(`Trustline check failed! status: ${trustlineResponse.status} - ${trustlineData.detail || 'Unknown error'}`);
         }
-        if (!Array.isArray(data)) {
-            throw new Error(`Invalid ${xpmarketMode ? 'balance' : 'trustline'} check response from server: Expected an array of results`);
+        if (!Array.isArray(trustlineData)) {
+            throw new Error('Invalid trustline check response from server: Expected an array of results');
         }
 
-        const walletInputs = document.getElementsByClassName('wallet-input');
-        for (const input of walletInputs) {
-            const address = input.querySelector('.wallet-address').value.trim();
-            const result = data.find(w => w.address === address);
-            const statusBox = input.querySelector('.trustline-status-box');
-            if (result) {
-                statusBox.classList.remove('valid', 'invalid', 'balance-only');
-                statusBox.style.display = 'block';
-                if (xpmarketMode) {
-                    if (result.has_balance) {
-                        statusBox.classList.add('balance-only');
-                    } else {
-                        statusBox.classList.add('invalid');
-                        if (result.error) {
-                            showNotification(`Wallet ${address}: ${result.error}`, true);
-                        }
-                    }
-                } else {
-                    if (result.has_trustline) {
-                        statusBox.classList.add('valid');
-                    } else {
-                        statusBox.classList.add('invalid');
-                        if (result.error) {
-                            showNotification(`Wallet ${address}: ${result.error}`, true);
-                        }
-                    }
+        // Step 2: Check balances in XPmarket Mode for wallets without trustlines
+        let balanceData = [];
+        if (xpmarketMode && tokenType !== 'XRP') {
+            const walletsWithoutTrustline = trustlineData
+                .filter(result => !result.has_trustline)
+                .map(result => ({ address: result.address, amount: wallets.find(w => w.address === result.address).amount }));
+            if (walletsWithoutTrustline.length > 0) {
+                console.log(`Checking balances for wallets without trustlines:`, walletsWithoutTrustline, 'Query:', query);
+                const balanceResponse = await fetch(`${BACKEND_URL}/check-balances${query}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${getStorageItem('access_token')}`,
+                        'account': getStorageItem('account')
+                    },
+                    body: JSON.stringify(walletsWithoutTrustline)
+                });
+                console.log('Balances response status:', balanceResponse.status);
+                balanceData = await balanceResponse.json();
+                console.log('Balances response data:', JSON.stringify(balanceData, null, 2));
+                if (balanceResponse.status === 401) {
+                    handleUnauthorized();
+                    return;
                 }
-            } else {
-                statusBox.classList.remove('valid', 'invalid', 'balance-only');
-                statusBox.style.display = 'none';
-                showNotification(`No result for wallet ${address}`, true);
+                if (!balanceResponse.ok) {
+                    throw new Error(`Balance check failed! status: ${balanceResponse.status} - ${balanceData.detail || 'Unknown error'}`);
+                }
+                if (!Array.isArray(balanceData)) {
+                    throw new Error('Invalid balance check response from server: Expected an array of results');
+                }
             }
         }
 
-        const allEligible = data.every(w => xpmarketMode ? w.has_balance : w.has_trustline);
+        // Step 3: Combine results and prioritize trustlines
+        const walletInputs = document.getElementsByClassName('wallet-input');
+        for (const input of walletInputs) {
+            const address = input.querySelector('.wallet-address').value.trim();
+            const trustlineResult = trustlineData.find(w => w.address === address);
+            const balanceResult = balanceData.find(w => w.address === address);
+            const statusBox = input.querySelector('.trustline-status-box');
+            
+            statusBox.classList.remove('valid', 'invalid', 'balance-only');
+            statusBox.style.display = 'block';
+            
+            if (trustlineResult && trustlineResult.has_trustline) {
+                // Wallets with trustlines are always green
+                statusBox.classList.add('valid');
+                showNotification(`Wallet ${address}: Has trustline, eligible for airdrop`, false);
+            } else if (xpmarketMode && balanceResult && balanceResult.has_balance) {
+                // XPmarket Mode: Wallets with balance but no trustline are orange
+                statusBox.classList.add('balance-only');
+                showNotification(`Wallet ${address}: Has ${tokenType} balance without trustline, eligible for airdrop (XPmarket mode)`, false);
+            } else {
+                // No trustline or balance
+                statusBox.classList.add('invalid');
+                const error = (trustlineResult?.error || balanceResult?.error || 'No trustline or balance found');
+                showNotification(`Wallet ${address}: ${error}`, true);
+            }
+        }
+
+        const allEligible = trustlineData.every(result => result.has_trustline) || 
+                           (xpmarketMode && balanceData.some(result => result.has_balance));
         if (allEligible) {
-            showNotification(`All wallets are eligible for airdrop${xpmarketMode ? ' (have token balances)' : ' (have trustlines)'}.`);
+            showNotification(`All wallets are eligible for airdrop${xpmarketMode ? ' (trustlines or XPmarket balances)' : ' (trustlines)'}.`);
         } else {
-            showNotification(`Some wallets are not eligible. Check the ${xpmarketMode ? 'orange (balance)' : 'red (trustline)'} markers.`, true);
+            showNotification(`Some wallets are not eligible. Check the ${xpmarketMode ? 'orange (XPmarket balance) or red (ineligible)' : 'red (ineligible)'} markers.`, true);
         }
     } catch (error) {
-        console.error(`Error checking ${xpmarketMode ? 'balances' : 'trustlines'}:`, error);
+        console.error(`Error checking trustlines/balances:`, error);
         showNotification(
-            `Error checking ${xpmarketMode ? 'balances' : 'trustlines'}: ${error.message}. Ensure addresses are valid and funded on the XRP Ledger Mainnet.`,
+            `Error checking trustlines/balances: ${error.message}. Ensure addresses are valid and funded on the XRP Ledger Mainnet.`,
             true
         );
     } finally {
