@@ -75,6 +75,7 @@
             background: transparent;
             color: #fff;
             position: relative;
+            padding-top: 60px;
         }
 
         .main-content::-webkit-scrollbar {
@@ -82,13 +83,16 @@
         }
 
         header {
-            padding: 20px 0; 
-            text-align: center; 
-            background: transparent;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3); 
-            position: relative; 
-            z-index: 1;
-        }
+    position: fixed; /* Fix the header at the top */
+    top: 0;
+    left: 0;
+    width: 100%;
+    padding: 20px 0;
+    text-align: center;
+    background: transparent;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    z-index: 10; /* Ensure it stays above other content */
+}
 
         header h1 {
             font-family: 'Montserrat', sans-serif; 
@@ -104,14 +108,14 @@
         }
 
         .wallet-toggle {
-            position: absolute; 
-            top: 24px; 
-            right: 20px; 
-            z-index: 10;
-            font-size: 1.5em; 
-            cursor: pointer; 
-            transition: color 0.3s ease;
-        }
+    position: fixed; /* Fix the icon at the top */
+    top: 24px;
+    right: 20px;
+    z-index: 11; /* Above the header */
+    font-size: 1.5em;
+    cursor: pointer;
+    transition: color 0.3s ease;
+}
 
         .wallet-toggle.disconnected { 
             color: #6c757d; 
@@ -122,24 +126,24 @@
         }
 
         .disconnect-button {
-            position: absolute; 
-            top: 18px; 
-            right: 50px; 
-            z-index: 10;
-            background: linear-gradient(90deg, #ff6f61, #ff00ff); 
-            color: #fff; 
-            border: none;
-            padding: 6px 12px; 
-            border-radius: 15px; 
-            cursor: pointer;
-            font-family: 'Montserrat', sans-serif; 
-            font-size: 0.8em; 
-            font-weight: 600;
-            transition: all 0.3s ease; 
-            box-shadow: 0 3px 10px rgba(255, 111, 97, 0.4);
-            text-transform: uppercase; 
-            letter-spacing: 1px;
-        }
+    position: fixed; /* Fix the button at the top */
+    top: 18px;
+    right: 50px;
+    z-index: 11; /* Above the header */
+    background: linear-gradient(90deg, #ff6f61, #ff00ff);
+    color: #fff;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 15px;
+    cursor: pointer;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 0.8em;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 3px 10px rgba(255, 111, 97, 0.4);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
 
         .disconnect-button:hover {
             transform: translateY(-2px); 
@@ -650,100 +654,100 @@
         }
 
         @media (max-width: 600px) {
-            .container { 
-                padding: 10px; 
-            }
+    .container {
+        padding: 10px;
+    }
 
-            h1 {
-                margin-top: 50px;
-                font-size: 2em;
-            }
+    h1 {
+        margin-top: 50px;
+        font-size: 2em;
+    }
 
-            .wallet-input { 
-                max-width: 100%; 
-            }
+    .wallet-input {
+        max-width: 100%;
+    }
 
-            .wallet-input input.wallet-address {
-                max-width: 100%;
-                margin-bottom: 8px;
-                padding: 10px 25px 10px 10px;
-            }
+    .wallet-input input.wallet-address {
+        max-width: 100%;
+        margin-bottom: 8px;
+        padding: 10px 25px 10px 10px;
+    }
 
-            .wallet-input .amount-remove-group {
-                gap: 3px;
-                flex-wrap: wrap;
-                justify-content: center;
-            }
+    .wallet-input .amount-remove-group {
+        gap: 3px;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
 
-            .wallet-input input.wallet-amount {
-                margin-left: 0; 
-                margin-bottom: 8px;
-                width: 80px;
-                max-width: 80px;
-            }
+    .wallet-input input.wallet-amount {
+        margin-left: 0;
+        margin-bottom: 8px;
+        width: 80px;
+        max-width: 80px;
+    }
 
-            .wallet-input button { 
-                margin-left: 0; 
-                padding: 6px 10px;
-                font-size: 0.8em;
-            }
+    .wallet-input button {
+        margin-left: 0;
+        padding: 6px 10px;
+        font-size: 0.8em;
+    }
 
-            .wallet-input .trustline-status-box {
-                right: 8px;
-                top: 20px;
-                width: 12px;
-                height: 12px;
-            }
+    .wallet-input .trustline-status-box {
+        right: 8px;
+        top: 20px;
+        width: 12px;
+        height: 12px;
+    }
 
-            .notification, .fee-confirmation { 
-                padding: 8px 15px;
-                font-size: 0.85em; 
-            }
+    .notification, .fee-confirmation {
+        padding: 8px 15px;
+        font-size: 0.85em;
+    }
 
-            .wallet-address-display { 
-                font-size: 0.7em;
-                max-width: 80%;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                white-space: nowrap;
-                padding: 8px 12px;
-            }
+    .wallet-address-display {
+        font-size: 0.7em;
+        max-width: 80%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        padding: 8px 12px;
+    }
 
-            .wallet-toggle { 
-                top: 12px;
-                right: 8px; 
-                font-size: 1em;
-            }
+    .wallet-toggle {
+        top: 12px; /* Adjusted for fixed position */
+        right: 8px;
+        font-size: 1em;
+    }
 
-            .disconnect-button { 
-                top: 6px;
-                right: 30px;
-                font-size: 0.6em; 
-                padding: 3px 6px;
-            }
+    .disconnect-button {
+        top: 6px; /* Adjusted for fixed position */
+        right: 30px;
+        font-size: 0.6em;
+        padding: 3px 6px;
+    }
 
-            .form-section { 
-                max-width: 100%; 
-                padding: 15px; 
-            }
+    .form-section {
+        max-width: 100%;
+        padding: 15px;
+    }
 
-            .button-row {
-                gap: 5px;
-            }
+    .button-row {
+        gap: 5px;
+    }
 
-            .button-row button { 
-                min-width: 70px;
-                max-width: 90px;
-                font-size: 0.7em;
-                padding: 6px 6px;
-                margin: 2px;
-            }
+    .button-row button {
+        min-width: 70px;
+        max-width: 90px;
+        font-size: 0.7em;
+        padding: 6px 6px;
+        margin: 2px;
+    }
 
-            input, select {
-                max-width: 100%;
-                padding: 10px;
-            }
-        }
+    input, select {
+        max-width: 100%;
+        padding: 10px;
+    }
+}
 
         #results h2 {
             display: flex;
