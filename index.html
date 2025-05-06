@@ -1539,101 +1539,158 @@
             }
         });
 
+        // Inside the DOMContentLoaded event listener, replace the checkTrustlinesBtn event listener
         checkTrustlinesBtn.addEventListener('click', async () => {
-            console.log('Check Trustlines clicked, accessToken:', getStorageItem('access_token'));
-            checkTrustlinesBtn.disabled = true;
-            trustlinesLoader.style.display = 'inline-block';
-            try {
-                const wallets = Array.from(document.getElementsByClassName('wallet-input')).map(div => {
-                    const address = div.querySelector('.wallet-address').value.trim();
-                    const amountInput = div.querySelector('.wallet-amount').value.trim();
-                    if (!address) {
-                        throw new Error('Wallet address cannot be empty');
-                    }
-                    const amount = amountInput ? parseFloat(amountInput) : 0;
-                    if (isNaN(amount) || amount < 0) {
-                        throw new Error(`Invalid amount for address ${address}: ${amountInput}`);
-                    }
-                    return { address, amount };
-                });
-                if (wallets.length === 0) {
-                    throw new Error('At least one wallet is required');
-                }
-                const tokenType = tokenTypeSelect.value;
-                const selectedOption = tokenTypeSelect.selectedOptions[0];
-                const issuer = selectedOption.dataset.issuer || '';
-                const currency = selectedOption.dataset.currency || '';
-                const xpmarketMode = xpmarketModeCheckbox.checked;
-                const endpoint = xpmarketMode ? '/check-balances' : '/check-trustlines';
-                
-                let query = `?token_type=${encodeURIComponent(tokenType)}`;
-                if (tokenType !== 'XRP') {
-                    if (!issuer || !currency) {
-                        throw new Error('Issuer or currency missing for selected token');
-                    }
-                    query += `&issuer=${encodeURIComponent(issuer)}¤cy=${encodeURIComponent(currency)}`;
-                }
+    console.log('Check Trustlines/Balances clicked, accessToken:', getStorageItem('access_token'));
+    checkTrustlinesBtn.disabled = true;
+    trustlinesLoader.style.display = 'inline-block';
+    try {
+        const wallets = Array.from(document.getElementsByClassName('wallet-input')).map(div => {
+            const address = div.querySelector('.wallet-address').value.trim();
+            const amountInput = div.querySelector('.wallet-amount').value.trim();
+            if (!address) {
+                throw new Error('Wallet address cannot be empty');
+            }
+            const amount = amountInput ? parseFloat(amountInput) : 0;
+            if (isNaN(amount) || amount < 0) {
+                throw new Error(`Invalid amount for address ${address}: ${amountInput}`);
+            }
+            return { address, amount };
+        });
+        if (wallets.length === 0) {
+            throw new Error('At least one wallet is required');
+        }
+        const tokenType = tokenTypeSelect.value;
+        const selectedOption = tokenTypeSelect.selectedOptions[0];
+        const issuer = selectedOption.dataset.issuer || '';
+        const currency = selectedOption.dataset.currency || tokenType; // Fallback to tokenType
         
-                console.log(`Checking ${xpmarketMode ? 'balances' : 'trustlines'} for wallets:`, wallets, 'Query:', query);
-                const response = await fetch(`${BACKEND_URL}${endpoint}${query}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${getStorageItem('access_token')}`,
-                        'account': getStorageItem('account')
-                    },
-                    body: JSON.stringify(wallets)
-                });
-                console.log(`${xpmarketMode ? 'Balances' : 'Trustlines'} response:`, response);
-                if (response.status === 401) {
-                    handleUnauthorized();
-                    return;
-                }
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}));
-                    throw new Error(`HTTP error! status: ${response.status} - ${errorData.detail || 'Unknown error'}`);
-                }
-                const data = await response.json();
-                if (!Array.isArray(data)) {
-                    throw new Error(`Invalid ${xpmarketMode ? 'balance' : 'trustline'} check response from server: Expected an array of results`);
-                }
+        // Debugging: Log token selection details
+        console.log('Selected token details:', {
+            tokenType,
+            issuer,
+            currency,
+            datasetCurrency: selectedOption.dataset.currency,
+            datasetIssuer: selectedOption.dataset.issuer
+        });
+
+        const xpmarketMode = xpmarketModeCheckbox.checked;
+        const endpoint = xpmarketMode ? '/check-balances' : '/check-trustlines';
         
-                const walletInputs = document.getElementsByClassName('wallet-input');
-                for (const input of walletInputs) {
-                    const address = input.querySelector('.wallet-address').value.trim();
-                    const result = data.find(w => w.address === address);
-                    const statusBox = input.querySelector('.trustline-status-box');
-                    if (result) {
-                        statusBox.classList.remove('valid', 'invalid', 'balance-only');
-                        statusBox.style.display = 'block';
-                        if (xpmarketMode) {
-                            statusBox.classList.add(result.has_balance ? 'balance-only' : 'invalid');
-                        } else {
-                            statusBox.classList.add(result.has_trustline ? 'valid' : 'invalid');
-                        }
-                    } else {
-                        statusBox.classList.remove('valid', 'invalid', 'balance-only');
-                        statusBox.style.display = 'none';
-                    }
-                }
+        // Construct query string correctly
+        let queryParams = `token_type=${encodeURIComponent(tokenType)}`;
+        if (tokenType !== 'XRP') {
+            if (!issuer || !currency) {
+                throw new Error('Issuer or currency missing for selected token');
+            }
+            queryParams += `&issuer=${encodeURIComponent(issuer)}&currency=${encodeURIComponent(currency)}`;
+        }
+        const query = `?${queryParams}`;
         
-                const allEligible = data.every(w => xpmarketMode ? w.has_balance : w.has_trustline);
-                if (allEligible) {
-                    showNotification(`All wallets are eligible for airdrop${xpmarketMode ? ' (have token balances)' : ' (have trustlines)'}.`);
+        console.log(`Checking ${xpmarketMode ? 'balances' : 'trustlines'} for wallets:`, wallets, 'Query:', query);
+        const response = await fetch(`${BACKEND_URL}${endpoint}${query}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${getStorageItem('access_token')}`,
+                'account': getStorageItem('account')
+            },
+            body: JSON.stringify(wallets)
+        });
+        console.log(`${xpmarketMode ? 'Balances' : 'Trustlines'} response status:`, response.status);
+        if (response.status === 401) {
+            handleUnauthorized();
+            return;
+        }
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(`HTTP error! status: ${response.status} - ${errorData.detail || 'Unknown error'}`);
+        }
+        const data = await response.json();
+        if (!Array.isArray(data)) {
+            throw new Error(`Invalid ${xpmarketMode ? 'balance' : 'trustline'} check response from server: Expected an array of results`);
+        }
+
+        const walletInputs = document.getElementsByClassName('wallet-input');
+        for (const input of walletInputs) {
+            const address = input.querySelector('.wallet-address').value.trim();
+            const result = data.find(w => w.address === address);
+            const statusBox = input.querySelector('.trustline-status-box');
+            if (result) {
+                statusBox.classList.remove('valid', 'invalid', 'balance-only');
+                statusBox.style.display = 'block';
+                if (xpmarketMode) {
+                    statusBox.classList.add(result.has_balance ? 'balance-only' : 'invalid');
                 } else {
-                    showNotification(`Some wallets are not eligible. Check the ${xpmarketMode ? 'orange (balance)' : 'red (trustline)'} markers.`, true);
+                    statusBox.classList.add(result.has_trustline ? 'valid' : 'invalid');
                 }
-            } catch (error) {
-                console.error(`Error checking ${xpmarketMode ? 'balances' : 'trustlines'}:`, error);
-                showNotification(
-                    `Error checking ${xpmarketMode ? 'balances' : 'trustlines'}: ${error.message}. Ensure addresses are valid and funded on the XRP Ledger Mainnet.`,
-                    true
-                );
-            } finally {
-                checkTrustlinesBtn.disabled = false;
-                trustlinesLoader.style.display = 'none';
+            } else {
+                statusBox.classList.remove('valid', 'invalid', 'balance-only');
+                statusBox.style.display = 'none';
+            }
+        }
+
+        const allEligible = data.every(w => xpmarketMode ? w.has_balance : w.has_trustline);
+        if (allEligible) {
+            showNotification(`All wallets are eligible for airdrop${xpmarketMode ? ' (have token balances)' : ' (have trustlines)'}.`);
+        } else {
+            showNotification(`Some wallets are not eligible. Check the ${xpmarketMode ? 'orange (balance)' : 'red (trustline)'} markers.`, true);
+        }
+    } catch (error) {
+        console.error(`Error checking ${xpmarketMode ? 'balances' : 'trustlines'}:`, error);
+        showNotification(
+            `Error checking ${xpmarketMode ? 'balances' : 'trustlines'}: ${error.message}. Ensure addresses are valid and funded on the XRP Ledger Mainnet.`,
+            true
+        );
+    } finally {
+        checkTrustlinesBtn.disabled = false;
+        trustlinesLoader.style.display = 'none';
+    }
+});
+
+// Modify populateTokenDropdown for debugging
+async function populateTokenDropdown() {
+    console.log('Fetching token holdings...');
+    try {
+        const response = await fetch(`${BACKEND_URL}/get-tokens`, {
+            headers: {
+                'Authorization': `Bearer ${getStorageItem('access_token')}`,
+                'account': getStorageItem('account')
             }
         });
+        if (response.status === 401) {
+            handleUnauthorized();
+            return;
+        }
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(`HTTP error! status: ${response.status} - ${errorData.detail || 'Unknown error'}`);
+        }
+        const data = await response.json();
+        tokenData = data.tokens || [];
+        console.log('Token holdings received:', tokenData);
+        tokenTypeSelect.innerHTML = '<option value="XRP">XRP</option>';
+        tokenData.forEach(token => {
+            console.log('Processing token:', token);
+            const option = document.createElement('option');
+            option.value = token.currency;
+            option.textContent = decodeHexCurrency(token.currency);
+            option.dataset.issuer = token.issuer;
+            option.dataset.currency = token.currency;
+            tokenTypeSelect.appendChild(option);
+        });
+        if (tokenData.length === 0) {
+            showNotification('No tokens found in your wallet. Airdrop XRP or add trustlines on Mainnet.', true);
+        }
+    } catch (error) {
+        console.error('Error fetching tokens:', error);
+        showNotification(
+            `Error fetching token holdings: ${error.message}. Ensure your account is funded on the XRP Ledger Mainnet. ` +
+            `Acquire XRP from an exchange like Coinbase or Bitstamp.`,
+            true
+        );
+    }
+}
 
         function calculateServiceFee(walletCount) {
             const feePerWallet = 0.05;
