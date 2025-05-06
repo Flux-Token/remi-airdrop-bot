@@ -16,7 +16,14 @@
 
         body { 
             margin: 0;  
+            overflow-y: auto;
         }
+
+        #page-wrapper {
+                display: flex;
+                flex-direction: column;
+                min-height: 100vh; /* Ensure the page takes up at least the full viewport height */
+    }
 
         #background-video {
             position: fixed; 
@@ -61,16 +68,13 @@
         }
 
         .main-content {
-    display: none;
-    font-family: 'Montserrat', sans-serif;
-    flex-direction: column;
-    align-items: center; /* Center children horizontally */
-    min-height: 100vh;
-    background: transparent;
-    color: #fff;
-    position: relative;
-    overflow-y: auto;
-
+            display: none;
+            font-family: 'Montserrat', sans-serif;
+            flex-direction: column;
+            align-items: center; /* Center children horizontally */
+            background: transparent;
+            color: #fff;
+            position: relative;
         }
 
         .main-content::-webkit-scrollbar {
@@ -211,7 +215,6 @@
             display: flex; 
             flex-direction: column; 
             align-items: center; 
-            justify-content: center;
             padding: 30px;
             max-width: 800px; 
             width: 90%; 
@@ -439,31 +442,30 @@
             display: block;
         }
         #footer-container {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    z-index: 1;
-}
+            width: 100%;
+            z-index: 1;
+            margin-top: 30px; /* Add spacing above the footer to separate it from content */
+        }
 
-footer {
+        footer {
     background: linear-gradient(90deg, #ff6f61, #ff00ff);
     padding: 15px 0;
     text-align: center;
     font-size: 0.9em;
     box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
-}
+        }
 
-footer a {
-    color: #fff;
-    text-decoration: none;
-    transition: all 0.3s ease;
-}
+        footer a {
+            color: #fff;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
 
-footer a:hover {
-    color: #00d4ff;
-    text-decoration: underline;
-}
+        footer a:hover {
+            color: #00d4ff;
+            text-decoration: underline;
+        }
+
 
         @media (max-width: 600px) {
             .wallet-input .trustline-status-box {
@@ -789,86 +791,90 @@ footer a:hover {
     <div id="preloader">
         <div class="preloader-logo">REMI</div>
     </div>
+    <div id="page-wrapper"></div>
     <!-- Main content -->
-<div class="main-content">
-    <button id="disconnect-button" class="disconnect-button" style="display: none;">Disconnect</button>
-    <i id="wallet-toggle" class="fas fa-wallet wallet-toggle disconnected"></i>
-    <header>
-        <h1><i class="fas fa-rocket icon"></i> REMI Airdrop Bot</h1>
-    </header>
-    <div class="container">
-        <div id="wallet-address-container" class="wallet-address-container" style="display: none;">
-            <div id="wallet-address-display" class="wallet-address-display"></div>
-        </div>
-        <div class="form-section login" style="display: none;">
-            <button id="login-btn"><i class="fas fa-sign-in-alt icon"></i> Log in with Xaman <span class="loader" id="login-loader"></span></button>
-            <img id="qr-code" src="" alt="QR Code for Login">
-            <a id="qr-link" class="qr-link" href="#" target="_blank" style="display: none;">Open in Xaman</a>
-        </div>
-        <div id="airdrop-form" class="form-section">
-            <select id="token-type">
-                <option value="XRP">XRP</option>
-            </select>
-            <input type="number" id="total-amount" placeholder="Total Amount" step="0.000001" min="0" readonly>
-            <div id="wallet-list">
-                <div class="wallet-input">
-                    <input type="text" class="wallet-address" placeholder="Wallet Address">
-                    <div class="trustline-status-box"></div>
-                    <div class="amount-remove-group">
-                        <input type="number" class="wallet-amount" placeholder="Amount" step="0.000001" min="0">
-                        <button onclick="removeWallet(this)">Remove</button>
+<!-- Wrapper for main content and footer -->
+<div id="page-wrapper">
+    <!-- Main content -->
+    <div class="main-content">
+        <button id="disconnect-button" class="disconnect-button" style="display: none;">Disconnect</button>
+        <i id="wallet-toggle" class="fas fa-wallet wallet-toggle disconnected"></i>
+        <header>
+            <h1><i class="fas fa-rocket icon"></i> REMI Airdrop Bot</h1>
+        </header>
+        <div class="container">
+            <div id="wallet-address-container" class="wallet-address-container" style="display: none;">
+                <div id="wallet-address-display" class="wallet-address-display"></div>
+            </div>
+            <div class="form-section login" style="display: none;">
+                <button id="login-btn"><i class="fas fa-sign-in-alt icon"></i> Log in with Xaman <span class="loader" id="login-loader"></span></button>
+                <img id="qr-code" src="" alt="QR Code for Login">
+                <a id="qr-link" class="qr-link" href="#" target="_blank" style="display: none;">Open in Xaman</a>
+            </div>
+            <div id="airdrop-form" class="form-section">
+                <select id="token-type">
+                    <option value="XRP">XRP</option>
+                </select>
+                <input type="number" id="total-amount" placeholder="Total Amount" step="0.000001" min="0" readonly>
+                <div id="wallet-list">
+                    <div class="wallet-input">
+                        <input type="text" class="wallet-address" placeholder="Wallet Address">
+                        <div class="trustline-status-box"></div>
+                        <div class="amount-remove-group">
+                            <input type="number" class="wallet-amount" placeholder="Amount" step="0.000001" min="0">
+                            <button onclick="removeWallet(this)">Remove</button>
+                        </div>
                     </div>
                 </div>
+                <div class="button-row">
+                    <button onclick="addWallet()"><i class="fas fa-plus icon"></i> Add Wallet</button>
+                    <button id="check-balance-btn"><i class="fas fa-wallet icon"></i> Check Balance <span class="loader" id="balance-loader"></span></button>
+                    <button id="validate-wallets-btn"><i class="fas fa-check-circle icon"></i> Validate Wallets <span class="loader" id="validate-loader"></span></button>
+                    <button id="check-trustlines-btn"><i class="fas fa-link icon"></i> Check TrustLine <span class="loader" id="trustlines-loader"></span></button>
+                    <button id="proceed-btn"><i class="fas fa-paper-plane icon"></i> Proceed to Signing <span class="loader" id="proceed-loader"></span></button>
+                    <button id="csv-header-toggle"><i class="fas fa-table icon"></i> CSV Has Header: Yes</button>
+                    <label for="csv-upload-input" class="button"><i class="fas fa-upload icon"></i> Upload CSV</label>
+                    <input type="file" id="csv-upload-input" accept=".csv" style="display: none;">
+                </div>
             </div>
+            <div id="transaction-signing" class="form-section" style="display: none;">
+                <h2 id="transaction-title"></h2>
+                <img class="transaction-qr" src="" alt="Transaction QR Code">
+                <a class="transaction-qr-link qr-link" href="#" target="_blank">Open in Xaman</a>
+            </div>
+            <div id="results" class="form-section">
+                <h2>Airdrop Report <i class="fas fa-sync-alt refresh-icon" onclick="refreshAirdropReport()"></i></h2>
+                <p>Total Network Fee: N/A XRP</p>
+                <p>Total REMI Service Fee: N/A XRP</p>
+                <button id="back-button" class="button">Back to Airdrop Form</button>
+            </div>
+        </div>
+        <div id="notification-overlay" class="notification-overlay"></div>
+        <div id="notification" class="notification"></div>
+        <div id="fee-confirmation" class="fee-confirmation">
+            <p id="fee-message"></p>
+            <p class="disclaimer">Note: The fee is charged per wallet attempted, even if the transaction fails, to cover REMI's operational costs.</p>
             <div class="button-row">
-                <button onclick="addWallet()"><i class="fas fa-plus icon"></i> Add Wallet</button>
-                <button id="check-balance-btn"><i class="fas fa-wallet icon"></i> Check Balance <span class="loader" id="balance-loader"></span></button>
-                <button id="validate-wallets-btn"><i class="fas fa-check-circle icon"></i> Validate Wallets <span class="loader" id="validate-loader"></span></button>
-                <button id="check-trustlines-btn"><i class="fas fa-link icon"></i> Check TrustLine <span class="loader" id="trustlines-loader"></span></button>
-                <button id="proceed-btn"><i class="fas fa-paper-plane icon"></i> Proceed to Signing <span class="loader" id="proceed-loader"></span></button>
-                <button id="csv-header-toggle"><i class="fas fa-table icon"></i> CSV Has Header: Yes</button>
-                <label for="csv-upload-input" class="button"><i class="fas fa-upload icon"></i> Upload CSV</label>
-                <input type="file" id="csv-upload-input" accept=".csv" style="display: none;">
+                <button id="fee-agree-btn"><i class="fas fa-check icon"></i> Agree</button>
+                <button id="fee-disagree-btn"><i class="fas fa-times icon"></i> Disagree</button>
             </div>
         </div>
-        <div id="transaction-signing" class="form-section" style="display: none;">
-            <h2 id="transaction-title"></h2>
-            <img class="transaction-qr" src="" alt="Transaction QR Code">
-            <a class="transaction-qr-link qr-link" href="#" target="_blank">Open in Xaman</a>
-        </div>
-        <div id="results" class="form-section">
-            <h2>Airdrop Report <i class="fas fa-sync-alt refresh-icon" onclick="refreshAirdropReport()"></i></h2>
-            <p>Total Network Fee: N/A XRP</p>
-            <p>Total REMI Service Fee: N/A XRP</p>
-            <button id="back-button" class="button">Back to Airdrop Form</button>
+        <div id="trustline-warning" class="fee-confirmation">
+            <p id="trustline-warning-message"><span style="color: #dc3545;">Warning:</span> You’re sending to wallets flagged in RED for not having a mainnet trust line. You may proceed with the transaction, but we recommend checking each flagged wallet for a token balance first.</p>
+            <div class="button-row">
+                <button id="trustline-agree-btn"><i class="fas fa-check icon"></i> Agree</button>
+                <button id="trustline-disagree-btn"><i class="fas fa-times icon"></i> Disagree</button>
+            </div>
         </div>
     </div>
-    <div id="notification-overlay" class="notification-overlay"></div>
-    <div id="notification" class="notification"></div>
-    <div id="fee-confirmation" class="fee-confirmation">
-        <p id="fee-message"></p>
-        <p class="disclaimer">Note: The fee is charged per wallet attempted, even if the transaction fails, to cover REMI's operational costs.</p>
-        <div class="button-row">
-            <button id="fee-agree-btn"><i class="fas fa-check icon"></i> Agree</button>
-            <button id="fee-disagree-btn"><i class="fas fa-times icon"></i> Disagree</button>
-        </div>
-    </div>
-    <div id="trustline-warning" class="fee-confirmation">
-        <p id="trustline-warning-message"><span style="color: #dc3545;">Warning:</span> You’re sending to wallets flagged in RED for not having a mainnet trust line. You may proceed with the transaction, but we recommend checking each flagged wallet for a token balance first.</p>
-        <div class="button-row">
-            <button id="trustline-agree-btn"><i class="fas fa-check icon"></i> Agree</button>
-            <button id="trustline-disagree-btn"><i class="fas fa-times icon"></i> Disagree</button>
-        </div>
+
+    <!-- Footer container -->
+    <div id="footer-container" style="display: none;">
+        <footer>
+            <p>Powered by REMI | <a href="https://xrpl.org" target="_blank">Learn More</a></p>
+        </footer>
     </div>
 </div>
-
-<!-- Footer container -->
-<div id="footer-container" style="display: none;">
-    <footer>
-        <p>Powered by REMI | <a href="https://xrpl.org" target="_blank">Learn More</a></p>
-    </footer>
-</div>
-
     <audio id="loader-audio" src="https://static.wixstatic.com/mp3/15ad31_9eab52a3faee4738927cd3aed4e536d7.mp3" preload="auto" crossorigin="anonymous"></audio>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/decimal.js/10.3.1/decimal.min.js"></script>
@@ -1436,80 +1442,86 @@ const disconnectButton = document.getElementById('disconnect-button');
         }
 
         checkBalanceBtn.addEventListener('click', async () => {
-            console.log('Check Balance clicked, accessToken:', getStorageItem('access_token'));
-            checkBalanceBtn.disabled = true;
-            balanceLoader.style.display = 'inline-block';
-            try {
-                const tokenType = tokenTypeSelect.value;
-                const selectedOption = tokenTypeSelect.selectedOptions[0];
-                const issuer = selectedOption.dataset.issuer || '';
-                const currency = selectedOption.dataset.currency || '';
-                
-                let query = '';
-                if (tokenType !== 'XRP') {
-                    if (!issuer || !currency) {
-                        throw new Error('Issuer or currency missing for selected token');
-                    }
-                    if (!issuer.startsWith('r') || issuer.length < 25 || issuer.length > 35) {
-                        throw new Error('Invalid issuer address for selected token');
-                    }
-                    query = `?issuer=${encodeURIComponent(issuer)}¤cy=${encodeURIComponent(currency)}`;
-                }
-                
-                console.log('Fetching balance with query:', query);
-                const response = await fetch(`${BACKEND_URL}/balance${query}`, {
-                    headers: {
-                        'Authorization': `Bearer ${getStorageItem('access_token')}`,
-                        'account': getStorageItem('account')
-                    }
-                });
-                if (response.status === 401) {
-                    handleUnauthorized();
-                    return;
-                }
-                if (response.status === 404) {
-                    showNotification(
-                        'No funded XRPL account linked in Xaman. Please create and fund an account on Mainnet at https://xrpl.org. ' +
-                        'Acquire XRP from an exchange like Coinbase or Bitstamp.',
-                        true
-                    );
-                    return;
-                }
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}));
-                    throw new Error(`HTTP error! status: ${response.status} - ${errorData.detail || 'Unknown error'}`);
-                }
-                const data = await response.json();
-                console.log('Balance response:', data);
-                if (tokenType !== 'XRP') {
-                    if (typeof data.balance_token !== 'undefined' && data.currency && data.account) {
-                        showNotification(`Balance: ${data.balance_token} ${data.currency} (Account: ${data.account})`);
-                    } else {
-                        console.warn('Invalid token balance response:', data);
-                        showNotification(
-                            `Unable to retrieve token balance for ${tokenType}. Ensure the account has a trustline for this token.`,
-                            true
-                        );
-                    }
-                } else {
-                    if (data.balance_xrp && data.account) {
-                        showNotification(`Balance: ${data.balance_xrp} XRP (Account: ${data.account})`);
-                    } else {
-                        throw new Error('Invalid XRP balance response from server');
-                    }
-                }
-            } catch (error) {
-                console.error('Error checking balance:', error);
-                showNotification(
-                    `Error checking balance: ${error.message}. Ensure your account is funded and has a trustline for the token (if applicable) on Mainnet at https://xrpl.org. ` +
-                    `Acquire XRP from an exchange like Coinbase or Bitstamp.`,
-                    true
-                );
-            } finally {
-                checkBalanceBtn.disabled = false;
-                balanceLoader.style.display = 'none';
+    console.log('Check Balance clicked, accessToken:', getStorageItem('access_token'));
+    checkBalanceBtn.disabled = true;
+    balanceLoader.style.display = 'inline-block';
+    try {
+        const tokenType = tokenTypeSelect.value;
+        const selectedOption = tokenTypeSelect.selectedOptions[0];
+        const issuer = selectedOption.dataset.issuer || '';
+        const currency = selectedOption.dataset.currency || '';
+        
+        let query = '';
+        if (tokenType !== 'XRP') {
+            if (!issuer || !currency) {
+                throw new Error('Issuer or currency missing for selected token');
+            }
+            if (!issuer.startsWith('r') || issuer.length < 25 || issuer.length > 35) {
+                throw new Error('Invalid issuer address for selected token');
+            }
+            query = `?issuer=${encodeURIComponent(issuer)}¤cy=${encodeURIComponent(currency)}`;
+        }
+        
+        console.log('Fetching balance with query:', query);
+        const response = await fetch(`${BACKEND_URL}/balance${query}`, {
+            headers: {
+                'Authorization': `Bearer ${getStorageItem('access_token')}`,
+                'account': getStorageItem('account')
             }
         });
+        if (response.status === 401) {
+            handleUnauthorized();
+            return;
+        }
+        if (response.status === 404) {
+            showNotification(
+                'No funded XRPL account linked in Xaman. Please create and fund an account on Mainnet at https://xrpl.org. ' +
+                'Acquire XRP from an exchange like Coinbase or Bitstamp.',
+                true
+            );
+            return;
+        }
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(`HTTP error! status: ${response.status} - ${errorData.detail || 'Unknown error'}`);
+        }
+        const data = await response.json();
+        console.log('Balance response:', data);
+
+        const tokenName = tokenType === 'XRP' ? 'XRP' : decodeHexCurrency(tokenType);
+        if (tokenType !== 'XRP') {
+            if (typeof data.balance_token !== 'undefined' && data.currency && data.account) {
+                showNotification(
+                    `Total Available Balance: ${data.balance_token} ${tokenName} (Signed in as: ${data.account})`
+                );
+            } else {
+                console.warn('Invalid token balance response:', data);
+                showNotification(
+                    `Unable to retrieve total balance for ${tokenName}. Ensure the account has a trustline for this token.`,
+                    true
+                );
+            }
+        } else {
+            if (data.balance_xrp && data.account) {
+                showNotification(
+                    `Total Available Balance: ${data.balance_xrp} XRP (Signed in as: ${data.account})`
+                );
+            } else {
+                throw new Error('Invalid XRP balance response from server');
+            }
+        }
+    } catch (error) {
+        console.error('Error checking balance:', error);
+        showNotification(
+            `Error checking balance: ${error.message}. Ensure your account is funded and has a trustline for the token (if applicable) on Mainnet at https://xrpl.org. ` +
+            `Acquire XRP from an exchange like Coinbase or Bitstamp.`,
+            true
+        );
+    } finally {
+        checkBalanceBtn.disabled = false;
+        balanceLoader.style.display = 'none';
+    }
+});
 
         validateWalletsBtn.addEventListener('click', async () => {
             console.log('Validate Wallets clicked, accessToken:', getStorageItem('access_token'));
