@@ -786,6 +786,23 @@
                         </div>
                     </div>
                 </div>
+                <div id="fee-confirmation" class="fee-confirmation">
+                    <p id="fee-message"></p>
+                    <p class="disclaimer">Note: The fee is charged per wallet attempted, even if the transaction fails, to cover REMI's operational costs.</p>
+                    <div class="button-row">
+                        <button id="fee-agree-btn"><i class="fas fa-check icon"></i> Agree</button>
+                        <button id="fee-disagree-btn"><i class="fas fa-times icon"></i> Disagree</button>
+                    </div>
+                </div>
+                
+                <!-- New trustline-warning div -->
+                <div id="trustline-warning" class="fee-confirmation">
+                    <p id="trustline-warning-message"><span style="color: #dc3545;">Warning:</span> You’re sending to wallets flagged in RED for not having a mainnet trust line. You may proceed with the transaction, but we recommend checking each flagged wallet for a token balance first.</p>
+                    <div class="button-row">
+                        <button id="trustline-agree-btn"><i class="fas fa-check icon"></i> Agree</button>
+                        <button id="trustline-disagree-btn"><i class="fas fa-times icon"></i> Disagree</button>
+                    </div>
+                </div>
                 <div class="button-row">
                     <button onclick="addWallet()"><i class="fas fa-plus icon"></i> Add Wallet</button>
                     <button id="check-balance-btn"><i class="fas fa-wallet icon"></i> Check Balance <span class="loader" id="balance-loader"></span></button>
@@ -1754,148 +1771,186 @@ async function populateTokenDropdown() {
         }
 
         proceedBtn.addEventListener('click', async () => {
-            console.log('Proceed to Signing clicked, accessToken:', getStorageItem('access_token'));
-            const wallets = Array.from(document.getElementsByClassName('wallet-input')).map(div => ({
-                address: div.querySelector('.wallet-address').value.trim(),
-                amount: parseFloat(div.querySelector('.wallet-amount').value.trim()) || 0
-            })).filter(wallet => wallet.amount > 0);
-            if (wallets.length === 0) {
-                showNotification('At least one wallet with a non-zero amount is required.', true);
-                return;
-            }
-            const xpmarketMode = xpmarketModeCheckbox.checked;
-            const serviceFee = calculateServiceFee(wallets.length);
-            feeMessage.textContent = `You will be charged a REMI service fee of ${serviceFee} XRP to proceed with the airdrop. MAX 5 XRP`;
-            feeConfirmation.style.display = 'flex';
+    console.log('Proceed to Signing clicked, accessToken:', getStorageItem('access_token'));
+    const wallets = Array.from(document.getElementsByClassName('wallet-input')).map(div => ({
+        address: div.querySelector('.wallet-address').value.trim(),
+        amount: parseFloat(div.querySelector('.wallet-amount').value.trim()) || 0
+    })).filter(wallet => wallet.amount > 0);
+    if (wallets.length === 0) {
+        showNotification('At least one wallet with a non-zero amount is required.', true);
+        return;
+    }
+    const xpmarketMode = xpmarketModeCheckbox.checked;
+    const serviceFee = calculateServiceFee(wallets.length);
+    feeMessage.textContent = `You will be charged a REMI service fee of ${serviceFee} XRP to proceed with the airdrop. MAX 5 XRP`;
+    feeConfirmation.style.display = 'flex';
+    notificationOverlay.style.display = 'block';
+
+    feeAgreeBtn.onclick = async () => {
+        feeConfirmation.style.display = 'none';
+        notificationOverlay.style.display = 'none';
+
+        // Check for red-flagged wallets (invalid trustline status)
+        const hasRedFlaggedWallets = Array.from(document.getElementsByClassName('wallet-input')).some(div => {
+            const statusBox = div.querySelector('.trustline-status-box');
+            return statusBox.classList.contains('invalid');
+        });
+
+        if (hasRedFlaggedWallets && !xpmarketMode) {
+            // Show trustline warning popup if there are red-flagged wallets and XPmarket mode is off
+            document.getElementById('trustline-warning').style.display = 'flex';
             notificationOverlay.style.display = 'block';
 
-            feeAgreeBtn.onclick = async () => {
-                feeConfirmation.style.display = 'none';
+            document.getElementById('trustline-agree-btn').onclick = async () => {
+                document.getElementById('trustline-warning').style.display = 'none';
                 notificationOverlay.style.display = 'none';
-                proceedBtn.disabled = true;
-                proceedLoader.style.display = 'inline-block';
-                airdropForm.style.display = 'none';
-                resultsDiv.innerHTML = '';
-                resultsDiv.style.display = 'none';
-                transactionSigning.style.display = 'block';
-                try {
-                    const tokenType = tokenTypeSelect.value;
-                    const selectedOption = tokenTypeSelect.selectedOptions[0];
-                    const issuer = selectedOption.dataset.issuer || '';
-                    const currency = selectedOption.dataset.currency || '';
-                    const totalAmount = wallets.reduce((sum, wallet) => sum + (wallet.amount || 0), 0);
-                    const account = getStorageItem('account');
+                await proceedWithAirdrop(wallets, tokenTypeSelect, serviceFee, xpmarketMode);
+            };
 
-                    let query = `?token_type=${encodeURIComponent(tokenType)}`;
-                    if (tokenType !== 'XRP') {
-                        query += `&issuer=${encodeURIComponent(issuer)}¤cy=${encodeURIComponent(currency)}`;
-                    }
-                    query += `&xpmarket_mode=${xpmarketMode}`;
+            document.getElementById('trustline-disagree-btn').onclick = () => {
+                document.getElementById('trustline-warning').style.display = 'none';
+                notificationOverlay.style.display = 'none';
+                showNotification('Airdrop cancelled due to trustline warning disagreement.', true);
+            };
+        } else {
+            // Proceed directly if no red-flagged wallets or XPmarket mode is on
+            await proceedWithAirdrop(wallets, tokenTypeSelect, serviceFee, xpmarketMode);
+        }
+    };
 
-                    console.log('Fetching airdrop data with query:', query);
-                    const response = await fetch(`${BACKEND_URL}/airdrop${query}`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${getStorageItem('access_token')}`,
-                            'account': account
-                        },
-                        body: JSON.stringify({
-                            token_type: tokenType,
-                            total_amount: totalAmount,
-                            issuer: tokenType !== 'XRP' ? issuer : null,
-                            currency: tokenType !== 'XRP' ? currency : null,
-                            wallets: wallets,
-                            account: account
-                        })
-                    });
+    feeDisagreeBtn.onclick = () => {
+        feeConfirmation.style.display = 'none';
+        notificationOverlay.style.display = 'none';
+        showNotification('Airdrop cancelled due to fee disagreement.', true);
+    };
+});
 
-                    if (response.status === 401) {
-                        handleUnauthorized();
-                        return;
-                    }
-                    if (!response.ok) {
-                        const errorData = await response.json().catch(() => ({}));
-                        throw new Error(`HTTP error! status: ${response.status} - ${JSON.stringify(errorData.detail || 'Unknown error')}`);
-                    }
-                    const data = await response.json();
-                    console.log('Airdrop response:', data);
+// New function to handle airdrop process
+async function proceedWithAirdrop(wallets, tokenTypeSelect, serviceFee, xpmarketMode) {
+    proceedBtn.disabled = true;
+    proceedLoader.style.display = 'inline-block';
+    airdropForm.style.display = 'none';
+    resultsDiv.innerHTML = '';
+    resultsDiv.style.display = 'none';
+    transactionSigning.style.display = 'block';
+    try {
+        const tokenType = tokenTypeSelect.value;
+        const selectedOption = tokenTypeSelect.selectedOptions[0];
+        const issuer = selectedOption.dataset.issuer || '';
+        const currency = selectedOption.dataset.currency || '';
+        const totalAmount = wallets.reduce((sum, wallet) => sum + (wallet.amount || 0), 0);
+        const account = getStorageItem('account');
 
-                    if (data.fee_transaction) {
-                        transactionTitle.textContent = `Sign REMI Service Fee Payment (${serviceFee} XRP)`;
-                        transactionQr.src = `https://xumm.app/sign/${data.fee_transaction.payload_uuid}_q.png`;
-                        transactionQr.style.display = 'block';
-                        transactionQrLink.href = data.fee_transaction.sign_url;
-                        transactionQrLink.style.display = 'block';
-                        showNotification(`Please authorize the REMI Service Fee payment of ${serviceFee} XRP in Xaman.`);
-                        await new Promise(resolve => setTimeout(resolve, 1000));
-                        const feeSigned = await pollTransaction(data.fee_transaction.payload_uuid, 0, 0, true);
-                        if (!feeSigned) {
-                            allSigned = false;
-                            showNotification('Fee payment not authorized. Airdrop cancelled.', true);
-                            proceedBtn.disabled = false;
-                            proceedLoader.style.display = 'none';
-                            return;
-                        }
-                        console.log('Fee signed, proceeding to airdrop transactions');
-                    }
+        let query = `?token_type=${encodeURIComponent(tokenType)}`;
+        if (tokenType !== 'XRP') {
+            query += `&issuer=${encodeURIComponent(issuer)}¤cy=${encodeURIComponent(currency)}`;
+        }
+        query += `&xpmarket_mode=${xpmarketMode}`;
 
-                    let allSigned = true;
-                    if (!data.transactions || data.transactions.length === 0) {
-                        showNotification('No airdrop transactions generated. Check wallet data or server response.', true);
-                        proceedBtn.disabled = false;
-                        proceedLoader.style.display = 'none';
-                        return;
-                    }
-                    const total = data.transactions.length;
-                    for (const [index, tx] of data.transactions.entries()) {
-                        if (!tx.payload_uuid || !tx.sign_url || !tx.status) {
-                            showNotification(`Invalid transaction data for transaction ${index + 1}`, true);
-                            allSigned = false;
-                            break;
-                        }
-                        transactionTitle.textContent = `Sign Transaction ${index + 1} of ${total} (${tx.status.address})`;
-                        transactionTitle.setAttribute('title', tx.status.address);
-                        transactionQr.src = `https://xumm.app/sign/${tx.payload_uuid}_q.png`;
-                        transactionQr.style.display = 'block';
-                        transactionQrLink.href = tx.sign_url;
-                        transactionQrLink.style.display = 'block';
-                        showNotification(`Airdrop initiated. Please authorize transaction ${index + 1}/${total} in Xaman.`);
-                        await new Promise(resolve => setTimeout(resolve, 1000));
-                        const signed = await pollTransaction(tx.payload_uuid, index, total);
-                        if (!signed) {
-                            allSigned = false;
-                            break;
-                        }
-                    }
+        console.log('Fetching airdrop data with query:', query);
+        const response = await fetch(`${BACKEND_URL}/airdrop${query}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${getStorageItem('access_token')}`,
+                'account': account
+            },
+            body: JSON.stringify({
+                token_type: tokenType,
+                total_amount: totalAmount,
+                issuer: tokenType !== 'XRP' ? issuer : null,
+                currency: tokenType !== 'XRP' ? currency : null,
+                wallets: wallets,
+                account: account
+            })
+        });
 
-                    if (allSigned) {
-                        showNotification('Airdrop transactions authorized successfully!');
-                        resultsDiv.innerHTML = '<h2>Airdrop Results</h2>' + data.transactions.map((tx, index) => `
-                            <p>Transaction ${index + 1}: ${tx.status.address} - ${tx.txid || 'Pending'}</p>
-                        `).join('') + '<button id="back-button" class="button">Back to Airdrop Form</button>';
-                        resultsDiv.style.display = 'block';
-                        const newBackButton = document.getElementById('back-button');
-                        if (newBackButton) {
-                            console.log('Back button found, attaching event listener');
-                            newBackButton.addEventListener('click', () => {
-                                console.log('Back to Airdrop Form button clicked');
-                                clearForm();
-                            });
-                        } else {
-                            console.error('Back button not found after updating resultsDiv');
-                        }
-                    } else {
-                        showNotification('Some airdrop transactions failed or were not authorized.', true);
-                    }
-                } catch (error) {
-                    console.error('Error during airdrop:', error);
-                    showNotification(`Error during airdrop process: ${error.message}`, true);
-                } finally {
-                    proceedBtn.disabled = false;
-                    proceedLoader.style.display = 'none';
-                    transactionSigning.style.display = 'none';
-                }
+        if (response.status === 401) {
+            handleUnauthorized();
+            return;
+        }
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(`HTTP error! status: ${response.status} - ${JSON.stringify(errorData.detail || 'Unknown error')}`);
+        }
+        const data = await response.json();
+        console.log('Airdrop response:', data);
+
+        if (data.fee_transaction) {
+            transactionTitle.textContent = `Sign REMI Service Fee Payment (${serviceFee} XRP)`;
+            transactionQr.src = `https://xumm.app/sign/${data.fee_transaction.payload_uuid}_q.png`;
+            transactionQr.style.display = 'block';
+            transactionQrLink.href = data.fee_transaction.sign_url;
+            transactionQrLink.style.display = 'block';
+            showNotification(`Please authorize the REMI Service Fee payment of ${serviceFee} XRP in Xaman.`);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            const feeSigned = await pollTransaction(data.fee_transaction.payload_uuid, 0, 0, true);
+            if (!feeSigned) {
+                showNotification('Fee payment not authorized. Airdrop cancelled.', true);
+                proceedBtn.disabled = false;
+                proceedLoader.style.display = 'none';
+                return;
+            }
+            console.log('Fee signed, proceeding to airdrop transactions');
+        }
+
+        let allSigned = true;
+        if (!data.transactions || data.transactions.length === 0) {
+            showNotification('No airdrop transactions generated. Check wallet data or server response.', true);
+            proceedBtn.disabled = false;
+            proceedLoader.style.display = 'none';
+            return;
+        }
+        const total = data.transactions.length;
+        for (const [index, tx] of data.transactions.entries()) {
+            if (!tx.payload_uuid || !tx.sign_url || !tx.status) {
+                showNotification(`Invalid transaction data for transaction ${index + 1}`, true);
+                allSigned = false;
+                break;
+            }
+            transactionTitle.textContent = `Sign Transaction ${index + 1} of ${total} (${tx.status.address})`;
+            transactionTitle.setAttribute('title', tx.status.address);
+            transactionQr.src = `https://xumm.app/sign/${tx.payload_uuid}_q.png`;
+            transactionQr.style.display = 'block';
+            transactionQrLink.href = tx.sign_url;
+            transactionQrLink.style.display = 'block';
+            showNotification(`Airdrop initiated. Please authorize transaction ${index + 1}/${total} in Xaman.`);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            const signed = await pollTransaction(tx.payload_uuid, index, total);
+            if (!signed) {
+                allSigned = false;
+                break;
+            }
+        }
+
+        if (allSigned) {
+            showNotification('Airdrop transactions authorized successfully!');
+            resultsDiv.innerHTML = '<h2>Airdrop Results</h2>' + data.transactions.map((tx, index) => `
+                <p>Transaction ${index + 1}: ${tx.status.address} - ${tx.txid || 'Pending'}</p>
+            `).join('') + '<button id="back-button" class="button">Back to Airdrop Form</button>';
+            resultsDiv.style.display = 'block';
+            const newBackButton = document.getElementById('back-button');
+            if (newBackButton) {
+                console.log('Back button found, attaching event listener');
+                newBackButton.addEventListener('click', () => {
+                    console.log('Back to Airdrop Form button clicked');
+                    clearForm();
+                });
+            } else {
+                console.error('Back button not found after updating resultsDiv');
+            }
+        } else {
+            showNotification('Some airdrop transactions failed or were not authorized.', true);
+        }
+    } catch (error) {
+        console.error('Error during airdrop:', error);
+        showNotification(`Error during airdrop process: ${error.message}`, true);
+    } finally {
+        proceedBtn.disabled = false;
+        proceedLoader.style.display = 'none';
+        transactionSigning.style.display = 'none';
+    }
+
             };
 
             feeDisagreeBtn.onclick = () => {
@@ -1903,7 +1958,7 @@ async function populateTokenDropdown() {
                 notificationOverlay.style.display = 'none';
                 showNotification('Airdrop cancelled due to fee disagreement.', true);
             };
-        });
+        
 
         function showNotification(message, isError = false) {
             if (notificationTimeout) {
