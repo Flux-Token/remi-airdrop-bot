@@ -550,6 +550,48 @@
             justify-content: center;
         }
 
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+        }
+        .modal-content {
+            background-color: white;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 500px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .modal-buttons {
+            margin-top: 20px;
+        }
+        .modal-buttons button {
+            padding: 10px 20px;
+            margin: 0 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .cancel-btn {
+            background-color: #ccc;
+        }
+        .proceed-btn {
+            background-color: #4CAF50;
+            color: white;
+        }
+        .warning-text {
+            color: red;
+            font-weight: bold;
+        }
+
         .loader {
             display: none; 
             border: 4px solid rgba(255, 255, 255, 0.2);
@@ -560,6 +602,7 @@
             animation: spin 1s linear infinite; 
             margin: 0 10px;
         }
+
 
         #qr-code, .transaction-qr {
             display: none; 
@@ -778,8 +821,25 @@
                         <input type="text" class="wallet-address" placeholder="Wallet Address">
                         <div class="trustline-status-box"></div>
                         <div class="amount-remove-group">
-                            <input type="number" class="wallet-amount" placeholder="Amount" step="0.000001" min="0">
+                            <div id="feeModal" class="modal">
+                                <div class="modal-content">
+                                    <p>You will be charged a REMI service fee...</p>
+                                    <div class="modal-buttons">
+                                        <button id="feeCancelBtn" class="cancel-btn">Cancel</button>
+                                        <button id="feeProceedBtn" class="proceed-btn">Proceed</button>
+                                    </div>
+                                </div>
+                            </div>               <input type="number" class="wallet-amount" placeholder="Amount" step="0.000001" min="0">
                             <button onclick="removeWallet(this)">Remove</button>
+                        </div>
+                        <div id="redWalletModal" class="modal">
+                            <div class="modal-content">
+                                <p><span class="warning-text">Warning:</span> You’re sending to wallets flagged in <span style="color: red;">RED</span> for not having a mainnet trust line. You may proceed with the transaction, but we recommend checking each flagged wallet for a token balance first.</p>
+                                <div class="modal-buttons">
+                                    <button id="redWalletCancelBtn" class="cancel-btn">Cancel</button>
+                                    <button id="redWalletProceedBtn" class="proceed-btn">Proceed</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -863,6 +923,158 @@
                 mainContent.style.display = 'block';
             }, 500);
         }
+
+        // Function to show a modal
+        function showModal(modalId) {
+            const modal = document.getElementById(modalId);
+            modal.style.display = 'block';
+        }
+
+        // Function to hide a modal
+        function hideModal(modalId) {
+            const modal = document.getElementById(modalId);
+            modal.style.display = 'none';
+        }
+
+        // Existing checkTrustlinesBtn event listener (unchanged)
+        // Assuming it already flags wallets as valid/invalid
+
+        // Modify the sendAirdropBtn event listener to include the second popup
+        const sendAirdropBtn = document.getElementById('sendAirdropBtn'); // Adjust ID as needed
+        sendAirdropBtn.addEventListener('click', async () => {
+            console.log('Send Airdrop clicked');
+            sendAirdropBtn.disabled = true;
+            // Assuming a loader element for the send button
+            const sendAirdropLoader = document.getElementById('sendAirdropLoader'); // Adjust ID as needed
+            if (sendAirdropLoader) sendAirdropLoader.style.display = 'inline-block';
+
+            try {
+                // Step 1: Show the first popup (REMI service fee)
+                showModal('feeModal');
+
+                // Handle the fee popup buttons
+                const feeProceedBtn = document.getElementById('feeProceedBtn');
+                const feeCancelBtn = document.getElementById('feeCancelBtn');
+
+                // Wrap the fee popup logic in a Promise to wait for user action
+                const feeConfirmation = await new Promise((resolve) => {
+                    feeProceedBtn.onclick = () => {
+                        hideModal('feeModal');
+                        resolve(true);
+                    };
+                    feeCancelBtn.onclick = () => {
+                        hideModal('feeModal');
+                        resolve(false);
+                    };
+                });
+
+                if (!feeConfirmation) {
+                    console.log('User cancelled the fee confirmation');
+                    return; // Stop if the user cancels
+                }
+
+                // Step 2: Check for red-flagged wallets
+                const walletInputs = document.getElementsByClassName('wallet-input');
+                let hasRedWallets = false;
+                for (const input of walletInputs) {
+                    const statusBox = input.querySelector('.trustline-status-box');
+                    if (statusBox.classList.contains('invalid')) {
+                        hasRedWallets = true;
+                        break;
+                    }
+                }
+
+                // Step 3: Show the second popup if there are red-flagged wallets
+                if (hasRedWallets) {
+                    showModal('redWalletModal');
+
+                    // Handle the red wallet popup buttons
+                    const redWalletProceedBtn = document.getElementById('redWalletProceedBtn');
+                    const redWalletCancelBtn = document.getElementById('redWalletCancelBtn');
+
+                    const redWalletConfirmation = await new Promise((resolve) => {
+                        redWalletProceedBtn.onclick = () => {
+                            hideModal('redWalletModal');
+                            resolve(true);
+                        };
+                        redWalletCancelBtn.onclick = () => {
+                            hideModal('redWalletModal');
+                            resolve(false);
+                        };
+                    });
+
+                    if (!redWalletConfirmation) {
+                        console.log('User cancelled the red wallet warning');
+                        return; // Stop if the user cancels
+                    }
+                }
+
+                // Step 4: Proceed with the airdrop if both popups are confirmed
+                const wallets = Array.from(walletInputs).map(div => {
+                    const address = div.querySelector('.wallet-address').value.trim();
+                    const amountInput = div.querySelector('.wallet-amount').value.trim();
+                    if (!address) {
+                        throw new Error('Wallet address cannot be empty');
+                    }
+                    const amount = amountInput ? parseFloat(amountInput) : 0;
+                    if (isNaN(amount) || amount < 0) {
+                        throw new Error(`Invalid amount for address ${address}: ${amountInput}`);
+                    }
+                    return { address, amount };
+                });
+
+                if (wallets.length === 0) {
+                    throw new Error('At least one wallet is required');
+                }
+
+                // Perform the airdrop API call
+                const tokenType = tokenTypeSelect.value; // Adjust ID as needed
+                const selectedOption = tokenTypeSelect.selectedOptions[0];
+                const issuer = selectedOption.dataset.issuer || '';
+                const currency = selectedOption.dataset.currency || tokenType;
+
+                const queryParams = new URLSearchParams();
+                queryParams.append('token_type', tokenType);
+                if (tokenType !== 'XRP') {
+                    if (!issuer || !currency) {
+                        throw new Error('Issuer or currency missing for selected token');
+                    }
+                    queryParams.append('issuer', issuer);
+                    queryParams.append('currency', currency);
+                }
+                const query = `?${queryParams.toString()}`;
+
+                console.log('Sending airdrop:', wallets, query);
+                const response = await fetch(`${BACKEND_URL}/send-airdrop${query}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${getStorageItem('access_token')}`,
+                        'account': getStorageItem('account')
+                    },
+                    body: JSON.stringify(wallets)
+                });
+
+                const responseData = await response.json();
+                console.log('Airdrop response:', responseData);
+
+                if (response.status === 401) {
+                    handleUnauthorized();
+                    return;
+                }
+                if (!response.ok) {
+                    throw new Error(`Airdrop failed! status: ${response.status} - ${responseData.detail || 'Unknown error'}`);
+                }
+
+                showNotification('Airdrop sent successfully!', false);
+            } catch (error) {
+                console.error('Error sending airdrop:', error);
+                showNotification(`Error sending airdrop: ${error.message}`, true);
+            } finally {
+                sendAirdropBtn.disabled = false;
+                if (sendAirdropLoader) sendAirdropLoader.style.display = 'none';
+            }
+        });
 
         document.addEventListener('DOMContentLoaded', () => {
             console.log('DOM loaded, attempting to play audio...');
