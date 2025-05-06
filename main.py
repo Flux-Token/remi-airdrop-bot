@@ -313,6 +313,7 @@ async def check_trustlines(
             await client.close()
 
 # Updated /check-balances endpoint with additional logging
+# Replace the existing /check-balances endpoint with this updated version
 @app.post("/check-balances")
 async def check_balances(
     wallets: List[Wallet],
@@ -420,16 +421,30 @@ async def check_balances(
                             response = await http_client.get(xrpscan_url, timeout=10)
                             if response.status_code == 200:
                                 trustlines = response.json()
-                                logger.debug(f"XRPScan trustlines for {wallet.address}: {trustlines}")
+                                logger.debug(f"XRPScan raw response for {wallet.address}: {trustlines}")
+                                # Check if trustlines is a list; if not, log and skip
+                                if not isinstance(trustlines, list):
+                                    logger.warning(f"XRPScan response for {wallet.address} is not a list: {trustlines}")
+                                    continue
                                 for line in trustlines:
-                                    if (line["specification"]["counterparty"] == issuer and 
-                                        line["specification"]["currency"] == decoded_currency and 
-                                        float(line["state"]["balance"]) > 0):
-                                        has_balance = True
-                                        balance_value = float(line["state"]["balance"])
-                                        balance_source = "XRPScan"
-                                        logger.info(f"Balance found via XRPScan for {wallet.address}: {balance_value}")
-                                        break
+                                    # Adjust for XRPScan response structure
+                                    counterparty = line.get("counterparty", "")
+                                    token_currency = line.get("currency", "")
+                                    balance_str = line.get("balance", "0")
+                                    logger.debug(f"XRPScan trustline for {wallet.address}: counterparty={counterparty}, currency={token_currency}, balance={balance_str}")
+                                    # Ensure fields exist and match
+                                    if (counterparty == issuer and 
+                                        token_currency == decoded_currency):
+                                        try:
+                                            balance = float(balance_str)
+                                            if balance > 0:
+                                                has_balance = True
+                                                balance_value = balance
+                                                balance_source = "XRPScan"
+                                                logger.info(f"Balance found via XRPScan for {wallet.address}: {balance_value}")
+                                                break
+                                        except ValueError:
+                                            logger.warning(f"Invalid balance format in XRPScan response for {wallet.address}: {balance_str}")
                             else:
                                 logger.warning(f"XRPScan API failed for {wallet.address}: {response.status_code} - {response.text}")
                         except Exception as e:
