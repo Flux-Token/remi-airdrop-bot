@@ -61,14 +61,16 @@
         }
 
         .main-content {
-            display: none; 
-            font-family: 'Montserrat', sans-serif; 
-            flex-direction: column;
-            min-height: 100vh; 
-            background: transparent; 
-            color: #fff; 
-            position: relative;
-            overflow-y: auto;
+    display: none;
+    font-family: 'Montserrat', sans-serif;
+    flex-direction: column;
+    align-items: center; /* Center children horizontally */
+    min-height: 100vh;
+    background: transparent;
+    color: #fff;
+    position: relative;
+    overflow-y: auto;
+
         }
 
         .main-content::-webkit-scrollbar {
@@ -200,6 +202,8 @@
             align-items: center;
             width: auto; 
             max-width: 90%;
+            margin-left: auto;
+            margin-right: auto;
         }
 
         .container {
@@ -207,6 +211,7 @@
             display: flex; 
             flex-direction: column; 
             align-items: center; 
+            justify-content: center;
             padding: 30px;
             max-width: 800px; 
             width: 90%; 
@@ -311,6 +316,8 @@
             width: 100%; 
             max-width: 500px;
             box-sizing: border-box;
+            margin-left: auto;
+            margin-right: auto;
         }
 
         .form-section.login {
@@ -756,91 +763,85 @@
     <div id="preloader">
         <div class="preloader-logo">REMI</div>
     </div>
-    <div class="main-content">
-        <button id="disconnect-button" class="disconnect-button" style="display: none;">Disconnect</button>
-        <i id="wallet-toggle" class="fas fa-wallet wallet-toggle disconnected"></i>
-        <header>
-            <h1><i class="fas fa-rocket icon"></i> REMI Airdrop Bot</h1>
-        </header>
-        <div class="container">
-            <div id="wallet-address-container" class="wallet-address-container" style="display: none;">
-                <div id="wallet-address-display" class="wallet-address-display"></div>
-            </div>
-            <div class="form-section login" style="display: none;">
-                <button id="login-btn"><i class="fas fa-sign-in-alt icon"></i> Log in with Xaman <span class="loader" id="login-loader"></span></button>
-                <img id="qr-code" src="" alt="QR Code for Login">
-                <a id="qr-link" class="qr-link" href="#" target="_blank" style="display: none;">Open in Xaman</a>
-            </div>
-                </div>
-                <div id="fee-confirmation" class="fee-confirmation">
-                    <p id="fee-message"></p>
-                    <p class="disclaimer">Note: The fee is charged per wallet attempted, even if the transaction fails, to cover REMI's operational costs.</p>
-                    <div class="button-row">
-                        <button id="fee-agree-btn"><i class="fas fa-check icon"></i> Agree</button>
-                        <button id="fee-disagree-btn"><i class="fas fa-times icon"></i> Disagree</button>
-                    </div>
-                </div>
-                
-                <!-- New trustline-warning div -->
-                <div id="trustline-warning" class="fee-confirmation">
-                    <p id="trustline-warning-message"><span style="color: #dc3545;">Warning:</span> You’re sending to wallets flagged in RED for not having a mainnet trust line. You may proceed with the transaction, but we recommend checking each flagged wallet for a token balance first.</p>
-                    <div class="button-row">
-                        <button id="trustline-agree-btn"><i class="fas fa-check icon"></i> Agree</button>
-                        <button id="trustline-disagree-btn"><i class="fas fa-times icon"></i> Disagree</button>
-                    </div>
-                </div>
-                <div id="airdrop-form" class="form-section">
-                    <select id="token-type">
-                        <option value="XRP">XRP</option>
-                    </select>
-                    <input type="number" id="total-amount" placeholder="Total Amount" step="0.000001" min="0" readonly>
-                    <div id="wallet-list">
-                        <div class="wallet-input">
-                            <input type="text" class="wallet-address" placeholder="Wallet Address">
-                            <div class="trustline-status-box"></div>
-                            <div class="amount-remove-group">
-                                <input type="number" class="wallet-amount" placeholder="Amount" step="0.000001" min="0">
-                                <button onclick="removeWallet(this)">Remove</button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="button-row">
-                        <button onclick="addWallet()"><i class="fas fa-plus icon"></i> Add Wallet</button>
-                        <button id="check-balance-btn"><i class="fas fa-wallet icon"></i> Check Balance <span class="loader" id="balance-loader"></span></button>
-                        <button id="validate-wallets-btn"><i class="fas fa-check-circle icon"></i> Validate Wallets <span class="loader" id="validate-loader"></span></button>
-                        <button id="check-trustlines-btn"><i class="fas fa-link icon"></i> Check TrustLine <span class="loader" id="trustlines-loader"></span></button>
-                        <button id="proceed-btn"><i class="fas fa-paper-plane icon"></i> Proceed to Signing <span class="loader" id="proceed-loader"></span></button>
-                        <button id="csv-header-toggle"><i class="fas fa-table icon"></i> CSV Has Header: Yes</button>
-                        <label for="csv-upload-input" class="button"><i class="fas fa-upload icon"></i> Upload CSV</label>
-                        <input type="file" id="csv-upload-input" accept=".csv" style="display: none;">
-                    </div>
-                </div>
-            <div id="transaction-signing" class="form-section" style="display: none;">
-                <h2 id="transaction-title"></h2>
-                <img class="transaction-qr" src="" alt="Transaction QR Code">
-                <a class="transaction-qr-link qr-link" href="#" target="_blank">Open in Xaman</a>
-            </div>
-            <div id="results" class="form-section">
-                <h2>Airdrop Report <i class="fas fa-sync-alt refresh-icon" onclick="refreshAirdropReport()"></i></h2>
-                <p>Total Network Fee: N/A XRP</p>
-                <p>Total REMI Service Fee: N/A XRP</p>
-                <button id="back-button" class="button">Back to Airdrop Form</button>
-            </div>
+    <!-- Main content -->
+<div class="main-content">
+    <button id="disconnect-button" class="disconnect-button" style="display: none;">Disconnect</button>
+    <i id="wallet-toggle" class="fas fa-wallet wallet-toggle disconnected"></i>
+    <header>
+        <h1><i class="fas fa-rocket icon"></i> REMI Airdrop Bot</h1>
+    </header>
+    <div class="container">
+        <div id="wallet-address-container" class="wallet-address-container" style="display: none;">
+            <div id="wallet-address-display" class="wallet-address-display"></div>
         </div>
-        <div id="notification-overlay" class="notification-overlay"></div>
-        <div id="notification" class="notification"></div>
-        <div id="fee-confirmation" class="fee-confirmation">
-            <p id="fee-message"></p>
-            <p class="disclaimer">Note: The fee is charged per wallet attempted, even if the transaction fails, to cover REMI's operational costs.</p>
+        <div class="form-section login" style="display: none;">
+            <button id="login-btn"><i class="fas fa-sign-in-alt icon"></i> Log in with Xaman <span class="loader" id="login-loader"></span></button>
+            <img id="qr-code" src="" alt="QR Code for Login">
+            <a id="qr-link" class="qr-link" href="#" target="_blank" style="display: none;">Open in Xaman</a>
+        </div>
+        <div id="airdrop-form" class="form-section">
+            <select id="token-type">
+                <option value="XRP">XRP</option>
+            </select>
+            <input type="number" id="total-amount" placeholder="Total Amount" step="0.000001" min="0" readonly>
+            <div id="wallet-list">
+                <div class="wallet-input">
+                    <input type="text" class="wallet-address" placeholder="Wallet Address">
+                    <div class="trustline-status-box"></div>
+                    <div class="amount-remove-group">
+                        <input type="number" class="wallet-amount" placeholder="Amount" step="0.000001" min="0">
+                        <button onclick="removeWallet(this)">Remove</button>
+                    </div>
+                </div>
+            </div>
             <div class="button-row">
-                <button id="fee-agree-btn"><i class="fas fa-check icon"></i> Agree</button>
-                <button id="fee-disagree-btn"><i class="fas fa-times icon"></i> Disagree</button>
+                <button onclick="addWallet()"><i class="fas fa-plus icon"></i> Add Wallet</button>
+                <button id="check-balance-btn"><i class="fas fa-wallet icon"></i> Check Balance <span class="loader" id="balance-loader"></span></button>
+                <button id="validate-wallets-btn"><i class="fas fa-check-circle icon"></i> Validate Wallets <span class="loader" id="validate-loader"></span></button>
+                <button id="check-trustlines-btn"><i class="fas fa-link icon"></i> Check TrustLine <span class="loader" id="trustlines-loader"></span></button>
+                <button id="proceed-btn"><i class="fas fa-paper-plane icon"></i> Proceed to Signing <span class="loader" id="proceed-loader"></span></button>
+                <button id="csv-header-toggle"><i class="fas fa-table icon"></i> CSV Has Header: Yes</button>
+                <label for="csv-upload-input" class="button"><i class="fas fa-upload icon"></i> Upload CSV</label>
+                <input type="file" id="csv-upload-input" accept=".csv" style="display: none;">
             </div>
         </div>
-        <footer>
-            <p>Powered by REMI | <a href="https://xrpl.org" target="_blank">Learn More</a></p>
-        </footer>
+        <div id="transaction-signing" class="form-section" style="display: none;">
+            <h2 id="transaction-title"></h2>
+            <img class="transaction-qr" src="" alt="Transaction QR Code">
+            <a class="transaction-qr-link qr-link" href="#" target="_blank">Open in Xaman</a>
+        </div>
+        <div id="results" class="form-section">
+            <h2>Airdrop Report <i class="fas fa-sync-alt refresh-icon" onclick="refreshAirdropReport()"></i></h2>
+            <p>Total Network Fee: N/A XRP</p>
+            <p>Total REMI Service Fee: N/A XRP</p>
+            <button id="back-button" class="button">Back to Airdrop Form</button>
+        </div>
     </div>
+    <div id="notification-overlay" class="notification-overlay"></div>
+    <div id="notification" class="notification"></div>
+    <div id="fee-confirmation" class="fee-confirmation">
+        <p id="fee-message"></p>
+        <p class="disclaimer">Note: The fee is charged per wallet attempted, even if the transaction fails, to cover REMI's operational costs.</p>
+        <div class="button-row">
+            <button id="fee-agree-btn"><i class="fas fa-check icon"></i> Agree</button>
+            <button id="fee-disagree-btn"><i class="fas fa-times icon"></i> Disagree</button>
+        </div>
+    </div>
+    <div id="trustline-warning" class="fee-confirmation">
+        <p id="trustline-warning-message"><span style="color: #dc3545;">Warning:</span> You’re sending to wallets flagged in RED for not having a mainnet trust line. You may proceed with the transaction, but we recommend checking each flagged wallet for a token balance first.</p>
+        <div class="button-row">
+            <button id="trustline-agree-btn"><i class="fas fa-check icon"></i> Agree</button>
+            <button id="trustline-disagree-btn"><i class="fas fa-times icon"></i> Disagree</button>
+        </div>
+    </div>
+</div>
+
+<!-- Footer container -->
+<div id="footer-container" style="display: none;">
+    <footer>
+        <p>Powered by REMI | <a href="https://xrpl.org" target="_blank">Learn More</a></p>
+    </footer>
+</div>
 
     <audio id="loader-audio" src="https://static.wixstatic.com/mp3/15ad31_9eab52a3faee4738927cd3aed4e536d7.mp3" preload="auto" crossorigin="anonymous"></audio>
 
