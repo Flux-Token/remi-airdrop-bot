@@ -314,7 +314,6 @@ async def check_trustlines(
 
 # Updated /check-balances endpoint with additional logging
 # Replace the existing /check-balances endpoint with this updated version
-# Replace the existing /check-balances endpoint with this updated version
 @app.post("/check-balances")
 async def check_balances(
     wallets: List[Wallet],
@@ -375,25 +374,27 @@ async def check_balances(
                     trustline_request = GenericRequest(
                         command="account_lines",
                         account=wallet.address,
-                        ledger_index="validated"
+                        ledger_index="validated",
+                        peer=issuer if issuer else None,
+                        limit=1000
                     )
                     trustline_response = await asyncio.wait_for(client.request(trustline_request), timeout=30)
                     if trustline_response.is_successful():
                         trustlines = trustline_response.result.get("lines", [])
                         logger.debug(f"Trustlines for {wallet.address} via account_lines: {trustlines}")
-                        trustline = next(
-                            (
-                                line for line in trustlines
-                                if line["account"].strip() == issuer.strip() and 
-                                   decode_hex_currency(line["currency"]).strip().upper() == decoded_currency.strip().upper()
-                            ),
-                            None
-                        )
-                        if trustline and float(trustline.get("balance", 0.0)) > 0:
-                            has_balance = True
-                            balance_value = float(trustline["balance"])
-                            balance_source = "account_lines"
-                            logger.info(f"Balance found via account_lines for {wallet.address}: {balance_value}")
+                        for line in trustlines:
+                            line_issuer = line.get("account", "").strip()
+                            line_currency = decode_hex_currency(line.get("currency", "")).strip().upper()
+                            line_balance = float(line.get("balance", "0.0"))
+                            logger.debug(f"Checking account_lines for {wallet.address}: issuer={line_issuer}, currency={line_currency}, balance={line_balance}, expected_issuer={issuer}, expected_currency={decoded_currency}")
+                            if (line_issuer == issuer and 
+                                line_currency == decoded_currency and 
+                                line_balance > 0):
+                                has_balance = True
+                                balance_value = line_balance
+                                balance_source = "account_lines"
+                                logger.info(f"Balance found via account_lines for {wallet.address}: {balance_value}")
+                                break
                     else:
                         logger.warning(f"account_lines request failed for {wallet.address}: {trustline_response.result}")
 
@@ -405,10 +406,13 @@ async def check_balances(
                             balances = gateway_response.result.get("assets", {}).get(wallet.address, [])
                             logger.debug(f"Gateway balances for {wallet.address}: {balances}")
                             for asset in balances:
-                                if (asset["currency"].strip().upper() == decoded_currency.strip().upper() and 
-                                    float(asset["value"]) > 0):
+                                asset_currency = asset.get("currency", "").strip().upper()
+                                asset_value = float(asset.get("value", "0"))
+                                logger.debug(f"Checking GatewayBalances for {wallet.address}: currency={asset_currency}, value={asset_value}, expected_currency={decoded_currency}")
+                                if (asset_currency == decoded_currency and 
+                                    asset_value > 0):
                                     has_balance = True
-                                    balance_value = float(asset["value"])
+                                    balance_value = asset_value
                                     balance_source = "GatewayBalances"
                                     logger.info(f"Balance found via GatewayBalances for {wallet.address}: {balance_value}")
                                     break
@@ -426,21 +430,21 @@ async def check_balances(
                                 if not isinstance(trustlines, list):
                                     logger.warning(f"XRPScan response for {wallet.address} is not a list: {trustlines}")
                                     continue
+                                expected_currency_decoded = decoded_currency
+                                if expected_currency_decoded.startswith("46"):
+                                    try:
+                                        expected_currency_decoded = bytes.fromhex(decoded_currency.rstrip("0")).decode("utf-8")
+                                    except Exception as e:
+                                        logger.warning(f"Failed to decode expected currency {decoded_currency} for {wallet.address}: {str(e)}")
+                                        expected_currency_decoded = decoded_currency  # Fallback to raw form
                                 for line in trustlines:
                                     counterparty = line.get("counterparty", "")
                                     token_currency = line.get("currency", "")
                                     balance_str = line.get("balance", "0")
-                                    logger.debug(f"XRPScan trustline for {wallet.address}: counterparty={counterparty}, currency={token_currency}, balance={balance_str}, expected_issuer={issuer}, expected_currency={decoded_currency}")
-                                    # XRPScan returns decoded currency (e.g., "FLUX"), so decode the expected currency for comparison
-                                    expected_currency_decoded = decoded_currency
-                                    if expected_currency_decoded.startswith("46"):
-                                        try:
-                                            expected_currency_decoded = bytes.fromhex(decoded_currency.rstrip("0")).decode("utf-8")
-                                        except Exception as e:
-                                            logger.warning(f"Failed to decode expected currency {decoded_currency} for {wallet.address}: {str(e)}")
-                                            continue
+                                    logger.debug(f"XRPScan trustline for {wallet.address}: counterparty={counterparty}, currency={token_currency}, balance={balance_str}, expected_issuer={issuer}, expected_currency_decoded={expected_currency_decoded}, expected_currency_raw={decoded_currency}")
                                     if (counterparty == issuer and 
-                                        token_currency == expected_currency_decoded):
+                                        (token_currency == expected_currency_decoded or 
+                                         token_currency == decoded_currency)):
                                         try:
                                             balance = float(balance_str)
                                             if balance > 0:
@@ -455,47 +459,6 @@ async def check_balances(
                                 logger.warning(f"XRPScan API failed for {wallet.address}: {response.status_code} - {response.text}")
                         except Exception as e:
                             logger.error(f"XRPScan API error for {wallet.address}: {str(e)}")
-
-                    # Fallback to XPmarket API if XRPScan fails
-                    if not has_balance:
-                        try:
-                            xpmarket_url = f"https://api.xpmarket.com/api/v1/account/{wallet.address}/trustlines"
-                            response = await http_client.get(xpmarket_url, timeout=10)
-                            if response.status_code == 200:
-                                trustlines = response.json()
-                                logger.debug(f"XPmarket raw response for {wallet.address}: {trustlines}")
-                                if not isinstance(trustlines, list):
-                                    logger.warning(f"XPmarket response for {wallet.address} is not a list: {trustlines}")
-                                    continue
-                                for line in trustlines:
-                                    counterparty = line.get("counterparty", "")
-                                    token_currency = line.get("currency", "")
-                                    balance_str = line.get("balance", "0")
-                                    logger.debug(f"XPmarket trustline for {wallet.address}: counterparty={counterparty}, currency={token_currency}, balance={balance_str}, expected_issuer={issuer}, expected_currency={decoded_currency}")
-                                    # XPmarket returns decoded currency (e.g., "FLUX"), so decode the expected currency
-                                    expected_currency_decoded = decoded_currency
-                                    if expected_currency_decoded.startswith("46"):
-                                        try:
-                                            expected_currency_decoded = bytes.fromhex(decoded_currency.rstrip("0")).decode("utf-8")
-                                        except Exception as e:
-                                            logger.warning(f"Failed to decode expected currency {decoded_currency} for {wallet.address}: {str(e)}")
-                                            continue
-                                    if (counterparty == issuer and 
-                                        token_currency == expected_currency_decoded):
-                                        try:
-                                            balance = float(balance_str)
-                                            if balance > 0:
-                                                has_balance = True
-                                                balance_value = balance
-                                                balance_source = "XPmarket"
-                                                logger.info(f"Balance found via XPmarket for {wallet.address}: {balance_value}")
-                                                break
-                                        except ValueError:
-                                            logger.warning(f"Invalid balance format in XPmarket response for {wallet.address}: {balance_str}")
-                            else:
-                                logger.warning(f"XPmarket API failed for {wallet.address}: {response.status_code} - {response.text}")
-                        except Exception as e:
-                            logger.error(f"XPmarket API error for {wallet.address}: {str(e)}")
 
                     logger.info(f"Balance result for {wallet.address}: has_balance={has_balance}, balance={balance_value}, source={balance_source}")
                     results.append({
@@ -520,7 +483,7 @@ async def check_balances(
         logger.error(f"Balance check error: {str(e)}")
         raise HTTPException(
             status_code=500,
-            detail="Failed to check balances: Ensure wallets are valid and funded on the XRP Ledger Mainnet."
+            detail="Failed to check balances: Ensure wallets are valid on the XRP Ledger Mainnet."
         )
     finally:
         if client and client.is_open():
