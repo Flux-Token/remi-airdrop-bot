@@ -490,6 +490,7 @@
         }
 
         .notification {
+            white-space: pre-line; 
             position: fixed; 
             top: 50%; 
             left: 50%; 
@@ -770,21 +771,6 @@
                 <img id="qr-code" src="" alt="QR Code for Login">
                 <a id="qr-link" class="qr-link" href="#" target="_blank" style="display: none;">Open in Xaman</a>
             </div>
-            <div id="airdrop-form" class="form-section">
-                <select id="token-type">
-                    <option value="XRP">XRP</option>
-                </select>
-                <input type="number" id="total-amount" placeholder="Total Amount" step="0.000001" min="0" readonly>
-                <label><input type="checkbox" id="xpmarket-mode"> Include XPmarket Wallets (Balance-Based)</label>
-                <div id="wallet-list">
-                    <div class="wallet-input">
-                        <input type="text" class="wallet-address" placeholder="Wallet Address">
-                        <div class="trustline-status-box"></div>
-                        <div class="amount-remove-group">
-                            <input type="number" class="wallet-amount" placeholder="Amount" step="0.000001" min="0">
-                            <button onclick="removeWallet(this)">Remove</button>
-                        </div>
-                    </div>
                 </div>
                 <div id="fee-confirmation" class="fee-confirmation">
                     <p id="fee-message"></p>
@@ -803,17 +789,32 @@
                         <button id="trustline-disagree-btn"><i class="fas fa-times icon"></i> Disagree</button>
                     </div>
                 </div>
-                <div class="button-row">
-                    <button onclick="addWallet()"><i class="fas fa-plus icon"></i> Add Wallet</button>
-                    <button id="check-balance-btn"><i class="fas fa-wallet icon"></i> Check Balance <span class="loader" id="balance-loader"></span></button>
-                    <button id="validate-wallets-btn"><i class="fas fa-check-circle icon"></i> Validate Wallets <span class="loader" id="validate-loader"></span></button>
-                    <button id="check-trustlines-btn"><i class="fas fa-link icon"></i> Check TrustLine <span class="loader" id="trustlines-loader"></span></button>
-                    <button id="proceed-btn"><i class="fas fa-paper-plane icon"></i> Proceed to Signing <span class="loader" id="proceed-loader"></span></button>
-                    <button id="csv-header-toggle"><i class="fas fa-table icon"></i> CSV Has Header: Yes</button>
-                    <label for="csv-upload-input" class="button"><i class="fas fa-upload icon"></i> Upload CSV</label>
-                    <input type="file" id="csv-upload-input" accept=".csv" style="display: none;">
+                <div id="airdrop-form" class="form-section">
+                    <select id="token-type">
+                        <option value="XRP">XRP</option>
+                    </select>
+                    <input type="number" id="total-amount" placeholder="Total Amount" step="0.000001" min="0" readonly>
+                    <div id="wallet-list">
+                        <div class="wallet-input">
+                            <input type="text" class="wallet-address" placeholder="Wallet Address">
+                            <div class="trustline-status-box"></div>
+                            <div class="amount-remove-group">
+                                <input type="number" class="wallet-amount" placeholder="Amount" step="0.000001" min="0">
+                                <button onclick="removeWallet(this)">Remove</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="button-row">
+                        <button onclick="addWallet()"><i class="fas fa-plus icon"></i> Add Wallet</button>
+                        <button id="check-balance-btn"><i class="fas fa-wallet icon"></i> Check Balance <span class="loader" id="balance-loader"></span></button>
+                        <button id="validate-wallets-btn"><i class="fas fa-check-circle icon"></i> Validate Wallets <span class="loader" id="validate-loader"></span></button>
+                        <button id="check-trustlines-btn"><i class="fas fa-link icon"></i> Check TrustLine <span class="loader" id="trustlines-loader"></span></button>
+                        <button id="proceed-btn"><i class="fas fa-paper-plane icon"></i> Proceed to Signing <span class="loader" id="proceed-loader"></span></button>
+                        <button id="csv-header-toggle"><i class="fas fa-table icon"></i> CSV Has Header: Yes</button>
+                        <label for="csv-upload-input" class="button"><i class="fas fa-upload icon"></i> Upload CSV</label>
+                        <input type="file" id="csv-upload-input" accept=".csv" style="display: none;">
+                    </div>
                 </div>
-            </div>
             <div id="transaction-signing" class="form-section" style="display: none;">
                 <h2 id="transaction-title"></h2>
                 <img class="transaction-qr" src="" alt="Transaction QR Code">
@@ -921,37 +922,36 @@
         }, PRELOADER_TIMEOUT);
 
         const loginBtn = document.getElementById('login-btn');
-        const loginLoader = document.getElementById('login-loader');
-        const qrCodeImg = document.getElementById('qr-code');
-        const qrLink = document.getElementById('qr-link');
-        const airdropForm = document.getElementById('airdrop-form');
-        const loginSection = document.querySelector('.form-section.login');
-        const transactionSigning = document.getElementById('transaction-signing');
-        const transactionTitle = document.getElementById('transaction-title');
-        const transactionQr = document.querySelector('.transaction-qr');
-        const transactionQrLink = document.querySelector('.transaction-qr-link');
-        const resultsDiv = document.getElementById('results');
-        const notification = document.getElementById('notification');
-        const notificationOverlay = document.getElementById('notification-overlay');
-        const feeConfirmation = document.getElementById('fee-confirmation');
-        const feeMessage = document.getElementById('fee-message');
-        const feeAgreeBtn = document.getElementById('fee-agree-btn');
-        const feeDisagreeBtn = document.getElementById('fee-disagree-btn');
-        const tokenTypeSelect = document.getElementById('token-type');
-        const totalAmountInput = document.getElementById('total-amount');
-        const checkBalanceBtn = document.getElementById('check-balance-btn');
-        const balanceLoader = document.getElementById('balance-loader');
-        const validateWalletsBtn = document.getElementById('validate-wallets-btn');
-        const validateLoader = document.getElementById('validate-loader');
-        const checkTrustlinesBtn = document.getElementById('check-trustlines-btn');
-        const trustlinesLoader = document.getElementById('trustlines-loader');
-        const proceedBtn = document.getElementById('proceed-btn');
-        const proceedLoader = document.getElementById('proceed-loader');
-        const walletAddressDisplay = document.getElementById('wallet-address-display');
-        const walletAddressContainer = document.getElementById('wallet-address-container');
-        const walletToggle = document.getElementById('wallet-toggle');
-        const disconnectButton = document.getElementById('disconnect-button');
-        const xpmarketModeCheckbox = document.getElementById('xpmarket-mode');
+const loginLoader = document.getElementById('login-loader');
+const qrCodeImg = document.getElementById('qr-code');
+const qrLink = document.getElementById('qr-link');
+const airdropForm = document.getElementById('airdrop-form');
+const loginSection = document.querySelector('.form-section.login');
+const transactionSigning = document.getElementById('transaction-signing');
+const transactionTitle = document.getElementById('transaction-title');
+const transactionQr = document.querySelector('.transaction-qr');
+const transactionQrLink = document.querySelector('.transaction-qr-link');
+const resultsDiv = document.getElementById('results');
+const notification = document.getElementById('notification');
+const notificationOverlay = document.getElementById('notification-overlay');
+const feeConfirmation = document.getElementById('fee-confirmation');
+const feeMessage = document.getElementById('fee-message');
+const feeAgreeBtn = document.getElementById('fee-agree-btn');
+const feeDisagreeBtn = document.getElementById('fee-disagree-btn');
+const tokenTypeSelect = document.getElementById('token-type');
+const totalAmountInput = document.getElementById('total-amount');
+const checkBalanceBtn = document.getElementById('check-balance-btn');
+const balanceLoader = document.getElementById('balance-loader');
+const validateWalletsBtn = document.getElementById('validate-wallets-btn');
+const validateLoader = document.getElementById('validate-loader');
+const checkTrustlinesBtn = document.getElementById('check-trustlines-btn');
+const trustlinesLoader = document.getElementById('trustlines-loader');
+const proceedBtn = document.getElementById('proceed-btn');
+const proceedLoader = document.getElementById('proceed-loader');
+const walletAddressDisplay = document.getElementById('wallet-address-display');
+const walletAddressContainer = document.getElementById('wallet-address-container');
+const walletToggle = document.getElementById('wallet-toggle');
+const disconnectButton = document.getElementById('disconnect-button');
 
         let storage = {};
         let tokenData = [];
@@ -1562,7 +1562,7 @@
         // Inside the DOMContentLoaded event listener, replace the checkTrustlinesBtn event listener
         
         checkTrustlinesBtn.addEventListener('click', async () => {
-    console.log('Check Trustlines/Balances clicked, accessToken:', getStorageItem('access_token'));
+    console.log('Check Trustlines clicked, accessToken:', getStorageItem('access_token'));
     checkTrustlinesBtn.disabled = true;
     trustlinesLoader.style.display = 'inline-block';
     try {
@@ -1594,8 +1594,6 @@
             datasetIssuer: selectedOption.dataset.issuer
         });
 
-        const xpmarketMode = xpmarketModeCheckbox.checked;
-        
         const queryParams = new URLSearchParams();
         queryParams.append('token_type', tokenType);
         if (tokenType !== 'XRP') {
@@ -1606,8 +1604,8 @@
             queryParams.append('currency', currency);
         }
         const query = `?${queryParams.toString()}`;
-        
-        // Step 1: Check trustlines for all wallets
+
+        // Check trustlines for all wallets
         console.log(`Checking trustlines for wallets:`, wallets, 'Query:', query);
         const trustlineResponse = await fetch(`${BACKEND_URL}/check-trustlines${query}`, {
             method: 'POST',
@@ -1632,86 +1630,45 @@
             throw new Error('Invalid trustline check response from server: Expected an array of results');
         }
 
-        // Step 2: Check balances in XPmarket Mode for wallets without trustlines
-        let balanceData = [];
-        if (xpmarketMode && tokenType !== 'XRP') {
-            const walletsWithoutTrustline = trustlineData
-                .filter(result => !result.has_trustline)
-                .map(result => ({ address: result.address, amount: wallets.find(w => w.address === result.address).amount }));
-            if (walletsWithoutTrustline.length > 0) {
-                console.log(`Checking balances for wallets without trustlines:`, walletsWithoutTrustline, 'Query:', query);
-                const balanceResponse = await fetch(`${BACKEND_URL}/check-balances${query}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${getStorageItem('access_token')}`,
-                        'account': getStorageItem('account')
-                    },
-                    body: JSON.stringify(walletsWithoutTrustline)
-                });
-                console.log('Balances response status:', balanceResponse.status);
-                balanceData = await balanceResponse.json();
-                console.log('Balances response data:', JSON.stringify(balanceData, null, 2));
-                if (balanceResponse.status === 401) {
-                    handleUnauthorized();
-                    return;
-                }
-                if (!balanceResponse.ok) {
-                    throw new Error(`Balance check failed! status: ${balanceResponse.status} - ${balanceData.detail || 'Unknown error'}`);
-                }
-                if (!Array.isArray(balanceData)) {
-                    throw new Error('Invalid balance check response from server: Expected an array of results');
-                }
-            } else {
-                console.log('No wallets need balance check; all have trustlines or XPmarket mode is off.');
-            }
-        } else {
-            console.log('XPmarket mode is off or token is XRP; skipping balance check.');
-        }
-
-        // Step 3: Update UI based on trustline and balance results
+        // Update UI based on trustline results
         const walletInputs = document.getElementsByClassName('wallet-input');
         for (const input of walletInputs) {
             const address = input.querySelector('.wallet-address').value.trim();
             const trustlineResult = trustlineData.find(w => w.address === address);
-            const balanceResult = balanceData.find(w => w.address === address);
             const statusBox = input.querySelector('.trustline-status-box');
             
             statusBox.classList.remove('valid', 'invalid');
             statusBox.style.display = 'block';
 
             const hasTrustline = trustlineResult && trustlineResult.has_trustline;
-            const hasBalance = xpmarketMode && balanceResult && balanceResult.has_balance;
 
-            console.log(`Wallet ${address}: hasTrustline=${hasTrustline}, hasBalance=${hasBalance}, xpmarketMode=${xpmarketMode}`);
+            console.log(`Wallet ${address}: hasTrustline=${hasTrustline}`);
 
-            if (hasTrustline || hasBalance) {
-                // Green box: Wallet has a trustline OR a balance (in XPmarket mode)
+            if (hasTrustline) {
+                // Green box: Wallet has a trustline
                 statusBox.classList.add('valid');
-                if (hasTrustline) {
-                    showNotification(`Wallet ${address}: Has trustline for ${decodeHexCurrency(tokenType)}, eligible for airdrop`, false);
-                } else if (hasBalance) {
-                    showNotification(`Wallet ${address}: Has ${decodeHexCurrency(tokenType)} balance (${balanceResult.balance} via ${balanceResult.balance_source}), eligible for airdrop (XPmarket mode)`, false);
-                }
+                showNotification(`Wallet ${address}: Has trustline for ${decodeHexCurrency(tokenType)}, eligible for airdrop`, false);
             } else {
-                // Red box: Wallet has neither a trustline nor a balance
+                // Red box: Wallet has no trustline
                 statusBox.classList.add('invalid');
-                const error = (trustlineResult?.error || balanceResult?.error || 'No trustline or balance found');
+                const error = (trustlineResult?.error || 'No trustline found');
                 showNotification(`Wallet ${address}: ${error}`, true);
             }
         }
 
-        const allEligible = trustlineData.every(result => result.has_trustline) || 
-                           (xpmarketMode && balanceData.length > 0 && balanceData.every(result => result.has_balance));
+        const allEligible = trustlineData.every(result => result.has_trustline);
         if (allEligible && trustlineData.length > 0) {
-            showNotification(`All wallets are eligible for airdrop${xpmarketMode ? ' (trustlines or balances)' : ' (trustlines)'}.`, false);
+            showNotification('All wallets are eligible for airdrop (trustlines).', false);
         } else {
-            showNotification(`Some wallets are not eligible. Check the red (ineligible) markers.`, true);
+            showNotification(
+                'Some wallets are not eligible. Check the red (ineligible) markers.\nSome wallets may be flagged RED but still be able to receive air drops due to known XPmarket and Xmagnetic trust line issues. Please verify before sending.',
+                true
+            );
         }
     } catch (error) {
-        console.error(`Error checking trustlines/balances:`, error);
+        console.error('Error checking trustlines:', error);
         showNotification(
-            `Error checking trustlines/balances: ${error.message}. Ensure addresses are valid and funded on the XRP Ledger Mainnet.`,
+            `Error checking trustlines: ${error.message}. Ensure addresses are valid and funded on the XRP Ledger Mainnet.`,
             true
         );
     } finally {
@@ -1774,14 +1731,27 @@ async function populateTokenDropdown() {
     console.log('Proceed to Signing clicked, accessToken:', getStorageItem('access_token'));
     const wallets = Array.from(document.getElementsByClassName('wallet-input')).map(div => ({
         address: div.querySelector('.wallet-address').value.trim(),
-        amount: parseFloat(div.querySelector('.wallet-amount').value.trim()) || 0
-    })).filter(wallet => wallet.amount > 0);
-    if (wallets.length === 0) {
-        showNotification('At least one wallet with a non-zero amount is required.', true);
+        amount: div.querySelector('.wallet-amount').value.trim()
+    }));
+
+    // Check for zero or empty amounts
+    const invalidWallets = wallets.filter(wallet => !wallet.amount || parseFloat(wallet.amount) === 0);
+    if (invalidWallets.length > 0) {
+        const invalidAddresses = invalidWallets.map(wallet => wallet.address).join(', ');
+        showNotification(
+            `The following wallets have zero or empty amounts and cannot proceed: ${invalidAddresses}. Please enter a valid amount greater than 0 for each wallet.`,
+            true
+        );
         return;
     }
-    const xpmarketMode = xpmarketModeCheckbox.checked;
-    const serviceFee = calculateServiceFee(wallets.length);
+
+    // Filter wallets with valid amounts (already ensured above, but keeping for consistency)
+    const validWallets = wallets.map(wallet => ({
+        address: wallet.address,
+        amount: parseFloat(wallet.amount)
+    }));
+
+    const serviceFee = calculateServiceFee(validWallets.length);
     feeMessage.textContent = `You will be charged a REMI service fee of ${serviceFee} XRP to proceed with the airdrop. MAX 5 XRP`;
     feeConfirmation.style.display = 'flex';
     notificationOverlay.style.display = 'block';
@@ -1796,15 +1766,15 @@ async function populateTokenDropdown() {
             return statusBox.classList.contains('invalid');
         });
 
-        if (hasRedFlaggedWallets && !xpmarketMode) {
-            // Show trustline warning popup if there are red-flagged wallets and XPmarket mode is off
+        if (hasRedFlaggedWallets) {
+            // Show trustline warning popup if there are red-flagged wallets
             document.getElementById('trustline-warning').style.display = 'flex';
             notificationOverlay.style.display = 'block';
 
             document.getElementById('trustline-agree-btn').onclick = async () => {
                 document.getElementById('trustline-warning').style.display = 'none';
                 notificationOverlay.style.display = 'none';
-                await proceedWithAirdrop(wallets, tokenTypeSelect, serviceFee, xpmarketMode);
+                await proceedWithAirdrop(validWallets, tokenTypeSelect, serviceFee);
             };
 
             document.getElementById('trustline-disagree-btn').onclick = () => {
@@ -1813,8 +1783,8 @@ async function populateTokenDropdown() {
                 showNotification('Airdrop cancelled due to trustline warning disagreement.', true);
             };
         } else {
-            // Proceed directly if no red-flagged wallets or XPmarket mode is on
-            await proceedWithAirdrop(wallets, tokenTypeSelect, serviceFee, xpmarketMode);
+            // Proceed directly if no red-flagged wallets
+            await proceedWithAirdrop(validWallets, tokenTypeSelect, serviceFee);
         }
     };
 
@@ -1826,7 +1796,7 @@ async function populateTokenDropdown() {
 });
 
 // New function to handle airdrop process
-async function proceedWithAirdrop(wallets, tokenTypeSelect, serviceFee, xpmarketMode) {
+async function proceedWithAirdrop(wallets, tokenTypeSelect, serviceFee) {
     proceedBtn.disabled = true;
     proceedLoader.style.display = 'inline-block';
     airdropForm.style.display = 'none';
@@ -1845,7 +1815,6 @@ async function proceedWithAirdrop(wallets, tokenTypeSelect, serviceFee, xpmarket
         if (tokenType !== 'XRP') {
             query += `&issuer=${encodeURIComponent(issuer)}¤cy=${encodeURIComponent(currency)}`;
         }
-        query += `&xpmarket_mode=${xpmarketMode}`;
 
         console.log('Fetching airdrop data with query:', query);
         const response = await fetch(`${BACKEND_URL}/airdrop${query}`, {
@@ -1951,6 +1920,7 @@ async function proceedWithAirdrop(wallets, tokenTypeSelect, serviceFee, xpmarket
         transactionSigning.style.display = 'none';
     }
 
+
             };
 
             feeDisagreeBtn.onclick = () => {
@@ -1975,42 +1945,41 @@ async function proceedWithAirdrop(wallets, tokenTypeSelect, serviceFee, xpmarket
         }
 
         function clearForm() {
-            console.log('Clearing form and resetting UI...');
-            const walletInputs = document.getElementsByClassName('wallet-input');
-            while (walletInputs.length > 1) {
-                walletInputs[walletInputs.length - 1].remove();
-            }
-            const firstWallet = walletInputs[0];
-            if (firstWallet) {
-                firstWallet.querySelector('.wallet-address').value = '';
-                firstWallet.querySelector('.wallet-amount').value = '';
-                const statusBox = firstWallet.querySelector('.trustline-status-box');
-                statusBox.classList.remove('valid', 'invalid', 'balance-only');
-                statusBox.style.display = 'none';
-            }
-            totalAmountInput.value = '';
-            tokenTypeSelect.value = 'XRP';
-            xpmarketModeCheckbox.checked = false;
-            resultsDiv.style.display = 'none';
-            transactionSigning.style.display = 'none';
-            feeConfirmation.style.display = 'none';
-            notificationOverlay.style.display = 'none';
-            const csvUploadInput = document.getElementById('csv-upload-input');
-            csvUploadInput.value = '';
-            if (loginSection.style.display === 'none') {
-                const airdropFormElement = document.getElementById('airdrop-form');
-                airdropFormElement.style.display = 'block';
-                console.log('Airdrop form should now be visible, display style:', airdropFormElement.style.display);
-                const container = airdropFormElement.closest('.container');
-                if (container) {
-                    container.style.display = 'flex';
-                    console.log('Container display style:', container.style.display);
-                }
-            } else {
-                loginSection.style.display = 'block';
-                console.log('User not logged in, showing login section');
-            }
+    console.log('Clearing form and resetting UI...');
+    const walletInputs = document.getElementsByClassName('wallet-input');
+    while (walletInputs.length > 1) {
+        walletInputs[walletInputs.length - 1].remove();
+    }
+    const firstWallet = walletInputs[0];
+    if (firstWallet) {
+        firstWallet.querySelector('.wallet-address').value = '';
+        firstWallet.querySelector('.wallet-amount').value = '';
+        const statusBox = firstWallet.querySelector('.trustline-status-box');
+        statusBox.classList.remove('valid', 'invalid');
+        statusBox.style.display = 'none';
+    }
+    totalAmountInput.value = '';
+    tokenTypeSelect.value = 'XRP';
+    resultsDiv.style.display = 'none';
+    transactionSigning.style.display = 'none';
+    feeConfirmation.style.display = 'none';
+    notificationOverlay.style.display = 'none';
+    const csvUploadInput = document.getElementById('csv-upload-input');
+    csvUploadInput.value = '';
+    if (loginSection.style.display === 'none') {
+        const airdropFormElement = document.getElementById('airdrop-form');
+        airdropFormElement.style.display = 'block';
+        console.log('Airdrop form should now be visible, display style:', airdropFormElement.style.display);
+        const container = airdropFormElement.closest('.container');
+        if (container) {
+            container.style.display = 'flex';
+            console.log('Container display style:', container.style.display);
         }
+    } else {
+        loginSection.style.display = 'block';
+        console.log('User not logged in, showing login section');
+    }
+}
 
         // CSV Upload Logic
         let csvHasHeader = true;
