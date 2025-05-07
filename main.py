@@ -354,17 +354,17 @@ async def airdrop(
                 }
             )
     except (ValueError, TypeError) as e:
-        logger.error(f"Invalid amount data: {str(e)}, Payload: {request CHILD model_dump()}")
-        raise HTTPException(
-            status_code=422,
-            detail={
-                "error": f"Invalid amount data: {str(e)}",
-                "request_total_amount": str(request.total_amount),
-                "calculated_wallet_amount": "N/A",
-                "wallet_amounts": [str(wallet.amount) for wallet in request.wallets],
-                "raw_payload": request.model_dump()
-            }
-        )
+    logger.error(f"Invalid amount data: {str(e)}, Payload: {request.model_dump()}")
+    raise HTTPException(
+        status_code=422,
+        detail={
+            "error": f"Invalid amount data: {str(e)}",
+            "request_total_amount": str(request.total_amount),
+            "calculated_wallet_amount": "N/A",
+            "wallet_amounts": [str(wallet.amount) for wallet in request.wallets],
+            "raw_payload": request.model_dump()
+        }
+    )
 
     if not request.wallets:
         raise HTTPException(status_code=422, detail="At least one wallet is required")
