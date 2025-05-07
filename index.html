@@ -478,44 +478,44 @@
         }
 
         #results p .status-sent {
-    color: #28a745;
-    font-weight: 600;
-    margin-left: 10px;
-}
+            color: #28a745;
+            font-weight: 600;
+            margin-left: 10px;
+        }
 
-#results p .status-failed {
-    color: #dc3545;
-    font-weight: 600;
-    margin-left: 10px;
-}
+        #results p .status-failed {
+            color: #dc3545;
+            font-weight: 600;
+            margin-left: 10px;
+        }
 
-#results .export-csv-btn {
-    background: linear-gradient(90deg, #ff6f61, #ff00ff);
-    color: #fff;
-    border: none;
-    padding: 10px 20px;
-    border-radius: 25px;
-    cursor: pointer;
-    margin: 10px auto;
-    font-size: 0.9em;
-    font-weight: 600;
-    transition: all 0.3s ease;
-    box-shadow: 0 5px 15px rgba(255, 111, 97, 0.4);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
+        #results .export-csv-btn {
+            background: linear-gradient(90deg, #ff6f61, #ff00ff);
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            margin: 10px auto;
+            font-size: 0.9em;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(255, 111, 97, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
 
-#results .export-csv-btn:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 20px rgba(255, 111, 97, 0.6);
-}
+        #results .export-csv-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(255, 111, 97, 0.6);
+        }
 
-#results .export-csv-btn .icon {
+        #results .export-csv-btn .icon {
     margin-right: 8px;
-}
+        }
 
 
         @media (max-width: 600px) {
@@ -1796,67 +1796,67 @@
             }
 
             proceedBtn.addEventListener('click', async () => {
-    console.log('Proceed to Signing clicked, accessToken:', getStorageItem('access_token'));
+                console.log('Proceed to Signing clicked, accessToken:', getStorageItem('access_token'));
 
-    // Collect wallets and check for invalid trustlines
-    const wallets = Array.from(document.getElementsByClassName('wallet-input')).map(div => ({
-        address: div.querySelector('.wallet-address').value.trim(),
-        amount: div.querySelector('.wallet-amount').value.trim(),
-        trustlineStatus: div.querySelector('.trustline-status-box').classList.contains('invalid') ? 'invalid' : 'valid'
-    }));
+                // Collect wallets and check for invalid trustlines
+                const wallets = Array.from(document.getElementsByClassName('wallet-input')).map(div => ({
+                    address: div.querySelector('.wallet-address').value.trim(),
+                    amount: div.querySelector('.wallet-amount').value.trim(),
+                    trustlineStatus: div.querySelector('.trustline-status-box').classList.contains('invalid') ? 'invalid' : 'valid'
+                }));
 
-    // Check for zero or empty amounts
-    const invalidWallets = wallets.filter(wallet => !wallet.amount || parseFloat(wallet.amount) === 0);
-    if (invalidWallets.length > 0) {
-        const invalidAddresses = invalidWallets.map(wallet => wallet.address).join(', ');
-        showNotification(
-            `The following wallets have zero or empty amounts and cannot proceed: ${invalidAddresses}. Please enter a valid amount greater than 0 for each wallet.`,
-            true
-        );
-        return;
-    }
+                // Check for zero or empty amounts
+                const invalidWallets = wallets.filter(wallet => !wallet.amount || parseFloat(wallet.amount) === 0);
+                if (invalidWallets.length > 0) {
+                 const invalidAddresses = invalidWallets.map(wallet => wallet.address).join(', ');
+                    showNotification(
+                        `The following wallets have zero or empty amounts and cannot proceed: ${invalidAddresses}. Please enter a valid amount greater than 0 for each wallet.`,
+                        true
+                    );
+                    return;
+                }
 
-    // Check for red-flagged wallets
-    const redFlaggedWallets = wallets.filter(wallet => wallet.trustlineStatus === 'invalid');
-    if (redFlaggedWallets.length > 0 && tokenTypeSelect.value !== 'XRP') {
-        const redFlaggedAddresses = redFlaggedWallets.map(wallet => wallet.address).join(', ');
-        showNotification(
-            `Cannot proceed with airdrop: The following wallets lack trustlines (red-flagged): ${redFlaggedAddresses}. Please remove or validate these wallets.`,
-            true
-        );
-        return;
-    }
+                // Check for red-flagged wallets
+                const redFlaggedWallets = wallets.filter(wallet => wallet.trustlineStatus === 'invalid');
+                if (redFlaggedWallets.length > 0 && tokenTypeSelect.value !== 'XRP') {
+                    const redFlaggedAddresses = redFlaggedWallets.map(wallet => wallet.address).join(', ');
+                    showNotification(
+                        `Cannot proceed with airdrop: The following wallets lack trustlines (red-flagged): ${redFlaggedAddresses}. Please remove or validate these wallets.`,
+                        true
+                    );
+                    return;
+                }
 
-    // Filter valid wallets
-    const validWallets = wallets
-        .filter(wallet => wallet.trustlineStatus === 'valid' || tokenTypeSelect.value === 'XRP')
-        .map(wallet => ({
-            address: wallet.address,
-            amount: parseFloat(wallet.amount)
-        }));
+                // Filter valid wallets
+                const validWallets = wallets
+                    .filter(wallet => wallet.trustlineStatus === 'valid' || tokenTypeSelect.value === 'XRP')
+                    .map(wallet => ({
+                        address: wallet.address,
+                        amount: parseFloat(wallet.amount)
+                    }));
 
-    if (validWallets.length === 0) {
-        showNotification('No valid wallets to airdrop. Please add wallets with valid trustlines.', true);
-        return;
-    }
+                if (validWallets.length === 0) {
+                    showNotification('No valid wallets to airdrop. Please add wallets with valid trustlines.', true);
+                    return;
+                }
 
-    const serviceFee = calculateServiceFee(validWallets.length);
-    feeMessage.textContent = `You will be charged a REMI service fee of ${serviceFee} XRP to proceed with the airdrop. MAX 5 XRP`;
-    feeConfirmation.style.display = 'flex';
-    notificationOverlay.style.display = 'block';
+                const serviceFee = calculateServiceFee(validWallets.length);
+                feeMessage.textContent = `You will be charged a REMI service fee of ${serviceFee} XRP to proceed with the airdrop. MAX 5 XRP`;
+                feeConfirmation.style.display = 'flex';
+                notificationOverlay.style.display = 'block';
 
-    feeAgreeBtn.onclick = async () => {
-        feeConfirmation.style.display = 'none';
-        notificationOverlay.style.display = 'none';
-        await proceedWithAirdrop(validWallets, tokenTypeSelect, serviceFee);
-    };
+                feeAgreeBtn.onclick = async () => {
+                    feeConfirmation.style.display = 'none';
+                    notificationOverlay.style.display = 'none';
+                    await proceedWithAirdrop(validWallets, tokenTypeSelect, serviceFee);
+                };
 
-    feeDisagreeBtn.onclick = () => {
-        feeConfirmation.style.display = 'none';
-        notificationOverlay.style.display = 'none';
-        showNotification('Airdrop cancelled due to fee disagreement.', true);
-    };
-});
+                feeDisagreeBtn.onclick = () => {
+                    feeConfirmation.style.display = 'none';
+                    notificationOverlay.style.display = 'none';
+                    showNotification('Airdrop cancelled due to fee disagreement.', true);
+                };
+            });
 
 async function fetchTransactionTxid(payloadUuid) {
     try {
@@ -1974,8 +1974,8 @@ async function proceedWithAirdrop(wallets, tokenTypeSelect, serviceFee) {
 
         const total = data.transactions.length;
         for (const [index, tx] of data.transactions.entries()) {
-            if (!tx.payload_uuid || !tx.sign_url || !tx.status) {
-                showNotification(`Invalid transaction data for transaction ${index + 1}`, true);
+            if (!tx.status || !tx.status.address) {
+                showNotification(`Transaction ${index + 1} has invalid status data`, true);
                 allSigned = false;
                 transactionResults.push({
                     index: index + 1,
@@ -1988,17 +1988,28 @@ async function proceedWithAirdrop(wallets, tokenTypeSelect, serviceFee) {
                 continue;
             }
 
-            if (!tx.status.address) {
-                console.error('tx.status.address is undefined for tx:', tx);
-                showNotification(`Transaction ${index + 1} has invalid status data`, true);
-                allSigned = false;
+            if (tx.status.status === 'Skipped' || tx.status.status === 'Failed') {
                 transactionResults.push({
                     index: index + 1,
-                    address: 'Unknown',
+                    address: tx.status.address,
                     amount: wallets[index]?.amount || 0,
                     txid: '',
                     status: 'Failed',
-                    error: 'Invalid status data'
+                    error: tx.status.error || 'Transaction skipped or failed'
+                });
+                continue;
+            }
+
+            if (!tx.payload_uuid || !tx.sign_url) {
+                showNotification(`Invalid transaction data for transaction ${index + 1}`, true);
+                allyzallSigned = false;
+                transactionResults.push({
+                    index: index + 1,
+                    address: tx.status.address,
+                    amount: wallets[index]?.amount || 0,
+                    txid: '',
+                    status: 'Failed',
+                    error: 'Missing payload or sign URL'
                 });
                 continue;
             }
@@ -2013,7 +2024,7 @@ async function proceedWithAirdrop(wallets, tokenTypeSelect, serviceFee) {
             await new Promise(resolve => setTimeout(resolve, 1000));
             const signed = await pollTransaction(tx.payload_uuid, index, total);
             const status = signed ? 'Sent' : 'Failed';
-            const txid = signed ? (await fetchTransactionTxid(tx.payload_uuid)) || 'Pending' : '';
+            const txid = signed ? (await fetchTransactionTxid(tx.payload_uuid)) || '' : '';
             transactionResults.push({
                 index: index + 1,
                 address: tx.status.address,

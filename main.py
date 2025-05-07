@@ -709,9 +709,8 @@ async def validate_wallets(
 async def airdrop(
     request: AirdropRequest,
     token_data: dict = Depends(get_access_token),
-    xpmarket_mode: bool = Query(False)
 ):
-    logger.info(f"Initiating airdrop with payload: {request.model_dump()}, xpmarket_mode: {xpmarket_mode}")
+    logger.info(f"Initiating airdrop with payload: {request.model_dump()}")
     account = request.account
     if not account:
         logger.error("Account is required in request body but missing")
@@ -850,62 +849,43 @@ async def airdrop(
 
         # Create airdrop transactions
         for i, wallet in enumerate(request.wallets):
-    wallet.address = wallet.address.strip()
-    if float(wallet.amount or 0) <= 0:
-        transactions.append({
-            "status": {
-                "address": wallet.address,
-                "status": "Skipped",
-                "error": "Amount is zero"
-            }
-        })
-        continue
-    if request.token_type != "XRP":
-        # Always check trustline
-        trustline_request = GenericRequest(
-            command="account_lines",
-            account=wallet.address,
-            ledger_index="validated"
-        )
-        trustline_response = await asyncio.wait_for(client.request(trustline_request), timeout=30)
-        trustlines = trustline_response.result.get("lines", [])
-        logger.info(f"Trustlines for wallet {wallet.address}: {trustlines}")
-        trustline_exists = any(
-            line["account"] == request.issuer and line["currency"] == request.currency
-            for line in trustlines
-        )
-        if not trustline_exists:
-            transactions.append({
-                "status": {
-                    "address": wallet.address,
-                    "status": "Failed",
-                    "error": "No trustline exists for this token"
-                }
-            })
-            continue
-                else:
-                    # XPmarket mode: Check XRP balance for trustline reserve
-                    account_info_request = AccountInfo(account=wallet.address, ledger_index="validated")
-                    account_response = await asyncio.wait_for(client.request(account_info_request), timeout=30)
-                    if not account_response.is_successful():
-                        transactions.append({
-                            "status": {
-                                "address": wallet.address,
-                                "status": "Failed",
-                                "error": "Account not found or not funded"
-                            }
-                        })
-                        continue
-                    xrp_balance = float(account_response.result["account_data"]["Balance"]) / 1_000_000
-                    if xrp_balance < TRUSTLINE_RESERVE_XRP:
-                        transactions.append({
-                            "status": {
-                                "address": wallet.address,
-                                "status": "Failed",
-                                "error": f"Insufficient XRP balance ({xrp_balance} XRP) for trustline creation (requires {TRUSTLINE_RESERVE_XRP} XRP)"
-                            }
-                        })
-                        continue
+            wallet.address = wallet.address.strip()
+            if float(wallet.amount or 0) <= 0:
+                transactions.append({
+                    "payload_uuid": None,
+                    "sign_url": None,
+                    "status": {
+                        "address": wallet.address,
+                        "status": "Skipped",
+                        "error": "Amount is zero"
+                    }
+                })
+                continue
+            if request.token_type != "XRP":
+                # Check trustline
+                trustline_request = GenericRequest(
+                    command="account_lines",
+                    account=wallet.address,
+                    ledger_index="validated"
+                )
+                trustline_response = await asyncio.wait_for(client.request(trustline_request), timeout=30)
+                trustlines = trustline_response.result.get("lines", [])
+                logger.info(f"Trustlines for wallet {wallet.address}: {trustlines}")
+                trustline_exists = any(
+                    line["account"] == request.issuer and line["currency"] == request.currency
+                    for line in trustlines
+                )
+                if not trustline_exists:
+                    transactions.append({
+                        "payload_uuid": None,
+                        "sign_url": None,
+                        "status": {
+                            "address": wallet.address,
+                            "status": "Failed",
+                            "error": "No trustline exists for this token"
+                        }
+                    })
+                    continue
 
                 # Create token payment transaction
                 payment_tx = {
@@ -934,6 +914,8 @@ async def airdrop(
                         f"{response.status_code} - {response.text}"
                     )
                     transactions.append({
+                        "payload_uuid": None,
+                        "sign_url": None,
                         "status": {
                             "address": wallet.address,
                             "status": "Failed",
@@ -982,6 +964,8 @@ async def airdrop(
                         f"{response.status_code} - {response.text}"
                     )
                     transactions.append({
+                        "payload_uuid": None,
+                        "sign_url": None,
                         "status": {
                             "address": wallet.address,
                             "status": "Failed",
