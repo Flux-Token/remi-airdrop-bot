@@ -523,22 +523,39 @@ async def airdrop(
                         "Sequence": sequence,
                         "LastLedgerSequence": last_ledger_sequence
                     }
-        logger.info(f"Creating token payment transaction for {wallet.address}: {payment_tx}")
+                    logger.info(f"Creating token payment transaction for {wallet.address}: {payment_tx}")
 
                 # Submit transaction to Xaman
                 logger.info(f"Submitting transaction for {wallet.address} to Xaman with sequence {sequence}")
-                payload_data = await submit_to_xaman(payment_tx, headers)
-                transactions.append({
-                    "index": index,
-                    "payload_uuid": payload_data["uuid"],
-                    "sign_url": payload_data["next"]["always"],
-                    "status": {
-                        "address": wallet.address,
-                        "status": "Pending Payment"
-                    }
-                })
-                total_network_fee += float(fee) / 1_000_000
-                sequence += 1
+    payload_data = await submit_to_xaman(payment_tx, headers)
+except Exception as e:
+    logger.error(f"Transaction to {wallet.address} failed: {str(e)}")
+    # Check if the error is related to a trustline issue (based on Xaman's response)
+    error_str = str(e).lower()
+    if "trustline" in error_str or "no path" in error_str:
+        logger.warning(f"Transaction to {wallet.address} cancelled due to trustline issue: {str(e)}")
+        transactions.append({
+            "index": index,
+            "payload_uuid": None,
+            "sign_url": None,
+            "status": {
+                "address": wallet.address,
+                "status": "Cancelled",
+                "error": "No trustline for token"
+            }
+        })
+    else:
+        transactions.append({
+            "index": index,
+            "payload_uuid": None,
+            "sign_url": None,
+            "status": {
+                "address": wallet.address,
+                "status": "Failed",
+                "error": str(e)
+            }
+        })
+    continue
 
             except Exception as e:
                 logger.error(f"Transaction to {wallet.address} failed: {str(e)}")
