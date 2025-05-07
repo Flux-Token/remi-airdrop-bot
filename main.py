@@ -331,40 +331,40 @@ async def airdrop(
         raise HTTPException(status_code=400, detail="Account is required in request body")
     logger.info(f"Processing airdrop for account: {account}")
 
-    try:
-        total_wallet_amount = round(sum(float(wallet.amount or 0)
-                                       for wallet in request.wallets), 6)
-        request_total_amount = round(float(request.total_amount or 0), 6)
-        logger.info(
-            f"Total wallet amount: {total_wallet_amount}, "
-            f"Request total amount: {request_total_amount}, "
-            f"Difference: {abs(total_wallet_amount - request_total_amount)}"
-        )
-        if abs(total_wallet_amount - request_total_amount) > 0.000001:
-            wallet_amounts = [float(wallet.amount or 0) for wallet in request.wallets]
+            try:
+            total_wallet_amount = round(sum(float(wallet.amount or 0)
+                                           for wallet in request.wallets), 6)
+            request_total_amount = round(float(request.total_amount or 0), 6)
+            logger.info(
+                f"Total wallet amount: {total_wallet_amount}, "
+                f"Request total amount: {request_total_amount}, "
+                f"Difference: {abs(total_wallet_amount - request_total_amount)}"
+            )
+            if abs(total_wallet_amount - request_total_amount) > 0.000001:
+                wallet_amounts = [float(wallet.amount or 0) for wallet in request.wallets]
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "error": "Total amount does not match sum of wallet amounts",
+                        "request_total_amount": request_total_amount,
+                        "calculated_wallet_amount": total_wallet_amount,
+                        "difference": abs(total_wallet_amount - request_total_amount),
+                        "wallet_amounts": wallet_amounts,
+                        "raw_payload": request.model_dump()
+                    }
+                )
+        except (ValueError, TypeError) as e:
+            logger.error(f"Invalid amount data: {str(e)}, Payload: {request.model_dump()}")
             raise HTTPException(
                 status_code=422,
                 detail={
-                    "error": "Total amount does not match sum of wallet amounts",
-                    "request_total_amount": request_total_amount,
-                    "calculated_wallet_amount": total_wallet_amount,
-                    "difference": abs(total_wallet_amount - request_total_amount),
-                    "wallet_amounts": wallet_amounts,
+                    "error": f"Invalid amount data: {str(e)}",
+                    "request_total_amount": str(request.total_amount),
+                    "calculated_wallet_amount": "N/A",
+                    "wallet_amounts": [str(wallet.amount) for wallet in request.wallets],
                     "raw_payload": request.model_dump()
                 }
             )
-    except (ValueError, TypeError) as e:
-    logger.error(f"Invalid amount data: {str(e)}, Payload: {request.model_dump()}")
-    raise HTTPException(
-        status_code=422,
-        detail={
-            "error": f"Invalid amount data: {str(e)}",
-            "request_total_amount": str(request.total_amount),
-            "calculated_wallet_amount": "N/A",
-            "wallet_amounts": [str(wallet.amount) for wallet in request.wallets],
-            "raw_payload": request.model_dump()
-        }
-    )
 
     if not request.wallets:
         raise HTTPException(status_code=422, detail="At least one wallet is required")
