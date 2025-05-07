@@ -197,34 +197,6 @@ def decode_hex_currency(hex_currency: str) -> str:
         logger.warning(f"Failed to decode hex currency {hex_currency}: {str(e)}")
         return hex_currency
 
-# Helper function to check trustline
-async def check_trustline(client: AsyncWebsocketClient, wallet_address: str, token_type: str, issuer: str) -> bool:
-    try:
-        if token_type == "XRP":
-            return True  # XRP doesn't require a trustline
-        decoded_currency = decode_hex_currency(token_type)
-        request = GenericRequest(
-            command="account_lines",
-            account=wallet_address,
-            ledger_index="validated"
-        )
-        response = await asyncio.wait_for(client.request(request), timeout=30)
-        if not response.is_successful():
-            logger.warning(f"Trustline check failed for {wallet_address}: {response.result}")
-            return False
-        trustlines = response.result.get("lines", [])
-        for line in trustlines:
-            line_issuer = line["account"].strip()
-            line_currency = decode_hex_currency(line["currency"]).strip().upper()
-            target_issuer = issuer.strip()
-            target_currency = decoded_currency.strip().upper()
-            if line_issuer == target_issuer and line_currency == target_currency:
-                return True
-        return False
-    except Exception as e:
-        logger.warning(f"Trustline check error for {wallet_address}: {str(e)}")
-        return False
-
 # Helper function to submit transaction to Xaman
 async def submit_to_xaman(tx: dict, headers: dict) -> dict:
     payload = {"txjson": tx}
@@ -236,27 +208,6 @@ async def submit_to_xaman(tx: dict, headers: dict) -> dict:
     if response.status_code != 200:
         raise Exception(f"Failed to create payload: {response.text}")
     return response.json()
-
-# Helper function to wait for Xaman response
-async def wait_for_xaman_response(payload_uuid: str, headers: dict, timeout: int = 300) -> dict:
-    start_time = asyncio.get_event_loop().time()
-    while True:
-        if asyncio.get_event_loop().time() - start_time > timeout:
-            raise Exception("Timeout waiting for Xaman response")
-        response = requests.get(
-            f"https://xumm.app/api/v1/platform/payload/{payload_uuid}",
-            headers=headers
-        )
-        if response.status_code != 200:
-            raise Exception(f"Failed to fetch payload status: {response.text}")
-        data = response.json()
-        if data.get("meta", {}).get("signed", False):
-            return data
-        if data.get("meta", {}).get("cancelled", False):
-            raise Exception("Transaction cancelled by user")
-        if data.get("meta", {}).get("expired", False):
-            raise Exception("Transaction payload expired")
-        await asyncio.sleep(5)  # Poll every 5 seconds
 
 # Ensure the /check-trustlines endpoint is included and updated
 @app.post("/check-trustlines")
@@ -918,20 +869,6 @@ async def airdrop(
                     })
                     continue
 
-            # Check trustline for token airdrops
-            if request.token_type != "XRP":
-                has_trustline = await check_trustline(client, wallet.address, request.currency, request.issuer)
-                if not has_trustline:
-                    logger.warning(f"Wallet {wallet.address} lacks trustline for {request.currency}. Cancelling transaction.")
-                    transactions.append({
-                        "status": {
-                            "address": wallet.address,
-                            "status": "Cancelled",
-                            "error": "No trustline for token"
-                        }
-                    })
-                    continue
-
             # Create payment transaction
             try:
                 if request.token_type == "XRP":
@@ -977,13 +914,26 @@ async def airdrop(
 
             except Exception as e:
                 logger.error(f"Transaction to {wallet.address} failed: {str(e)}")
-                transactions.append({
-                    "status": {
-                        "address": wallet.address,
-                        "status": "Failed",
-                        "error": str(e)
-                    }
-                })
+                # Check if the error is related to a trustline issue (based on Xaman's response)
+                error_str = str(e).lower()
+                if "trustline" in error_str or "no path" in error_str:
+                    logger.warning(f"Transaction to {wallet.address} cancelled due to trustline issue: {str(e)}")
+                    transactions.append({
+                        "status": {
+                            "address": wallet.address,
+                            "status": "Cancelled",
+                            "error": "No trustline for token"
+                        }
+                    })
+                else:
+                    transactions.append({
+                        "status": {
+                            "address": wallet.address,
+                            "status": "Failed",
+                            "error": str(e)
+                        }
+                    })
+                continue  # Move to the next wallet
 
     except Exception as e:
         logger.error(f"Airdrop error: {str(e)}")
