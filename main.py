@@ -850,40 +850,39 @@ async def airdrop(
 
         # Create airdrop transactions
         for i, wallet in enumerate(request.wallets):
-            wallet.address = wallet.address.strip()
-            if float(wallet.amount or 0) <= 0:
-                transactions.append({
-                    "status": {
-                        "address": wallet.address,
-                        "status": "Skipped",
-                        "error": "Amount is zero"
-                    }
-                })
-                continue
-            if request.token_type != "XRP":
-                if not xpmarket_mode:
-                    # Standard trustline check
-                    trustline_request = GenericRequest(
-                        command="account_lines",
-                        account=wallet.address,
-                        ledger_index="validated"
-                    )
-                    trustline_response = await asyncio.wait_for(client.request(trustline_request), timeout=30)
-                    trustlines = trustline_response.result.get("lines", [])
-                    logger.info(f"Trustlines for wallet {wallet.address}: {trustlines}")
-                    trustline_exists = any(
-                        line["account"] == request.issuer and line["currency"] == request.currency
-                        for line in trustlines
-                    )
-                    if not trustline_exists:
-                        transactions.append({
-                            "status": {
-                                "address": wallet.address,
-                                "status": "Failed",
-                                "error": "No trustline exists for this token"
-                            }
-                        })
-                        continue
+    wallet.address = wallet.address.strip()
+    if float(wallet.amount or 0) <= 0:
+        transactions.append({
+            "status": {
+                "address": wallet.address,
+                "status": "Skipped",
+                "error": "Amount is zero"
+            }
+        })
+        continue
+    if request.token_type != "XRP":
+        # Always check trustline
+        trustline_request = GenericRequest(
+            command="account_lines",
+            account=wallet.address,
+            ledger_index="validated"
+        )
+        trustline_response = await asyncio.wait_for(client.request(trustline_request), timeout=30)
+        trustlines = trustline_response.result.get("lines", [])
+        logger.info(f"Trustlines for wallet {wallet.address}: {trustlines}")
+        trustline_exists = any(
+            line["account"] == request.issuer and line["currency"] == request.currency
+            for line in trustlines
+        )
+        if not trustline_exists:
+            transactions.append({
+                "status": {
+                    "address": wallet.address,
+                    "status": "Failed",
+                    "error": "No trustline exists for this token"
+                }
+            })
+            continue
                 else:
                     # XPmarket mode: Check XRP balance for trustline reserve
                     account_info_request = AccountInfo(account=wallet.address, ledger_index="validated")
