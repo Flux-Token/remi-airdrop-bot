@@ -890,8 +890,8 @@
                     <div id="transaction-results">
                         <!-- Transaction results will be inserted here dynamically -->
                     </div>
-                    <p>Total Network Fee: N/A XRP</p>
-                    <p>Total REMI Service Fee: N/A XRP</p>
+                    <p id="total-network-fee">Total Network Fee: N/A XRP</p>
+                    <p id="total-service-fee">Total REMI Service Fee: N/A XRP</p>
                     <button id="back-button" class="button">Back to Airdrop Form</button>
                 </div>
             </div>
@@ -1874,7 +1874,8 @@
     proceedBtn.disabled = true;
     proceedLoader.style.display = 'inline-block';
     airdropForm.style.display = 'none';
-    resultsDiv.innerHTML = '';
+    // Remove this line that clears the entire resultsDiv
+    // resultsDiv.innerHTML = '';
     resultsDiv.style.display = 'none';
     transactionSigning.style.display = 'block';
     try {
@@ -1887,7 +1888,7 @@
 
         let query = `?token_type=${encodeURIComponent(tokenType)}`;
         if (tokenType !== 'XRP') {
-            query += `&issuer=${encodeURIComponent(issuer)}&currency=${encodeURIComponent(currency)}`;
+            query += `&issuer=${encodeURIComponent(issuer)}¤cy=${encodeURIComponent(currency)}`;
         }
 
         console.log('Fetching airdrop data with query:', query);
@@ -1932,7 +1933,7 @@
                 showNotification('Fee payment not authorized. Airdrop cancelled.', true);
                 proceedBtn.disabled = false;
                 proceedLoader.style.display = 'none';
-                transactionSigning.style.display = 'none'; // Hide immediately
+                transactionSigning.style.display = 'none';
                 return;
             }
             console.log('Fee signed, proceeding to airdrop transactions');
@@ -1943,7 +1944,7 @@
             showNotification('No airdrop transactions generated. Check wallet data or server response.', true);
             proceedBtn.disabled = false;
             proceedLoader.style.display = 'none';
-            transactionSigning.style.display = 'none'; // Hide immediately
+            transactionSigning.style.display = 'none';
             return;
         }
 
@@ -1993,41 +1994,56 @@
         transactionQrLink.style.display = 'none';
 
         if (allSigned) {
-    showNotification('Airdrop transactions authorized successfully!');
-    // Store the transaction results
-    transactionResults = data.transactions.map((tx, index) => ({
-        number: index + 1,
-        address: tx.status.address,
-        txid: tx.txid || 'Pending'
-    }));
-    // Insert transaction results into the transaction-results div
-    const transactionResultsDiv = document.getElementById('transaction-results');
-    transactionResultsDiv.innerHTML = transactionResults.map(tx => `
-        <p>Transaction ${tx.number}: ${tx.address} - ${tx.txid}</p>
-    `).join('');
-    // Update total fees
-    const totalNetworkFeeElement = document.querySelector('#results p:nth-child(3)');
-    const totalServiceFeeElement = document.querySelector('#results p:nth-child(4)');
-    totalNetworkFeeElement.textContent = `Total Network Fee: ${data.total_fee || 'N/A'} XRP`;
-    totalServiceFeeElement.textContent = `Total REMI Service Fee: ${serviceFee} XRP`;
-    resultsDiv.style.display = 'block';
-    const newBackButton = document.getElementById('back-button');
-    if (newBackButton) {
-        console.log('Back button found, attaching event listener');
-        newBackButton.addEventListener('click', () => {
-            console.log('Back to Airdrop Form button clicked');
-            clearForm();
-        });
-    } else {
-        console.error('Back button not found after updating resultsDiv');
-    }
+            showNotification('Airdrop transactions authorized successfully!');
+            // Store the transaction results
+            transactionResults = data.transactions.map((tx, index) => ({
+                number: index + 1,
+                address: tx.status.address,
+                txid: tx.txid || 'Pending'
+            }));
+            // Ensure resultsDiv is visible before accessing its children
+            resultsDiv.style.display = 'block';
+            // Reset only the transaction-results div's content
+            const transactionResultsDiv = document.getElementById('transaction-results');
+            if (transactionResultsDiv) {
+                transactionResultsDiv.innerHTML = transactionResults.map(tx => `
+                    <p>Transaction ${tx.number}: ${tx.address} - ${tx.txid}</p>
+                `).join('');
+            } else {
+                console.error('Transaction results div not found!');
+                // Fallback: append directly to resultsDiv
+                resultsDiv.innerHTML += transactionResults.map(tx => `
+                    <p>Transaction ${tx.number}: ${tx.address} - ${tx.txid}</p>
+                `).join('');
+            }
+            // Update total fees
+            const totalNetworkFeeElement = document.querySelector('#results p:nth-child(3)');
+            const totalServiceFeeElement = document.querySelector('#results p:nth-child(4)');
+            if (totalNetworkFeeElement && totalServiceFeeElement) {
+                totalNetworkFeeElement.textContent = `Total Network Fee: ${data.total_fee || 'N/A'} XRP`;
+                totalServiceFeeElement.textContent = `Total REMI Service Fee: ${serviceFee} XRP`;
+            } else {
+                console.error('Fee elements not found!');
+            }
+            const newBackButton = document.getElementById('back-button');
+            if (newBackButton) {
+                console.log('Back button found, attaching event listener');
+                // Remove any existing listeners to prevent duplicates
+                newBackButton.removeEventListener('click', clearForm);
+                newBackButton.addEventListener('click', () => {
+                    console.log('Back to Airdrop Form button clicked');
+                    clearForm();
+                });
+            } else {
+                console.error('Back button not found after updating resultsDiv');
+            }
         } else {
             showNotification('Some airdrop transactions failed or were not authorized.', true);
         }
     } catch (error) {
         console.error('Error during airdrop:', error);
         showNotification(`Error during airdrop process: ${error.message}`, true);
-        transactionSigning.style.display = 'none'; // Ensure it's hidden on error
+        transactionSigning.style.display = 'none';
         transactionTitle.textContent = '';
         transactionQr.src = '';
         transactionQr.style.display = 'none';
@@ -2036,7 +2052,6 @@
     } finally {
         proceedBtn.disabled = false;
         proceedLoader.style.display = 'none';
-        // No need to hide transactionSigning here since we handle it above
     }
 }
 
@@ -2235,14 +2250,30 @@
         });
 
         window.refreshAirdropReport = function() {
-            console.log('Refreshing airdrop report...');
-            const refreshIcon = document.querySelector('.refresh-icon');
-            refreshIcon.classList.add('spinning');
-            setTimeout(() => {
-                refreshIcon.classList.remove('spinning');
-                showNotification('Airdrop report refreshed.');
-            }, 1000);
-        };
+    console.log('Refreshing airdrop report...');
+    const refreshIcon = document.querySelector('.refresh-icon');
+    refreshIcon.classList.add('spinning');
+    // Clear the transaction results
+    const transactionResultsDiv = document.getElementById('transaction-results');
+    if (transactionResultsDiv) {
+        transactionResultsDiv.innerHTML = '';
+    } else {
+        console.error('Transaction results div not found during refresh!');
+    }
+    // Reset the fee displays
+    const totalNetworkFeeElement = document.getElementById('total-network-fee');
+    const totalServiceFeeElement = document.getElementById('total-service-fee');
+    if (totalNetworkFeeElement && totalServiceFeeElement) {
+        totalNetworkFeeElement.textContent = 'Total Network Fee: N/A XRP';
+        totalServiceFeeElement.textContent = 'Total REMI Service Fee: N/A XRP';
+    } else {
+        console.error('Fee elements not found during refresh!');
+    }
+    setTimeout(() => {
+        refreshIcon.classList.remove('spinning');
+        showNotification('Airdrop report refreshed.');
+    }, 1000);
+};
 
         function exportToCSV() {
     if (!transactionResults || transactionResults.length === 0) {
