@@ -245,19 +245,14 @@
         }
 
         button {
-            background: linear-gradient(90deg, #ff6f61, #ff00ff);
-            color: #fff;
-            border: none;
-            padding: 12px 20px;
-            border-radius: 25px;
-            cursor: pointer;
-            margin: 5px;
-            font-size: 0.9em;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            box-shadow: 0 5px 15px rgba(255, 111, 97, 0.4);
-            position: relative;
-            overflow: hidden;
+    padding: 10px 20px;
+    font-size: 16px;
+    cursor: pointer;
+    border: none;
+    border-radius: 5px;
+    background-color: #007bff;
+    color: white;
+    transition: background-color 0.3s;
         }
 
         button::before {
@@ -276,16 +271,13 @@
         }
 
         button:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 20px rgba(255, 111, 97, 0.6);
-        }
+    background-color: #0056b3;
+}
 
-        button:disabled {
-            background: #6c757d;
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
-        }
+button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
 
         input, select {
             padding: 12px;
@@ -719,24 +711,15 @@
         }
 
         /* Skip Button Styling */
-.skip-button {
-    background: #ff4d4d;
-    color: #fff;
-    border: none;
+        .skip-button {
+    background-color: #007bff;
+    color: white;
     padding: 10px 20px;
-    border-radius: 25px;
+    font-size: 16px;
+    border: none;
+    border-radius: 5px;
     cursor: pointer;
-    font-family: 'Montserrat', sans-serif;
-    font-size: 0.9em;
-    font-weight: 600;
-    transition: all 0.3s ease;
-    box-shadow: 0 5px 15px rgba(255, 77, 77, 0.4);
-    margin: 10px auto;
-    display: block;
-    position: relative;
-    overflow: hidden;
-    text-transform: uppercase;
-    letter-spacing: 1px;
+    margin-top: 10px;
 }
 
 .skip-button::before {
@@ -754,10 +737,13 @@
     left: 100%;
 }
 
+.skip-button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
+
 .skip-button:hover {
-    background: #cc0000;
-    transform: translateY(-3px);
-    box-shadow: 0 8px 20px rgba(204, 0, 0, 0.6);
+    background-color: #0056b3;
 }
 
 /* Status Color-Coding */
@@ -975,11 +961,11 @@
                         <input type="file" id="csv-upload-input" accept=".csv" style="display: none;">
                     </div>
                 </div>
-                <div id="transaction-signing" class="form-section" style="display: none;">
-                    <h2 id="transaction-title"></h2>
-                    <img class="transaction-qr" src="" alt="Transaction QR Code">
-                    <a class="transaction-qr-link qr-link" href="#" target="_blank">Open in Xaman</a>
-                    <button class="skip-button" onclick="skipTransaction()">Skip Transaction</button>
+                <div id="transaction-signing" style="display: none;">
+                    <h3 id="transaction-title"></h3>
+                    <img id="transaction-qr" src="" alt="Transaction QR Code" style="display: none; max-width: 300px;">
+                    <p><a id="transaction-qr-link" href="#" target="_blank" style="display: none;">Open in Xaman</a></p>
+                    <button id="skip-transaction" class="skip-button" onclick="skipTransaction()" style="display: none;">Skip Transaction</button>
                 </div>
                 <div id="results" class="form-section">
                     <h2>Airdrop Report <i class="fas fa-sync-alt refresh-icon" onclick="refreshAirdropReport()"></i></h2>
@@ -2255,7 +2241,7 @@ async function proceedWithAirdrop(wallets, tokenTypeSelect, serviceFee) {
         return;
     }
 
-    // Update transaction status
+    // Update transaction status to Skipped
     transactionResults[currentIndex] = {
         ...transactionResults[currentIndex],
         status: 'Skipped',
@@ -2265,7 +2251,7 @@ async function proceedWithAirdrop(wallets, tokenTypeSelect, serviceFee) {
         error: 'Transaction skipped by user'
     };
 
-    // Update UI
+    // Update UI for transaction results
     const transactionResultsDiv = document.getElementById('transaction-results');
     if (transactionResultsDiv) {
         transactionResultsDiv.innerHTML = transactionResults.map(tx => {
@@ -2283,7 +2269,7 @@ async function proceedWithAirdrop(wallets, tokenTypeSelect, serviceFee) {
     }
 
     showNotification(`Transaction ${transactionResults[currentIndex].number} skipped.`);
-    
+
     // Move to the next transaction
     const nextIndex = transactionResults.findIndex((tx, i) => i > currentIndex && tx.status === 'Pending');
     if (nextIndex !== -1) {
@@ -2294,6 +2280,8 @@ async function proceedWithAirdrop(wallets, tokenTypeSelect, serviceFee) {
         transactionQr.style.display = 'block';
         transactionQrLink.href = tx.sign_url;
         transactionQrLink.style.display = 'block';
+        // Show Skip button for non-fee transactions (number > 1)
+        document.getElementById('skip-transaction').style.display = tx.number > 1 ? 'block' : 'none';
         showNotification(`Please authorize transaction ${tx.number}/${transactionResults.length} in Xaman.`);
     } else {
         // No more pending transactions
@@ -2303,6 +2291,7 @@ async function proceedWithAirdrop(wallets, tokenTypeSelect, serviceFee) {
         transactionQr.style.display = 'none';
         transactionQrLink.href = '#';
         transactionQrLink.style.display = 'none';
+        document.getElementById('skip-transaction').style.display = 'none';
         showNotification('All transactions processed or skipped.');
         updateFinalResults();
     }
@@ -2341,251 +2330,236 @@ function updateFinalResults() {
     }
 }
 
-        let csvHasHeader = true;
-        const csvHeaderToggle = document.getElementById('csv-header-toggle');
-        csvHeaderToggle.addEventListener('click', () => {
-            csvHasHeader = !csvHasHeader;
-            csvHeaderToggle.textContent = `CSV Has Header: ${csvHasHeader ? 'Yes' : 'No'}`;
-            console.log('CSV header toggle set to:', csvHasHeader);
+// Update proceedWithAirdrop to set Skip button visibility
+async function proceedWithAirdrop(wallets, tokenTypeSelect, serviceFee) {
+    const tokenType = tokenTypeSelect.value;
+    const issuer = tokenTypeSelect.options[tokenTypeSelect.selectedIndex].dataset.issuer;
+    const currency = tokenTypeSelect.options[tokenTypeSelect.selectedIndex].dataset.currency;
+
+    const totalAmount = wallets.reduce((sum, wallet) => {
+        const amount = parseFloat(wallet.querySelector('.amount-input').value) || 0;
+        return sum.plus(amount);
+    }, new Decimal(0)).toNumber();
+
+    const payload = {
+        token_type: tokenType,
+        total_amount: totalAmount,
+        issuer: tokenType !== 'XRP' ? issuer : undefined,
+        currency: tokenType !== 'XRP' ? currency : undefined,
+        wallets: Array.from(wallets).map((wallet, index) => ({
+            address: wallet.querySelector('.address-input').value.trim(),
+            amount: parseFloat(wallet.querySelector('.amount-input').value) || 0
+        })),
+        account: getStorageItem('account')
+    };
+
+    try {
+        showPreloader();
+        const headers = {
+            'Authorization': `Bearer ${getStorageItem('access_token')}`,
+            'Content-Type': 'application/json',
+            'account': getStorageItem('account')
+        };
+
+        const response = await fetch(`${BACKEND_URL}/airdrop${tokenType !== 'XRP' ? `?token_type=${encodeURIComponent(tokenType)}&issuer=${encodeURIComponent(issuer)}&currency=${encodeURIComponent(currency)}` : ''}`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(payload)
         });
 
-        const csvUploadInput = document.getElementById('csv-upload-input');
-        csvUploadInput.addEventListener('change', (event) => {
-            const file = event.target.files[0];
-            if (!file) {
-                showNotification('No file selected.', true);
-                return;
-            }
-            if (!file.name.endsWith('.csv')) {
-                showNotification('Please upload a CSV file.', true);
-                return;
-            }
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+        }
 
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const text = e.target.result;
-                const rows = text.replace(/\r\n|\r/g, '\n').split('\n').map(row => row.trim()).filter(row => row);
-                console.log('Parsed CSV rows:', rows);
-                if (rows.length === 0) {
-                    showNotification('CSV file appears empty. Please ensure it contains wallet addresses.', true);
-                    return;
-                }
+        const data = await response.json();
+        airdropData = data;
+        transactionResults = [];
+        hidePreloader();
 
-                const firstRow = rows[0];
-                let delimiter = ',';
-                if (firstRow.includes(';') && !firstRow.includes(',')) {
-                    delimiter = ';';
-                } else if (firstRow.includes('\t') && !firstRow.includes(',')) {
-                    delimiter = '\t';
-                }
-                console.log('Detected CSV delimiter:', delimiter);
+        if (data.fee_transaction) {
+            transactionResults.push({
+                number: 1,
+                address: 'REMI Service Fee',
+                status: 'Pending',
+                payload_uuid: data.fee_transaction.payload_uuid,
+                sign_url: data.fee_transaction.sign_url,
+                txid: null,
+                error: null
+            });
+        }
 
-                const wallets = [];
-                const startIndex = csvHasHeader ? 1 : 0;
-                for (let i = startIndex; i < rows.length; i++) {
-                    let columns = [];
-                    let current = '';
-                    let inQuotes = false;
-                    const row = rows[i];
-
-                    for (let j = 0; j < row.length; j++) {
-                        const char = row[j];
-                        if (char === '"') {
-                            inQuotes = !inQuotes;
-                        } else if (char === delimiter && !inQuotes) {
-                            columns.push(current.trim());
-                            current = '';
-                        } else {
-                            current += char;
-                        }
-                    }
-                    if (current) {
-                        columns.push(current.trim());
-                    }
-
-                    columns = columns.map(col => {
-                        if (col.startsWith('"') && col.endsWith('"')) {
-                            return col.slice(1, -1).trim();
-                        }
-                        return col;
-                    });
-
-                    console.log(`Row ${i} columns:`, columns);
-                    if (columns.length === 0 || !columns[0]) {
-                        console.log(`Skipping row ${i}: Empty or missing address`);
-                        continue;
-                    }
-
-                    const address = columns[0];
-                    let amount = columns.length > 1 ? columns[1] : '';
-                    if (amount) {
-                        try {
-                            const parsedAmount = parseFloat(amount);
-                            if (isNaN(parsedAmount) || parsedAmount < 0) {
-                                console.log(`Invalid amount in row ${i}: ${amount}, resetting to empty`);
-                                amount = '';
-                            }
-                        } catch (e) {
-                            console.log(`Error parsing amount in row ${i}: ${amount}, resetting to empty`);
-                            amount = '';
-                        }
-                    }
-
-                    if (address) {
-                        wallets.push({ address, amount });
-                    } else {
-                        console.log(`Skipping row ${i}: Address is empty after parsing`);
-                    }
-                }
-
-                if (wallets.length === 0) {
-                    showNotification('No valid wallet addresses found in CSV. Please ensure the file contains wallet addresses in the first column.', true);
-                    return;
-                }
-
-                console.log('Parsed wallets:', wallets);
-
-                if (wallets.length > 150) {
-                    showNotification('Too many wallets in CSV. Limit is 150.', true);
-                    return;
-                }
-
-                const walletList = document.getElementById('wallet-list');
-                walletList.innerHTML = '';
-                console.log('Cleared wallet list');
-
-                wallets.forEach((wallet, index) => {
-                    const div = document.createElement('div');
-                    div.className = 'wallet-input';
-                    const safeAddress = (wallet.address || '').replace(/"/g, '"');
-                    const safeAmount = (wallet.amount || '').replace(/"/g, '"');
-                    div.innerHTML = `
-                        <input type="text" class="wallet-address" placeholder="Wallet Address" value="${safeAddress}">
-                        <div class="trustline-status-box"></div>
-                        <div class="amount-remove-group">
-                            <input type="number" class="wallet-amount" placeholder="Amount" step="0.000001" min="0" value="${safeAmount}">
-                            <button onclick="removeWallet(this)">Remove</button>
-                        </div>
-                    `;
-                    walletList.appendChild(div);
-                    console.log(`Added wallet ${index + 1}: Address=${safeAddress}, Amount=${safeAmount}`);
-                });
-
-                walletList.style.display = 'block';
-                console.log('Wallet list display style:', walletList.style.display);
-
-                updateTotalAmount();
-                showNotification(`Successfully loaded ${wallets.length} wallets from CSV.`);
-            };
-            reader.onerror = () => {
-                showNotification('Error reading CSV file. It may be corrupted or not accessible.', true);
-            };
-            reader.readAsText(file);
+        data.transactions.forEach((tx, index) => {
+            transactionResults.push({
+                number: data.fee_transaction ? index + 2 : index + 1,
+                address: tx.status.address,
+                status: tx.status.status,
+                payload_uuid: tx.payload_uuid,
+                sign_url: tx.sign_url,
+                txid: null,
+                error: tx.status.error
+            });
         });
 
-        window.refreshAirdropReport = async function() {
-    console.log('Refreshing airdrop report...');
-    const refreshIcon = document.querySelector('.refresh-icon');
-    refreshIcon.classList.add('spinning');
+        if (transactionResults.length === 0) {
+            showNotification('No transactions to process.', true);
+            return;
+        }
 
-    if (!transactionResults || transactionResults.length === 0) {
-        showNotification('No airdrop results to refresh.', true);
-        refreshIcon.classList.remove('spinning');
-        return;
+        const firstTx = transactionResults[0];
+        transactionTitle.textContent = `Sign Transaction ${firstTx.number} of ${transactionResults.length} (${firstTx.address})`;
+        transactionTitle.setAttribute('title', firstTx.address);
+        transactionQr.src = `https://xumm.app/sign/${firstTx.payload_uuid}_q.png`;
+        transactionQr.style.display = 'block';
+        transactionQrLink.href = firstTx.sign_url;
+        transactionQrLink.style.display = 'block';
+        transactionSigning.style.display = 'block';
+        // Hide Skip button for fee transaction (number 1)
+        document.getElementById('skip-transaction').style.display = firstTx.number > 1 ? 'block' : 'none';
+        showNotification(`Please authorize transaction ${firstTx.number}/${transactionResults.length} in Xaman.`);
+
+        // Poll transactions
+        for (let i = 0; i < transactionResults.length; i++) {
+            const tx = transactionResults[i];
+            if (tx.status !== 'Pending') continue;
+
+            try {
+                const result = await pollTransaction(tx.payload_uuid, headers);
+                transactionResults[i] = {
+                    ...tx,
+                    status: result.status,
+                    txid: result.txid,
+                    error: result.error
+                };
+
+                const transactionResultsDiv = document.getElementById('transaction-results');
+                if (transactionResultsDiv) {
+                    transactionResultsDiv.innerHTML = transactionResults.map(tx => {
+                        const statusClass = tx.status === 'Success' ? 'status-success' :
+                                           tx.status === 'Failed' ? 'status-failed' :
+                                           tx.status === 'Skipped' ? 'status-skipped' :
+                                           tx.status === 'Cancelled' ? 'status-cancelled' : 'status-pending';
+                        const txidText = tx.status === 'Pending' ? 'Pending' :
+                                        tx.status === 'Success' && tx.txid !== 'Success' ?
+                                        `<a href="https://xrpl.org/transaction/${tx.txid}" target="_blank" class="qr-link">${tx.txid}</a>` :
+                                        tx.status === 'Skipped' ? `Skipped${tx.error ? ` (${tx.error})` : ''}` :
+                                        tx.status;
+                        return `<p>Transaction ${tx.number}: ${tx.address} - <span class="txid ${statusClass}" data-txid="${tx.txid}">${txidText}</span></p>`;
+                    }).join('');
+                }
+
+                const nextIndex = transactionResults.findIndex((tx, index) => index > i && tx.status === 'Pending');
+                if (nextIndex !== -1) {
+                    const nextTx = transactionResults[nextIndex];
+                    transactionTitle.textContent = `Sign Transaction ${nextTx.number} of ${transactionResults.length} (${nextTx.address})`;
+                    transactionTitle.setAttribute('title', nextTx.address);
+                    transactionQr.src = `https://xumm.app/sign/${nextTx.payload_uuid}_q.png`;
+                    transactionQr.style.display = 'block';
+                    transactionQrLink.href = nextTx.sign_url;
+                    transactionQrLink.style.display = 'block';
+                    // Show Skip button for non-fee transactions
+                    document.getElementById('skip-transaction').style.display = nextTx.number > 1 ? 'block' : 'none';
+                    showNotification(`Please authorize transaction ${nextTx.number}/${transactionResults.length} in Xaman.`);
+                } else {
+                    transactionSigning.style.display = 'none';
+                    transactionTitle.textContent = '';
+                    transactionQr.src = '';
+                    transactionQr.style.display = 'none';
+                    transactionQrLink.href = '#';
+                    transactionQrLink.style.display = 'none';
+                    document.getElementById('skip-transaction').style.display = 'none';
+                    showNotification('All transactions processed.');
+                    updateFinalResults();
+                }
+            } catch (error) {
+                console.error('Polling error:', error);
+                transactionResults[i] = {
+                    ...tx,
+                    status: 'Failed',
+                    txid: null,
+                    error: error.message
+                };
+            }
+        }
+    } catch (error) {
+        console.error('Airdrop error:', error);
+        showNotification(`Airdrop failed: ${error.message}`, true);
+        hidePreloader();
     }
+}
 
-    for (const tx of transactionResults) {
-        if (tx.status === 'Success' || tx.status === 'Failed' || tx.status === 'Skipped' || tx.status === 'Cancelled') {
-            continue;
-        }
-        if (!tx.payload_uuid) {
-            console.warn(`No payload_uuid for transaction ${tx.number}, cannot refresh status`);
-            continue;
-        }
+// Update refreshAirdropReport to handle Skipped status
+async function refreshAirdropReport() {
+    const headers = {
+        'Authorization': `Bearer ${getStorageItem('access_token')}`,
+        'account': getStorageItem('account')
+    };
+    const transactionResultsDiv = document.getElementById('transaction-results');
+    if (!transactionResultsDiv) return;
+
+    transactionResultsDiv.innerHTML = transactionResults.map(tx => {
+        const statusClass = tx.status === 'Success' ? 'status-success' :
+                           tx.status === 'Failed' ? 'status-failed' :
+                           tx.status === 'Skipped' ? 'status-skipped' :
+                           tx.status === 'Cancelled' ? 'status-cancelled' : 'status-pending';
+        const txidText = tx.status === 'Pending' ? 'Pending' :
+                        tx.status === 'Success' && tx.txid !== 'Success' ?
+                        `<a href="https://xrpl.org/transaction/${tx.txid}" target="_blank" class="qr-link">${tx.txid}</a>` :
+                        tx.status === 'Skipped' ? `Skipped${tx.error ? ` (${tx.error})` : ''}` :
+                        tx.status;
+        return `<p>Transaction ${tx.number}: ${tx.address} - <span class="txid ${statusClass}" data-txid="${tx.txid}">${txidText}</span></p>`;
+    }).join('');
+
+    for (let i = 0; i < transactionResults.length; i++) {
+        const tx = transactionResults[i];
+        if (tx.status !== 'Pending') continue;
 
         try {
-            console.log(`Polling /callback for transaction ${tx.number} with payload_uuid: ${tx.payload_uuid}`);
-            const response = await fetch(`${BACKEND_URL}/callback?payload_uuid=${tx.payload_uuid}`);
-            const data = await response.json();
-            console.log(`Callback response for transaction ${tx.number}:`, data);
-
-            if (response.status === 200 && data.meta && data.meta.signed && data.response && data.response.txid) {
-                tx.status = 'Success';
-                tx.txid = data.response.txid;
-                console.log(`Updated txid for transaction ${tx.number}: ${tx.txid}`);
-            } else if (response.status === 400 && (data.detail === "Payload was cancelled" || data.detail === "Payload has expired")) {
-                tx.status = 'Failed';
-                tx.txid = 'Failed';
-                tx.error = data.detail;
-                console.log(`Transaction ${tx.number} failed or expired`);
-            }
+            const result = await pollTransaction(tx.payload_uuid, headers);
+            transactionResults[i] = {
+                ...tx,
+                status: result.status,
+                txid: result.txid,
+                error: result.error
+            };
         } catch (error) {
-            console.error(`Error refreshing transaction ${tx.number}:`, error);
-            tx.status = 'Failed';
-            tx.txid = 'Failed';
-            tx.error = 'Refresh error';
+            console.error('Refresh polling error:', error);
+            transactionResults[i] = {
+                ...tx,
+                status: 'Failed',
+                txid: null,
+                error: error.message
+            };
         }
     }
+}
 
-    const transactionResultsDiv = document.getElementById('transaction-results');
-    if (transactionResultsDiv) {
-        transactionResultsDiv.innerHTML = transactionResults.map(tx => {
-            const statusClass = tx.status === 'Success' ? 'status-success' :
-                               tx.status === 'Failed' ? 'status-failed' :
-                               tx.status === 'Skipped' ? 'status-skipped' :
-                               tx.status === 'Cancelled' ? 'status-cancelled' : 'status-pending';
-            const txidText = tx.status === 'Pending' ? 'Pending' :
-                            tx.status === 'Success' && tx.txid !== 'Success' ?
-                            `<a href="https://xrpl.org/transaction/${tx.txid}" target="_blank" class="qr-link">${tx.txid}</a>` :
-                            tx.status === 'Skipped' ? `Skipped${tx.error ? ` (${tx.error})` : ''}` :
-                            tx.status;
-            return `<p>Transaction ${tx.number}: ${tx.address} - <span class="txid ${statusClass}" data-txid="${tx.txid}">${txidText}</span></p>`;
-        }).join('');
-    }
-
-    refreshIcon.classList.remove('spinning');
-    showNotification('Airdrop report refreshed.');
-};
-
+// Update exportToCSV to handle Skipped status
 function exportToCSV() {
-    if (!transactionResults || transactionResults.length === 0) {
-        showNotification('No airdrop results available to export.', true);
-        return;
-    }
+    console.log('Exporting to CSV...');
+    const headers = ['Transaction Number', 'Address', 'Status', 'Transaction ID', 'Error'];
+    const rows = transactionResults.map(tx => [
+        tx.number,
+        tx.address,
+        tx.status,
+        tx.txid || '',
+        tx.error || ''
+    ]);
 
-    const headers = ['Transaction Number', 'Wallet Address', 'Status', 'Transaction ID', 'Error'];
-    const csvRows = [headers.join(',')];
-    transactionResults.forEach(tx => {
-        const row = [
-            tx.number,
-            `"${tx.address}"`,
-            `"${tx.status}"`,
-            `"${tx.txid}"`,
-            `"${tx.error || ''}"`
-        ];
-        csvRows.push(row.join(','));
-    });
+    const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
 
-    if (airdropData) {
-        csvRows.push('');
-        csvRows.push(`"Total Network Fee","${parseFloat(airdropData.total_fee).toFixed(6)} XRP"`);
-        csvRows.push(`"Total REMI Service Fee","${parseFloat(airdropData.service_fee).toFixed(2)} XRP"`);
-        const totalFee = (parseFloat(airdropData.total_fee) + parseFloat(airdropData.service_fee)).toFixed(6);
-        csvRows.push(`"Total Combined Fee","${totalFee} XRP"`);
-    }
-
-    const csvContent = csvRows.join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
-    link.setAttribute('download', `airdrop_results_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', 'airdrop_report.csv');
+    link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-
-    showNotification('Airdrop results exported successfully!');
 }
     </script>
 </body>
