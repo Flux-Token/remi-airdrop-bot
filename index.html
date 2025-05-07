@@ -67,11 +67,6 @@
             animation: pulse 2s infinite;
         }
 
-        #results p .status-skipped {
-    color: #ffc107; /* Yellow for skipped transactions */
-    font-weight: 600;
-        }
-
         @keyframes pulse {
             0% { transform: scale(1); text-shadow: 0 0 10px rgba(255, 111, 97, 0.5); }
             50% { transform: scale(1.1); text-shadow: 0 0 20px rgba(255, 111, 97, 0.8); }
@@ -843,9 +838,6 @@
                     <h2 id="transaction-title"></h2>
                     <img class="transaction-qr" src="" alt="Transaction QR Code">
                     <a class="transaction-qr-link qr-link" href="#" target="_blank">Open in Xaman</a>
-                    <div class="button-row">
-                        <button id="skip-transaction-btn"><i class="fas fa-forward icon"></i> Skip</button>
-                    </div>
                 </div>
                 <div id="results" class="form-section">
                     <h2>Airdrop Report <i class="fas fa-sync-alt refresh-icon" onclick="refreshAirdropReport()"></i></h2>
@@ -913,67 +905,84 @@
         }
 
         function showMainContent() {
-    console.log('Attempting to show main content');
-    const preloader = document.getElementById('preloader');
-    const mainContent = document.querySelector('.main-content');
-    const footerContainer = document.getElementById('footer-container');
-    const audio = document.getElementById('loader-audio');
-    const scrollAnchor = document.getElementById('scroll-anchor');
+            const preloader = document.getElementById('preloader');
+            const mainContent = document.querySelector('.main-content');
+            const footerContainer = document.getElementById('footer-container');
+            const audio = document.getElementById('loader-audio');
+            const scrollAnchor = document.getElementById('scroll-anchor');
 
-    preloader.style.opacity = '0';
-    preloader.style.visibility = 'hidden';
-    setTimeout(() => {
-        console.log('Hiding preloader, showing main content');
-        preloader.style.display = 'none';
-        mainContent.style.display = 'block';
-        footerContainer.style.display = 'block';
-        document.body.style.overflow = 'auto';
-        scrollAnchor.scrollIntoView({ behavior: 'instant', block: 'start' });
+            console.log('Showing main content...');
+            document.body.style.overflow = 'hidden';
 
-        const accessToken = getStorageItem('access_token');
-        const storedAccount = getStorageItem('account');
-        const loginSection = document.querySelector('.form-section.login');
-        const airdropForm = document.getElementById('airdrop-form');
-        if (accessToken && storedAccount) {
-            loginSection.style.display = 'none';
-            airdropForm.style.display = 'block';
-        } else {
-            loginSection.style.display = 'block';
-            airdropForm.style.display = 'none';
-        }
-    }, 500);
+            const fadeOut = setInterval(() => {
+                if (audio.volume > 0.1) {
+                    audio.volume -= 0.1;
+                } else {
+                    audio.pause();
+                    audio.currentTime = 0;
+                    clearInterval(fadeOut);
+                }
+            }, 100);
 
-    // Fade out audio
-    if (audio) {
-        const fadeOut = setInterval(() => {
-            if (audio.volume > 0.1) {
-                audio.volume -= 0.1;
-            } else {
-                audio.pause();
-                audio.currentTime = 0;
-                clearInterval(fadeOut);
-            }
-        }, 100);
-    }
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOM fully loaded, initializing preloader');
-    const audio = document.getElementById('loader-audio');
-    if (audio) {
-        audio.volume = 0.5;
-        audio.play().catch(err => {
-            console.warn('Audio playback failed:', err);
-            // Proceed even if audio fails
+            preloader.style.opacity = '0';
             setTimeout(() => {
-                console.log('Preloader timeout reached, forcing main content display');
-                showMainContent();
-            }, PRELOADER_TIMEOUT);
-        });
-    } else {
-        console.warn('Audio element not found');
+                console.log('Hiding preloader and showing main content...');
+                preloader.style.display = 'none';
+                mainContent.style.display = 'block';
+                footerContainer.style.display = 'block';
+
+                mainContent.offsetHeight;
+                footerContainer.offsetHeight;
+
+                document.body.style.overflow = 'auto';
+
+                const accessToken = getStorageItem('access_token');
+                const storedAccount = getStorageItem('account');
+                const loginSection = document.querySelector('.form-section.login');
+                const airdropForm = document.getElementById('airdrop-form');
+                if (accessToken && storedAccount) {
+                    loginSection.style.display = 'none';
+                    airdropForm.style.display = 'block';
+                } else {
+                    loginSection.style.display = 'block';
+                    airdropForm.style.display = 'none';
+                }
+
+                scrollAnchor.scrollIntoView({ behavior: 'instant', block: 'start' });
+            }, 500);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOM loaded, initializing...');
+    try {
+        const audio = document.getElementById('loader-audio');
+        audio.volume = 0.5;
+
+        // Simplified audio playback logic with better error handling
+        const playAudio = () => {
+            const playPromise = audio.play();
+            if (playPromise !== undefined) {
+                playPromise.catch(err => {
+                    console.warn('Audio playback failed:', err);
+                    // Add a click handler to retry audio playback on user interaction
+                    document.addEventListener('click', () => {
+                        audio.play().catch(e => console.warn('Audio playback failed on click:', e));
+                    }, { once: true });
+                });
+            }
+        };
+        playAudio();
+
+        // Ensure the preloader timeout always executes, even if there are errors
         setTimeout(() => {
-            console.log('Preloader timeout reached, forcing main content display');
+            console.log('Preloader timeout reached, forcing main content display...');
+            showMainContent();
+        }, PRELOADER_TIMEOUT);
+    } catch (error) {
+        console.error('Error in DOMContentLoaded event listener:', error);
+        // Ensure the preloader is hidden even if an error occurs
+        setTimeout(() => {
+            console.log('Preloader timeout reached (error fallback), forcing main content display...');
             showMainContent();
         }, PRELOADER_TIMEOUT);
     }
@@ -1825,7 +1834,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let query = `?token_type=${encodeURIComponent(tokenType)}`;
         if (tokenType !== 'XRP') {
-            query += `&issuer=${encodeURIComponent(issuer)}¤cy=${encodeURIComponent(currency)}`;
+            query += `&issuer=${encodeURIComponent(issuer)}&currency=${encodeURIComponent(currency)}`;
         }
 
         console.log('Fetching airdrop data with query:', query);
@@ -1852,7 +1861,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
-            throw new Error(`HTTP error! status: ${response.status} - ${errorData.detail || 'Unknown error'}`);
+            throw new Error(`HTTP error! status: ${response.status} - ${JSON.stringify(errorData.detail || 'Unknown error')}`);
         }
         const data = await response.json();
         console.log('Airdrop response:', data);
@@ -1870,35 +1879,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 showNotification('Fee payment not authorized. Airdrop cancelled.', true);
                 proceedBtn.disabled = false;
                 proceedLoader.style.display = 'none';
-                transactionSigning.style.display = 'none';
+                transactionSigning.style.display = 'none'; // Hide immediately
                 return;
             }
             console.log('Fee signed, proceeding to airdrop transactions');
         }
 
         let allSigned = true;
-        transactionResults = [];
         if (!data.transactions || data.transactions.length === 0) {
             showNotification('No airdrop transactions generated. Check wallet data or server response.', true);
             proceedBtn.disabled = false;
             proceedLoader.style.display = 'none';
-            transactionSigning.style.display = 'none';
+            transactionSigning.style.display = 'none'; // Hide immediately
             return;
         }
 
         const total = data.transactions.length;
-        const skipButton = document.getElementById('skip-transaction-btn');
-
         for (const [index, tx] of data.transactions.entries()) {
             if (!tx.payload_uuid || !tx.sign_url || !tx.status) {
                 showNotification(`Invalid transaction data for transaction ${index + 1}`, true);
                 allSigned = false;
-                transactionResults.push({
-                    index: index,
-                    address: tx.status?.address || 'Unknown',
-                    status: 'Failed',
-                    error: 'Invalid transaction data'
-                });
                 break;
             }
 
@@ -1906,25 +1906,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error('tx.status.address is undefined for tx:', tx);
                 showNotification(`Transaction ${index + 1} has invalid status data`, true);
                 allSigned = false;
-                transactionResults.push({
-                    index: index,
-                    address: 'Unknown',
-                    status: 'Failed',
-                    error: 'Invalid status data'
-                });
                 break;
             }
 
-            if (!transactionTitle || !transactionQr || !transactionQrLink || !skipButton) {
-                console.error('DOM elements missing:', { transactionTitle, transactionQr, transactionQrLink, skipButton });
+            if (!transactionTitle || !transactionQr || !transactionQrLink) {
+                console.error('DOM elements missing:', { transactionTitle, transactionQr, transactionQrLink });
                 showNotification('UI elements missing, cannot proceed.', true);
                 allSigned = false;
-                transactionResults.push({
-                    index: index,
-                    address: tx.status.address,
-                    status: 'Failed',
-                    error: 'UI elements missing'
-                });
                 break;
             }
 
@@ -1934,49 +1922,16 @@ document.addEventListener('DOMContentLoaded', () => {
             transactionQr.style.display = 'block';
             transactionQrLink.href = tx.sign_url;
             transactionQrLink.style.display = 'block';
-            showNotification(`Airdrop initiated. Please authorize transaction ${index + 1}/${total} in Xaman or click Skip to proceed.`);
-
-            let transactionStatus = await new Promise((resolve) => {
-                const onSkip = () => {
-                    console.log(`Transaction ${index + 1}/${total} skipped`);
-                    skipButton.removeEventListener('click', onSkip);
-                    showNotification(`Transaction ${index + 1}/${total} skipped.`);
-                    resolve('skipped');
-                };
-                skipButton.addEventListener('click', onSkip);
-
-                pollTransaction(tx.payload_uuid, index, total).then(signed => {
-                    skipButton.removeEventListener('click', onSkip);
-                    resolve(signed ? 'signed' : 'failed');
-                });
-            });
-
-            if (transactionStatus === 'skipped') {
-                transactionResults.push({
-                    index: index,
-                    address: tx.status.address,
-                    status: 'Skip'
-                });
-                allSigned = false;
-            } else if (transactionStatus === 'signed') {
-                transactionResults.push({
-                    index: index,
-                    address: tx.status.address,
-                    status: 'Signed'
-                });
-            } else {
-                transactionResults.push({
-                    index: index,
-                    address: tx.status.address,
-                    status: 'Failed',
-                    error: 'Transaction not authorized'
-                });
-                allSigned = false;
-            }
-
+            showNotification(`Airdrop initiated. Please authorize transaction ${index + 1}/${total} in Xaman.`);
             await new Promise(resolve => setTimeout(resolve, 1000));
+            const signed = await pollTransaction(tx.payload_uuid, index, total);
+            if (!signed) {
+                allSigned = false;
+                break;
+            }
         }
 
+        // Hide transaction signing UI and clear stale data immediately after the loop
         transactionSigning.style.display = 'none';
         transactionTitle.textContent = '';
         transactionQr.src = '';
@@ -1984,44 +1939,29 @@ document.addEventListener('DOMContentLoaded', () => {
         transactionQrLink.href = '#';
         transactionQrLink.style.display = 'none';
 
-        airdropData.total_fee = data.total_fee;
-        airdropData.service_fee = data.service_fee;
-
         if (allSigned) {
             showNotification('Airdrop transactions authorized successfully!');
+            resultsDiv.innerHTML = '<h2>Airdrop Results</h2>' + data.transactions.map((tx, index) => `
+                <p>Transaction ${index + 1}: ${tx.status.address} - ${tx.txid || 'Pending'}</p>
+            `).join('') + '<button id="back-button" class="button">Back to Airdrop Form</button>';
+            resultsDiv.style.display = 'block';
+            const newBackButton = document.getElementById('back-button');
+            if (newBackButton) {
+                console.log('Back button found, attaching event listener');
+                newBackButton.addEventListener('click', () => {
+                    console.log('Back to Airdrop Form button clicked');
+                    clearForm();
+                });
+            } else {
+                console.error('Back button not found after updating resultsDiv');
+            }
         } else {
-            showNotification('Some airdrop transactions were skipped, failed, or not authorized.', true);
-        }
-
-        resultsDiv.innerHTML = `
-            <h2>Airdrop Results <i class="fas fa-sync-alt refresh-icon" onclick="refreshAirdropReport()"></i></h2>
-            <p>Total Network Fee: ${airdropData.total_fee || 'N/A'} XRP</p>
-            <p>Total REMI Service Fee: ${airdropData.service_fee || 'N/A'} XRP</p>
-            ${transactionResults.map((result, idx) => `
-                <p>
-                    Transaction ${idx + 1}: ${result.address} - 
-                    <span class="${result.status === 'Skip' ? 'status-skipped' : ''}">
-                        ${result.status}${result.error ? ` (${result.error})` : ''}
-                    </span>
-                </p>
-            `).join('')}
-            <button id="back-button" class="button">Back to Airdrop Form</button>
-        `;
-        resultsDiv.style.display = 'block';
-        const newBackButton = document.getElementById('back-button');
-        if (newBackButton) {
-            console.log('Back button found, attaching event listener');
-            newBackButton.addEventListener('click', () => {
-                console.log('Back to Airdrop Form button clicked');
-                clearForm();
-            });
-        } else {
-            console.error('Back button not found after updating resultsDiv');
+            showNotification('Some airdrop transactions failed or were not authorized.', true);
         }
     } catch (error) {
         console.error('Error during airdrop:', error);
         showNotification(`Error during airdrop process: ${error.message}`, true);
-        transactionSigning.style.display = 'none';
+        transactionSigning.style.display = 'none'; // Ensure it's hidden on error
         transactionTitle.textContent = '';
         transactionQr.src = '';
         transactionQr.style.display = 'none';
@@ -2030,6 +1970,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } finally {
         proceedBtn.disabled = false;
         proceedLoader.style.display = 'none';
+        // No need to hide transactionSigning here since we handle it above
     }
 }
 
@@ -2237,4 +2178,4 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     </script>
 </body>
-</html
+</html>
