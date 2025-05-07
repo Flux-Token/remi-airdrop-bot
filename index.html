@@ -718,11 +718,84 @@
             color: #ff6f61;
         }
 
-        .transaction-qr-link {
-            text-align: center;
-            display: block;
-            width: 100%;
-        }
+        /* Skip Button Styling */
+.skip-button {
+    background: #ff4d4d;
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 25px;
+    cursor: pointer;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 0.9em;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 5px 15px rgba(255, 77, 77, 0.4);
+    margin: 10px auto;
+    display: block;
+    position: relative;
+    overflow: hidden;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.skip-button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transition: 0.5s;
+}
+
+.skip-button:hover::before {
+    left: 100%;
+}
+
+.skip-button:hover {
+    background: #cc0000;
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(204, 0, 0, 0.6);
+}
+
+/* Status Color-Coding */
+#transaction-results p .status-pending {
+    color: #007bff; /* Blue for Pending Payment */
+    font-weight: 600;
+}
+
+#transaction-results p .status-cancelled {
+    color: #ff0000; /* Red for Cancelled */
+    font-weight: 600;
+}
+
+#transaction-results p .status-failed {
+    color: #8b0000; /* Dark Red for Failed */
+    font-weight: 600;
+}
+
+#transaction-results p .status-skipped {
+    color: #ffc107; /* Yellow for Skipped */
+    font-weight: 600;
+}
+
+/* Ensure Open in Xaman link has consistent styling */
+.transaction-qr-link {
+    color: #007bff;
+    text-decoration: none;
+    font-size: 0.9em;
+    margin: 10px auto;
+    display: block;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.transaction-qr-link:hover {
+    color: #0056b3;
+    text-decoration: underline;
+}
 
         footer {
             background: linear-gradient(90deg, #ff6f61, #ff00ff);
@@ -785,6 +858,8 @@
     text-decoration: underline;
     color: #ff6f61;
 }
+
+
 
         @keyframes spin {
             0% { transform: rotate(0deg); }
@@ -904,6 +979,7 @@
                     <h2 id="transaction-title"></h2>
                     <img class="transaction-qr" src="" alt="Transaction QR Code">
                     <a class="transaction-qr-link qr-link" href="#" target="_blank">Open in Xaman</a>
+                    <button class="skip-button" onclick="skipTransaction()">Skip Transaction</button>
                 </div>
                 <div id="results" class="form-section">
                     <h2>Airdrop Report <i class="fas fa-sync-alt refresh-icon" onclick="refreshAirdropReport()"></i></h2>
@@ -1900,7 +1976,7 @@
     };
 });
 
-            async function proceedWithAirdrop(wallets, tokenTypeSelect, serviceFee) {
+async function proceedWithAirdrop(wallets, tokenTypeSelect, serviceFee) {
     proceedBtn.disabled = true;
     proceedLoader.style.display = 'inline-block';
     airdropForm.style.display = 'none';
@@ -1954,7 +2030,7 @@
                 total_amount: totalAmount,
                 issuer: tokenType !== 'XRP' ? issuer : null,
                 currency: tokenType !== 'XRP' ? currency : null,
-                wallets: sortedWallets, // Use sorted wallets
+                wallets: sortedWallets,
                 account: account
             })
         });
@@ -1999,7 +2075,7 @@
 
         // Store fees in airdropData
         airdropData = {
-            total_fee: data.total_fee || '0.000012', // Fallback to default if not provided
+            total_fee: data.total_fee || '0.000012',
             service_fee: serviceFee,
             transaction_count: data.transactions.length
         };
@@ -2010,36 +2086,54 @@
             address: tx.status.address,
             txid: 'Pending',
             payload_uuid: tx.payload_uuid,
-            status: 'Pending'
+            sign_url: tx.sign_url,
+            status: tx.status.status || 'Pending',
+            error: tx.status.error || null
         }));
 
         // Display initial transaction results
         resultsDiv.style.display = 'block';
         const transactionResultsDiv = document.getElementById('transaction-results');
         if (transactionResultsDiv) {
-            transactionResultsDiv.innerHTML = transactionResults.map(tx => `
-                <p>Transaction ${tx.number}: ${tx.address} - <span class="txid" data-txid="${tx.txid}">${tx.txid}</span></p>
-            `).join('');
+            transactionResultsDiv.innerHTML = transactionResults.map(tx => {
+                const statusClass = tx.status === 'Success' ? 'status-success' :
+                                   tx.status === 'Failed' ? 'status-failed' :
+                                   tx.status === 'Skipped' ? 'status-skipped' :
+                                   tx.status === 'Cancelled' ? 'status-cancelled' : 'status-pending';
+                const txidText = tx.status === 'Pending' ? 'Pending' :
+                                tx.status === 'Success' && tx.txid !== 'Success' ?
+                                `<a href="https://xrpl.org/transaction/${tx.txid}" target="_blank" class="qr-link">${tx.txid}</a>` :
+                                tx.status === 'Skipped' ? `Skipped${tx.error ? ` (${tx.error})` : ''}` :
+                                tx.status;
+                return `<p>Transaction ${tx.number}: ${tx.address} - <span class="txid ${statusClass}" data-txid="${tx.txid}">${txidText}</span></p>`;
+            }).join('');
         }
 
         const total = data.transactions.length;
         let successfulTransactions = 0;
-        for (const [index, tx] of data.transactions.entries()) {
-            if (!tx.payload_uuid || !tx.sign_url || !tx.status || !tx.status.address) {
+        for (let index = 0; index < data.transactions.length; index++) {
+            const tx = transactionResults[index];
+            if (tx.status !== 'Pending') {
+                if (tx.status === 'Success') successfulTransactions++;
+                continue; // Skip non-pending transactions
+            }
+
+            if (!tx.payload_uuid || !tx.sign_url || !tx.address) {
                 console.error(`Invalid transaction data for transaction ${index + 1}:`, tx);
                 showNotification(`Invalid transaction data for transaction ${index + 1}`, true);
                 transactionResults[index].status = 'Failed';
                 transactionResults[index].txid = 'Failed';
-                continue; // Continue to the next transaction
+                transactionResults[index].error = 'Invalid transaction data';
+                continue;
             }
 
-            transactionTitle.textContent = `Sign Transaction ${index + 1} of ${total} (${tx.status.address})`;
-            transactionTitle.setAttribute('title', tx.status.address);
+            transactionTitle.textContent = `Sign Transaction ${tx.number} of ${total} (${tx.address})`;
+            transactionTitle.setAttribute('title', tx.address);
             transactionQr.src = `https://xumm.app/sign/${tx.payload_uuid}_q.png`;
             transactionQr.style.display = 'block';
             transactionQrLink.href = tx.sign_url;
             transactionQrLink.style.display = 'block';
-            showNotification(`Airdrop initiated. Please authorize transaction ${index + 1}/${total} in Xaman.`);
+            showNotification(`Airdrop initiated. Please authorize transaction ${tx.number}/${total} in Xaman.`);
             await new Promise(resolve => setTimeout(resolve, 1000));
             const signed = await pollTransaction(tx.payload_uuid, index, total);
             if (signed) {
@@ -2047,19 +2141,29 @@
                 transactionResults[index].txid = data.transactions[index].txid || 'Success';
                 successfulTransactions++;
             } else {
-                console.error(`Transaction ${index + 1} failed for address ${tx.status.address}`);
-                showNotification(`Transaction ${index + 1} failed for address ${tx.status.address}`, true);
+                // Check if the transaction was skipped
+                if (transactionResults[index].status === 'Skipped') {
+                    continue; // Already handled by skipTransaction
+                }
+                console.error(`Transaction ${index + 1} failed for address ${tx.address}`);
+                showNotification(`Transaction ${index + 1} failed for address ${tx.address}`, true);
                 transactionResults[index].status = 'Failed';
                 transactionResults[index].txid = 'Failed';
+                transactionResults[index].error = 'Transaction failed';
             }
 
             // Update the display after each transaction
             if (transactionResultsDiv) {
                 transactionResultsDiv.innerHTML = transactionResults.map(tx => {
-                    const statusClass = tx.status === 'Success' ? 'status-success' : tx.status === 'Failed' ? 'status-failed' : '';
-                    const txidText = tx.status === 'Pending' ? 'Pending' : tx.status === 'Success' && tx.txid !== 'Success'
-                        ? `<a href="https://xrpl.org/transaction/${tx.txid}" target="_blank" class="qr-link">${tx.txid}</a>`
-                        : tx.status;
+                    const statusClass = tx.status === 'Success' ? 'status-success' :
+                                       tx.status === 'Failed' ? 'status-failed' :
+                                       tx.status === 'Skipped' ? 'status-skipped' :
+                                       tx.status === 'Cancelled' ? 'status-cancelled' : 'status-pending';
+                    const txidText = tx.status === 'Pending' ? 'Pending' :
+                                    tx.status === 'Success' && tx.txid !== 'Success' ?
+                                    `<a href="https://xrpl.org/transaction/${tx.txid}" target="_blank" class="qr-link">${tx.txid}</a>` :
+                                    tx.status === 'Skipped' ? `Skipped${tx.error ? ` (${tx.error})` : ''}` :
+                                    tx.status;
                     return `<p>Transaction ${tx.number}: ${tx.address} - <span class="txid ${statusClass}" data-txid="${tx.txid}">${txidText}</span></p>`;
                 }).join('');
             }
@@ -2073,47 +2177,8 @@
         transactionQrLink.href = '#';
         transactionQrLink.style.display = 'none';
 
-        // Display final notification
-        if (successfulTransactions === total) {
-            showNotification('All airdrop transactions authorized successfully!');
-        } else if (successfulTransactions > 0) {
-            showNotification(`${successfulTransactions}/${total} airdrop transactions completed successfully. Check results for details.`, true);
-        } else {
-            showNotification('All airdrop transactions failed. Check results for details.', true);
-        }
-
-        // Update total fees
-        const totalNetworkFeeElement = document.getElementById('total-network-fee');
-        const totalServiceFeeElement = document.getElementById('total-service-fee');
-        if (totalNetworkFeeElement && totalServiceFeeElement) {
-            const networkFee = parseFloat(airdropData.total_fee).toFixed(6);
-            const serviceFeeValue = parseFloat(airdropData.service_fee).toFixed(2);
-            const totalFee = (parseFloat(networkFee) + parseFloat(serviceFeeValue)).toFixed(6);
-            totalNetworkFeeElement.textContent = `Total Network Fee: ${networkFee} XRP`;
-            totalServiceFeeElement.textContent = `Total REMI Service Fee: ${serviceFeeValue} XRP`;
-            // Add or update total combined fee display
-            let totalFeeElement = document.getElementById('total-combined-fee');
-            if (!totalFeeElement) {
-                totalFeeElement = document.createElement('p');
-                totalFeeElement.id = 'total-combined-fee';
-                totalServiceFeeElement.insertAdjacentElement('afterend', totalFeeElement);
-            }
-            totalFeeElement.textContent = `Total Combined Fee: ${totalFee} XRP`;
-        } else {
-            console.error('Fee elements not found!');
-        }
-
-        const newBackButton = document.getElementById('back-button');
-        if (newBackButton) {
-            console.log('Back button found, attaching event listener');
-            newBackButton.removeEventListener('click', clearForm);
-            newBackButton.addEventListener('click', () => {
-                console.log('Back to Airdrop Form button clicked');
-                clearForm();
-            });
-        } else {
-            console.error('Back button not found after updating resultsDiv');
-        }
+        // Display final results
+        updateFinalResults();
     } catch (error) {
         console.error('Error during airdrop:', error);
         showNotification(`Error during airdrop process: ${error.message}`, true);
@@ -2180,6 +2245,101 @@
                 console.log('User not logged in, showing login section');
             }
         }
+
+        window.skipTransaction = function() {
+    console.log('Skip Transaction button clicked');
+    const currentIndex = transactionResults.findIndex(tx => tx.status === 'Pending');
+    if (currentIndex === -1) {
+        console.warn('No pending transaction to skip');
+        showNotification('No pending transaction to skip.', true);
+        return;
+    }
+
+    // Update transaction status
+    transactionResults[currentIndex] = {
+        ...transactionResults[currentIndex],
+        status: 'Skipped',
+        txid: 'Skipped',
+        payload_uuid: null,
+        sign_url: null,
+        error: 'Transaction skipped by user'
+    };
+
+    // Update UI
+    const transactionResultsDiv = document.getElementById('transaction-results');
+    if (transactionResultsDiv) {
+        transactionResultsDiv.innerHTML = transactionResults.map(tx => {
+            const statusClass = tx.status === 'Success' ? 'status-success' :
+                               tx.status === 'Failed' ? 'status-failed' :
+                               tx.status === 'Skipped' ? 'status-skipped' :
+                               tx.status === 'Cancelled' ? 'status-cancelled' : 'status-pending';
+            const txidText = tx.status === 'Pending' ? 'Pending' :
+                            tx.status === 'Success' && tx.txid !== 'Success' ?
+                            `<a href="https://xrpl.org/transaction/${tx.txid}" target="_blank" class="qr-link">${tx.txid}</a>` :
+                            tx.status === 'Skipped' ? `Skipped${tx.error ? ` (${tx.error})` : ''}` :
+                            tx.status;
+            return `<p>Transaction ${tx.number}: ${tx.address} - <span class="txid ${statusClass}" data-txid="${tx.txid}">${txidText}</span></p>`;
+        }).join('');
+    }
+
+    showNotification(`Transaction ${transactionResults[currentIndex].number} skipped.`);
+    
+    // Move to the next transaction
+    const nextIndex = transactionResults.findIndex((tx, i) => i > currentIndex && tx.status === 'Pending');
+    if (nextIndex !== -1) {
+        const tx = transactionResults[nextIndex];
+        transactionTitle.textContent = `Sign Transaction ${tx.number} of ${transactionResults.length} (${tx.address})`;
+        transactionTitle.setAttribute('title', tx.address);
+        transactionQr.src = `https://xumm.app/sign/${tx.payload_uuid}_q.png`;
+        transactionQr.style.display = 'block';
+        transactionQrLink.href = tx.sign_url;
+        transactionQrLink.style.display = 'block';
+        showNotification(`Please authorize transaction ${tx.number}/${transactionResults.length} in Xaman.`);
+    } else {
+        // No more pending transactions
+        transactionSigning.style.display = 'none';
+        transactionTitle.textContent = '';
+        transactionQr.src = '';
+        transactionQr.style.display = 'none';
+        transactionQrLink.href = '#';
+        transactionQrLink.style.display = 'none';
+        showNotification('All transactions processed or skipped.');
+        updateFinalResults();
+    }
+};
+
+function updateFinalResults() {
+    const transactionResultsDiv = document.getElementById('total-network-fee').parentElement;
+    if (transactionResultsDiv) {
+        const successfulTransactions = transactionResults.filter(tx => tx.status === 'Success').length;
+        const total = transactionResults.length;
+        if (successfulTransactions === total) {
+            showNotification('All airdrop transactions authorized successfully!');
+        } else if (successfulTransactions > 0) {
+            showNotification(`${successfulTransactions}/${total} airdrop transactions completed successfully. Check results for details.`, true);
+        } else {
+            showNotification('All airdrop transactions failed or were skipped. Check results for details.', true);
+        }
+
+        // Update fee display
+        const totalNetworkFeeElement = document.getElementById('total-network-fee');
+        const totalServiceFeeElement = document.getElementById('total-service-fee');
+        if (totalNetworkFeeElement && totalServiceFeeElement) {
+            const networkFee = parseFloat(airdropData.total_fee).toFixed(6);
+            const serviceFeeValue = parseFloat(airdropData.service_fee).toFixed(2);
+            const totalFee = (parseFloat(networkFee) + parseFloat(serviceFeeValue)).toFixed(6);
+            totalNetworkFeeElement.textContent = `Total Network Fee: ${networkFee} XRP`;
+            totalServiceFeeElement.textContent = `Total REMI Service Fee: ${serviceFeeValue} XRP`;
+            let totalFeeElement = document.getElementById('total-combined-fee');
+            if (!totalFeeElement) {
+                totalFeeElement = document.createElement('p');
+                totalFeeElement.id = 'total-combined-fee';
+                totalServiceFeeElement.insertAdjacentElement('afterend', totalFeeElement);
+            }
+            totalFeeElement.textContent = `Total Combined Fee: ${totalFee} XRP`;
+        }
+    }
+}
 
         let csvHasHeader = true;
         const csvHeaderToggle = document.getElementById('csv-header-toggle');
@@ -2334,10 +2494,8 @@
         return;
     }
 
-    // Poll each transaction's status using its payload_uuid
     for (const tx of transactionResults) {
-        if (tx.status === 'Success' || tx.status === 'Failed') {
-            // Skip transactions that are already resolved
+        if (tx.status === 'Success' || tx.status === 'Failed' || tx.status === 'Skipped' || tx.status === 'Cancelled') {
             continue;
         }
         if (!tx.payload_uuid) {
@@ -2358,27 +2516,31 @@
             } else if (response.status === 400 && (data.detail === "Payload was cancelled" || data.detail === "Payload has expired")) {
                 tx.status = 'Failed';
                 tx.txid = 'Failed';
+                tx.error = data.detail;
                 console.log(`Transaction ${tx.number} failed or expired`);
             }
         } catch (error) {
             console.error(`Error refreshing transaction ${tx.number}:`, error);
             tx.status = 'Failed';
             tx.txid = 'Failed';
+            tx.error = 'Refresh error';
         }
     }
 
-    // Update the transaction results display without clearing
     const transactionResultsDiv = document.getElementById('transaction-results');
     if (transactionResultsDiv) {
         transactionResultsDiv.innerHTML = transactionResults.map(tx => {
-            const statusClass = tx.status === 'Success' ? 'status-success' : tx.status === 'Failed' ? 'status-failed' : '';
-            const txidText = tx.status === 'Pending' ? 'Pending' : tx.status === 'Success' && tx.txid !== 'Success'
-                ? `<a href="https://xrpl.org/transaction/${tx.txid}" target="_blank" class="qr-link">${tx.txid}</a>`
-                : tx.status;
+            const statusClass = tx.status === 'Success' ? 'status-success' :
+                               tx.status === 'Failed' ? 'status-failed' :
+                               tx.status === 'Skipped' ? 'status-skipped' :
+                               tx.status === 'Cancelled' ? 'status-cancelled' : 'status-pending';
+            const txidText = tx.status === 'Pending' ? 'Pending' :
+                            tx.status === 'Success' && tx.txid !== 'Success' ?
+                            `<a href="https://xrpl.org/transaction/${tx.txid}" target="_blank" class="qr-link">${tx.txid}</a>` :
+                            tx.status === 'Skipped' ? `Skipped${tx.error ? ` (${tx.error})` : ''}` :
+                            tx.status;
             return `<p>Transaction ${tx.number}: ${tx.address} - <span class="txid ${statusClass}" data-txid="${tx.txid}">${txidText}</span></p>`;
         }).join('');
-    } else {
-        console.error('Transaction results div not found during refresh!');
     }
 
     refreshIcon.classList.remove('spinning');
@@ -2391,34 +2553,29 @@ function exportToCSV() {
         return;
     }
 
-    // Define CSV headers
-    const headers = ['Transaction Number', 'Wallet Address', 'Status', 'Transaction ID'];
-    // Convert transaction results to CSV rows
+    const headers = ['Transaction Number', 'Wallet Address', 'Status', 'Transaction ID', 'Error'];
     const csvRows = [headers.join(',')];
     transactionResults.forEach(tx => {
         const row = [
             tx.number,
-            `"${tx.address}"`, // Wrap address in quotes to handle commas
-            `"${tx.status}"`,  // Include status
-            `"${tx.txid}"`     // Wrap txid in quotes to handle commas
+            `"${tx.address}"`,
+            `"${tx.status}"`,
+            `"${tx.txid}"`,
+            `"${tx.error || ''}"`
         ];
         csvRows.push(row.join(','));
     });
 
-    // Add fee information
     if (airdropData) {
-        csvRows.push(''); // Empty row for separation
+        csvRows.push('');
         csvRows.push(`"Total Network Fee","${parseFloat(airdropData.total_fee).toFixed(6)} XRP"`);
         csvRows.push(`"Total REMI Service Fee","${parseFloat(airdropData.service_fee).toFixed(2)} XRP"`);
         const totalFee = (parseFloat(airdropData.total_fee) + parseFloat(airdropData.service_fee)).toFixed(6);
         csvRows.push(`"Total Combined Fee","${totalFee} XRP"`);
     }
 
-    // Create CSV content
     const csvContent = csvRows.join('\n');
-    // Create a Blob for the CSV file
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    // Create a download link
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
