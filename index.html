@@ -821,6 +821,20 @@
         .icon {
             margin-right: 8px;
         }
+
+        #check-trustline-btn.glow {
+            animation: glow 1.5s ease-in-out infinite alternate;
+            box-shadow: 0 0 15px rgba(255, 111, 97, 0.8), 0 0 25px rgba(255, 0, 255, 0.6);
+        }
+
+        @keyframes glow {
+            from {
+                box-shadow: 0 0 10px rgba(255, 111, 97, 0.5), 0 0 20px rgba(255, 0, 255, 0.4);
+            }
+            to {
+                box-shadow: 0 0 20px rgba(255, 111, 97, 1), 0 0 30px rgba(255, 0, 255, 0.8);
+            }
+        }
     </style>
 </head>
 <body>
@@ -920,6 +934,8 @@
         const PRELOADER_TIMEOUT = 6000;
         const BACKEND_URL = 'https://remi-airdrop-bot.onrender.com';
         let notificationTimeout = null;
+
+        let trustlineChecked = false;
 
         function loadResource(url, type) {
             return new Promise((resolve) => {
@@ -1798,6 +1814,16 @@
             proceedBtn.addEventListener('click', async () => {
                 console.log('Proceed to Signing clicked, accessToken:', getStorageItem('access_token'));
 
+                // Check if trustline has been validated
+                if (!trustlineChecked && tokenTypeSelect.value !== 'XRP') {
+                    showNotification(
+                        'Please click "Check Trustline" to validate wallets before proceeding with the airdrop. This ensures no erroneous or failed transactions.',
+                        true
+                    );
+                    checkTrustlineBtn.classList.add('glow'); // Apply glow effect
+                    return;
+                }
+
                 // Collect wallets and check for invalid trustlines
                 const wallets = Array.from(document.getElementsByClassName('wallet-input')).map(div => ({
                     address: div.querySelector('.wallet-address').value.trim(),
@@ -1808,11 +1834,12 @@
                 // Check for zero or empty amounts
                 const invalidWallets = wallets.filter(wallet => !wallet.amount || parseFloat(wallet.amount) === 0);
                 if (invalidWallets.length > 0) {
-                 const invalidAddresses = invalidWallets.map(wallet => wallet.address).join(', ');
+                    const invalidAddresses = invalidWallets.map(wallet => wallet.address).join(', ');
                     showNotification(
                         `The following wallets have zero or empty amounts and cannot proceed: ${invalidAddresses}. Please enter a valid amount greater than 0 for each wallet.`,
                         true
                     );
+                    checkTrustlineBtn.classList.remove('glow'); // Remove glow if present
                     return;
                 }
 
@@ -1824,6 +1851,7 @@
                         `Cannot proceed with airdrop: The following wallets lack trustlines (red-flagged): ${redFlaggedAddresses}. Please remove or validate these wallets.`,
                         true
                     );
+                    checkTrustlineBtn.classList.remove('glow'); // Remove glow if present
                     return;
                 }
 
@@ -1837,6 +1865,7 @@
 
                 if (validWallets.length === 0) {
                     showNotification('No valid wallets to airdrop. Please add wallets with valid trustlines.', true);
+                    checkTrustlineBtn.classList.remove('glow'); // Remove glow if present
                     return;
                 }
 
@@ -1848,15 +1877,93 @@
                 feeAgreeBtn.onclick = async () => {
                     feeConfirmation.style.display = 'none';
                     notificationOverlay.style.display = 'none';
+                    checkTrustlineBtn.classList.remove('glow'); // Remove glow when proceeding
                     await proceedWithAirdrop(validWallets, tokenTypeSelect, serviceFee);
                 };
 
                 feeDisagreeBtn.onclick = () => {
                     feeConfirmation.style.display = 'none';
                     notificationOverlay.style.display = 'none';
+                    checkTrustlineBtn.classList.remove('glow'); // Remove glow if cancelled
                     showNotification('Airdrop cancelled due to fee disagreement.', true);
                 };
             });
+
+            checkTrustlineBtn.addEventListener('click', async () => {
+                console.log('Check Trustline clicked');
+                const wallets = Array.from(document.getElementsByClassName('wallet-input')).map(div => ({
+                    address: div.querySelector('.wallet-address').value.trim(),
+                    amount: div.querySelector('.wallet-amount').value.trim()
+                }));
+
+                if (wallets.length === 0 || wallets.every(wallet => !wallet.address)) {
+                    showNotification('Please add at least one wallet address to check trustlines.', true);
+                    return;
+                }
+
+                const tokenType = tokenTypeSelect.value;
+                const selectedOption = tokenTypeSelect.selectedOptions[0];
+                const issuer = selectedOption.dataset.issuer || '';
+                const currency = selectedOption.dataset.currency || '';
+
+                if (tokenType !== 'XRP' && (!issuer || !currency)) {
+                    showNotification('Please select a valid token with issuer and currency.', true);
+                    return;
+                }
+
+                checkTrustlineBtn.disabled = true;
+                checkTrustlineLoader.style.display = 'inline-block';
+
+                try {
+                    let query = `?token_type=${encodeURIComponent(tokenType)}`;
+                    if (tokenType !== 'XRP') {
+                        query += `&issuer=${encodeURIComponent(issuer)}&currency=${encodeURIComponent(currency)}`;
+                    }
+
+                    console.log('Checking trustlines with query:', query);
+                    const response = await fetch(`${BACKEND_URL}/check-trustlines${query}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${getStorageItem('access_token')}`,
+                            'account': getStorageItem('account')
+                        },
+                        body: JSON.stringify(wallets)
+                    });
+
+                    if (response.status === 401) {
+                        handleUnauthorized();
+                        return;
+                    }
+                    if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({}));
+                        throw new Error(`HTTP error! status: ${response.status} - ${JSON.stringify(errorData.detail || 'Unknown error')}`);
+                    }
+                    const data = await response.json();
+                    console.log('Trustline check response:', data);
+
+                    wallets.forEach((wallet, index) => {
+                        const walletDiv = document.getElementsByClassName('wallet-input')[index];
+                        const trustlineStatusBox = walletDiv.querySelector('.trustline-status-box');
+                        const result = data.find(r => r.address === wallet.address);
+                        if (result) {
+                            trustlineStatusBox.classList.remove('valid', 'invalid');
+                            trustlineStatusBox.classList.add(result.has_trustline ? 'valid' : 'invalid');
+                            trustlineStatusBox.textContent = result.has_trustline ? 'Valid' : 'Invalid';
+                        }
+                    });
+
+        trustlineChecked = true; // Mark trustline check as completed
+        checkTrustlineBtn.classList.remove('glow'); // Remove glow if previously applied
+        showNotification('Trustline check completed.');
+    } catch (error) {
+        console.error('Error checking trustlines:', error);
+        showNotification(`Error checking trustlines: ${error.message}`, true);
+    } finally {
+        checkTrustlineBtn.disabled = false;
+        checkTrustlineLoader.style.display = 'none';
+    }
+});
 
 async function fetchTransactionTxid(payloadUuid) {
     try {
