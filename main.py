@@ -497,35 +497,36 @@ async def airdrop(
 
             # Create payment transaction
             try:
-                if request.token_type == "XRP":
-                    amount = xrp_to_drops(float(wallet.amount))
-                    payment_tx = {
-                        "TransactionType": "Payment",
-                        "Account": account,
-                        "Destination": wallet.address,
-                        "Amount": str(amount),
-                        "Fee": str(fee),
-                        "Sequence": sequence,
-                        "LastLedgerSequence": last_ledger_sequence
-                    }
-                    logger.info(f"XRP payment transaction: {payment_tx}")
-                else:
-                    payment_tx = {
-                        "TransactionType": "Payment",
-                        "Account": account,
-                        "Destination": wallet.address,
-                        "Amount": {
-                            "currency": request.currency,
-                            "value": str(float(wallet.amount)),
-                            "issuer": request.issuer
-                        },
-                        "Fee": str(fee),
-                        "Sequence": sequence,
-                        "LastLedgerSequence": last_ledger_sequence
-                    }
-                    logger.info(f"Token payment transaction: {payment_tx}")
+    if request.token_type == "XRP":
+        amount = xrp_to_drops(float(wallet.amount))
+        payment_tx = {
+            "TransactionType": "Payment",
+            "Account": account,
+            "Destination": wallet.address,
+            "Amount": str(amount),
+            "Fee": str(fee),
+            "Sequence": sequence,
+            "LastLedgerSequence": last_ledger_sequence
+        }
+        logger.info(f"Creating XRP payment transaction for {wallet.address}: {payment_tx}")
+    else:
+        payment_tx = {
+            "TransactionType": "Payment",
+            "Account": account,
+            "Destination": wallet.address,
+            "Amount": {
+                "currency": request.currency,
+                "value": str(float(wallet.amount)),
+                "issuer": request.issuer
+            },
+            "Fee": str(fee),
+            "Sequence": sequence,
+            "LastLedgerSequence": last_ledger_sequence
+        }
+        logger.info(f"Creating token payment transaction for {wallet.address}: {payment_tx}")
 
                 # Submit transaction to Xaman
+                logger.info(f"Submitting transaction for {wallet.address} to Xaman with sequence {sequence}")
                 payload_data = await submit_to_xaman(payment_tx, headers)
                 transactions.append({
                     "index": index,
