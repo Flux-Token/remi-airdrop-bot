@@ -1812,11 +1812,15 @@
             }
 
             proceedBtn.addEventListener('click', async () => {
-    console.log('Proceed to Signing clicked, accessToken:', getStorageItem('access_token'), 'trustlineChecked:', trustlineChecked);
+    console.log('Proceed to Signing clicked', {
+        accessToken: getStorageItem('access_token'),
+        trustlineChecked: trustlineChecked,
+        tokenType: tokenTypeSelect.value
+    });
 
     // Check if trustline has been validated for non-XRP tokens
     if (!trustlineChecked && tokenTypeSelect.value !== 'XRP') {
-        console.log('Trustline check not performed, prompting user');
+        console.log('Blocking: Trustline check not performed');
         showNotification(
             'Please click "Check Trustline" to validate wallets before proceeding with the airdrop. This ensures no erroneous or failed transactions.',
             true
@@ -1826,71 +1830,72 @@
     }
 
     // Collect wallets and their trustline statuses
-    const wallets = Array.from(document.getElementsByClassName('wallet-input')).map(div => {
+    const wallets = Array.from(document.getElementsByClassName('wallet-input')).map((div, index) => {
         const address = div.querySelector('.wallet-address').value.trim();
         const amount = div.querySelector('.wallet-amount').value.trim();
         const trustlineStatusBox = div.querySelector('.trustline-status-box');
-        const trustlineStatus = trustlineStatusBox.classList.contains('invalid') ? 'invalid' : 
-                               (trustlineStatusBox.classList.contains('valid') ? 'valid' : 'unchecked');
-        return { address, amount, trustlineStatus };
+        const hasValidClass = trustlineStatusBox.classList.contains('valid');
+        const hasInvalidClass = trustlineStatusBox.classList.contains('invalid');
+        const trustlineStatus = hasValidClass ? 'valid' : (hasInvalidClass ? 'invalid' : 'unchecked');
+        return { index, address, amount, trustlineStatus, statusBoxText: trustlineStatusBox.textContent };
     });
 
     console.log('Collected wallets:', wallets);
 
-    // Check for zero or empty amounts
+    // Validate wallets
+    if (wallets.length === 0) {
+        console.log('Blocking: No wallets provided');
+        showNotification('Please add at least one wallet to proceed with the airdrop.', true);
+        checkTrustlineBtn.classList.remove('glow');
+        return;
+    }
+
+    // Check for zero, empty, or invalid amounts
     const invalidWallets = wallets.filter(wallet => !wallet.amount || isNaN(parseFloat(wallet.amount)) || parseFloat(wallet.amount) <= 0);
     if (invalidWallets.length > 0) {
         const invalidAddresses = invalidWallets.map(wallet => wallet.address).join(', ');
-        console.log('Invalid wallets (zero/empty amounts):', invalidWallets);
+        console.log('Blocking: Invalid amounts detected', invalidWallets);
         showNotification(
-            `The following wallets have zero or empty amounts and cannot proceed: ${invalidAddresses}. Please enter a valid amount greater than 0 for each wallet.`,
+            `The following wallets have zero, empty, or invalid amounts: ${invalidAddresses}. Please enter a valid amount greater than 0 for each wallet.`,
             true
         );
         checkTrustlineBtn.classList.remove('glow');
         return;
     }
 
-    // Check for red-flagged wallets (only for non-XRP tokens)
+    // Check for red-flagged or unchecked wallets (only for non-XRP tokens)
     const redFlaggedWallets = wallets.filter(wallet => wallet.trustlineStatus === 'invalid');
-    if (redFlaggedWallets.length > 0 && tokenTypeSelect.value !== 'XRP') {
-        const redFlaggedAddresses = redFlaggedWallets.map(wallet => wallet.address).join(', ');
-        console.log('Red-flagged wallets:', redFlaggedWallets);
-        showNotification(
-            `Cannot proceed with airdrop: The following wallets lack trustlines (red-flagged): ${redFlaggedAddresses}. Please remove or validate these wallets.`,
-            true
-        );
-        checkTrustlineBtn.classList.remove('glow');
-        return;
+    const uncheckedWallets = wallets.filter(wallet => wallet.trustlineStatus === 'unchecked');
+    if (tokenTypeSelect.value !== 'XRP') {
+        if (redFlaggedWallets.length > 0) {
+            const redFlaggedAddresses = redFlaggedWallets.map(wallet => wallet.address).join(', ');
+            console.log('Blocking: Red-flagged wallets detected', redFlaggedWallets);
+            showNotification(
+                `Cannot proceed with airdrop: The following wallets lack trustlines: ${redFlaggedAddresses}. Please remove or validate these wallets.`,
+                true
+            );
+            checkTrustlineBtn.classList.remove('glow');
+            return;
+        }
+        if (uncheckedWallets.length > 0) {
+            const uncheckedAddresses = uncheckedWallets.map(wallet => wallet.address).join(', ');
+            console.log('Blocking: Unchecked wallets detected', uncheckedWallets);
+            showNotification(
+                `Please click "Check Trustline" to validate the following wallets: ${uncheckedAddresses}.`,
+                true
+            );
+            checkTrustlineBtn.classList.add('glow');
+            return;
+        }
     }
 
-    // Check for unchecked trustlines (ensure all are valid or XRP)
-    const uncheckedWallets = wallets.filter(wallet => wallet.trustlineStatus === 'unchecked' && tokenTypeSelect.value !== 'XRP');
-    if (uncheckedWallets.length > 0) {
-        console.log('Unchecked wallets:', uncheckedWallets);
-        showNotification(
-            'Please click "Check Trustline" to validate all wallets before proceeding with the airdrop.',
-            true
-        );
-        checkTrustlineBtn.classList.add('glow');
-        return;
-    }
+    // All wallets are valid (green) or XRP; prepare for airdrop
+    const validWallets = wallets.map(wallet => ({
+        address: wallet.address,
+        amount: parseFloat(wallet.amount)
+    }));
 
-    // Filter valid wallets
-    const validWallets = wallets
-        .filter(wallet => wallet.trustlineStatus === 'valid' || tokenTypeSelect.value === 'XRP')
-        .map(wallet => ({
-            address: wallet.address,
-            amount: parseFloat(wallet.amount)
-        }));
-
-    console.log('Valid wallets for airdrop:', validWallets);
-
-    if (validWallets.length === 0) {
-        console.log('No valid wallets found');
-        showNotification('No valid wallets to airdrop. Please add wallets with valid trustlines.', true);
-        checkTrustlineBtn.classList.remove('glow');
-        return;
-    }
+    console.log('Proceeding with valid wallets:', validWallets);
 
     const serviceFee = calculateServiceFee(validWallets.length);
     feeMessage.textContent = `You will be charged a REMI service fee of ${serviceFee} XRP to proceed with the airdrop. MAX 5 XRP`;
@@ -1898,7 +1903,7 @@
     notificationOverlay.style.display = 'block';
 
     feeAgreeBtn.onclick = async () => {
-        console.log('Fee agreed, proceeding with airdrop');
+        console.log('Fee agreed, proceeding to airdrop');
         feeConfirmation.style.display = 'none';
         notificationOverlay.style.display = 'none';
         checkTrustlineBtn.classList.remove('glow');
@@ -1922,6 +1927,7 @@ checkTrustlineBtn.addEventListener('click', async () => {
     }));
 
     if (wallets.length === 0 || wallets.every(wallet => !wallet.address)) {
+        console.log('Blocking: No valid wallet addresses provided');
         showNotification('Please add at least one wallet address to check trustlines.', true);
         return;
     }
@@ -1932,6 +1938,7 @@ checkTrustlineBtn.addEventListener('click', async () => {
     const currency = selectedOption.dataset.currency || '';
 
     if (tokenType !== 'XRP' && (!issuer || !currency)) {
+        console.log('Blocking: Invalid token selection (missing issuer or currency)');
         showNotification('Please select a valid token with issuer and currency.', true);
         return;
     }
@@ -1957,11 +1964,13 @@ checkTrustlineBtn.addEventListener('click', async () => {
         });
 
         if (response.status === 401) {
+            console.log('Unauthorized: Handling 401 error');
             handleUnauthorized();
             return;
         }
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
+            console.log('Trustline check failed:', errorData);
             throw new Error(`HTTP error! status: ${response.status} - ${JSON.stringify(errorData.detail || 'Unknown error')}`);
         }
         const data = await response.json();
@@ -1975,16 +1984,22 @@ checkTrustlineBtn.addEventListener('click', async () => {
                 trustlineStatusBox.classList.remove('valid', 'invalid');
                 trustlineStatusBox.classList.add(result.has_trustline ? 'valid' : 'invalid');
                 trustlineStatusBox.textContent = result.has_trustline ? 'Valid' : 'Invalid';
+                console.log(`Updated wallet ${wallet.address}:`, {
+                    hasTrustline: result.has_trustline,
+                    status: result.has_trustline ? 'valid' : 'invalid',
+                    text: trustlineStatusBox.textContent
+                });
             } else {
                 trustlineStatusBox.classList.remove('valid', 'invalid');
                 trustlineStatusBox.textContent = 'Unchecked';
+                console.log(`Wallet ${wallet.address} not found in response, marked as Unchecked`);
             }
         });
 
         trustlineChecked = true;
         checkTrustlineBtn.classList.remove('glow');
         showNotification('Trustline check completed.');
-        console.log('Trustline check completed, statuses updated:', data);
+        console.log('Trustline check completed, trustlineChecked set to true');
     } catch (error) {
         console.error('Error checking trustlines:', error);
         showNotification(`Error checking trustlines: ${error.message}`, true);
