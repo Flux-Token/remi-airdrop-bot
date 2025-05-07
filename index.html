@@ -905,71 +905,71 @@
         }
 
         function showMainContent() {
-            const preloader = document.getElementById('preloader');
-            const mainContent = document.querySelector('.main-content');
-            const footerContainer = document.getElementById('footer-container');
-            const audio = document.getElementById('loader-audio');
-            const scrollAnchor = document.getElementById('scroll-anchor');
+    console.log('Attempting to show main content');
+    const preloader = document.getElementById('preloader');
+    const mainContent = document.querySelector('.main-content');
+    const footerContainer = document.getElementById('footer-container');
+    const audio = document.getElementById('loader-audio');
+    const scrollAnchor = document.getElementById('scroll-anchor');
 
-            console.log('Showing main content...');
-            document.body.style.overflow = 'hidden';
+    preloader.style.opacity = '0';
+    preloader.style.visibility = 'hidden';
+    setTimeout(() => {
+        console.log('Hiding preloader, showing main content');
+        preloader.style.display = 'none';
+        mainContent.style.display = 'block';
+        footerContainer.style.display = 'block';
+        document.body.style.overflow = 'auto';
+        scrollAnchor.scrollIntoView({ behavior: 'instant', block: 'start' });
 
-            const fadeOut = setInterval(() => {
-                if (audio.volume > 0.1) {
-                    audio.volume -= 0.1;
-                } else {
-                    audio.pause();
-                    audio.currentTime = 0;
-                    clearInterval(fadeOut);
-                }
-            }, 100);
-
-            preloader.style.opacity = '0';
-            setTimeout(() => {
-                console.log('Hiding preloader and showing main content...');
-                preloader.style.display = 'none';
-                mainContent.style.display = 'block';
-                footerContainer.style.display = 'block';
-
-                mainContent.offsetHeight;
-                footerContainer.offsetHeight;
-
-                document.body.style.overflow = 'auto';
-
-                const accessToken = getStorageItem('access_token');
-                const storedAccount = getStorageItem('account');
-                const loginSection = document.querySelector('.form-section.login');
-                const airdropForm = document.getElementById('airdrop-form');
-                if (accessToken && storedAccount) {
-                    loginSection.style.display = 'none';
-                    airdropForm.style.display = 'block';
-                } else {
-                    loginSection.style.display = 'block';
-                    airdropForm.style.display = 'none';
-                }
-
-                scrollAnchor.scrollIntoView({ behavior: 'instant', block: 'start' });
-            }, 500);
+        const accessToken = getStorageItem('access_token');
+        const storedAccount = getStorageItem('account');
+        const loginSection = document.querySelector('.form-section.login');
+        const airdropForm = document.getElementById('airdrop-form');
+        if (accessToken && storedAccount) {
+            loginSection.style.display = 'none';
+            airdropForm.style.display = 'block';
+        } else {
+            loginSection.style.display = 'block';
+            airdropForm.style.display = 'none';
         }
+    }, 500);
 
-        document.addEventListener('DOMContentLoaded', () => {
-            console.log('DOM loaded, initializing...');
-            const audio = document.getElementById('loader-audio');
-            audio.volume = 0.5;
-            const playAudio = () => {
-                audio.play().catch(err => {
-                    console.warn('Audio playback failed:', err);
-                    document.addEventListener('click', () => {
-                        audio.play().catch(e => console.warn('Audio playback failed on click:', e));
-                    }, { once: true });
-                });
-            };
-            playAudio();
+    // Fade out audio
+    if (audio) {
+        const fadeOut = setInterval(() => {
+            if (audio.volume > 0.1) {
+                audio.volume -= 0.1;
+            } else {
+                audio.pause();
+                audio.currentTime = 0;
+                clearInterval(fadeOut);
+            }
+        }, 100);
+    }
+}
 
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOM fully loaded, initializing preloader');
+    const audio = document.getElementById('loader-audio');
+    if (audio) {
+        audio.volume = 0.5;
+        audio.play().catch(err => {
+            console.warn('Audio playback failed:', err);
+            // Proceed even if audio fails
             setTimeout(() => {
-                console.log('Preloader timeout reached, forcing main content display...');
+                console.log('Preloader timeout reached, forcing main content display');
                 showMainContent();
             }, PRELOADER_TIMEOUT);
+        });
+    } else {
+        console.warn('Audio element not found');
+        setTimeout(() => {
+            console.log('Preloader timeout reached, forcing main content display');
+            showMainContent();
+        }, PRELOADER_TIMEOUT);
+    }
+});
 
             const loginBtn = document.getElementById('login-btn');
             const loginLoader = document.getElementById('login-loader');
