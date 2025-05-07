@@ -1825,7 +1825,7 @@
             'Please click "Check Trustline" to validate wallets before proceeding with the airdrop. This ensures no erroneous or failed transactions.',
             true
         );
-        checkTrustlineBtn.classList.add('glow');
+        checkTrustlinesBtn.classList.add('glow'); // Fixed variable name
         return;
     }
 
@@ -1840,13 +1840,13 @@
         return { index, address, amount, trustlineStatus, statusBoxText: trustlineStatusBox.textContent };
     });
 
-    console.log('Collected wallets:', wallets);
+    console.log('Collected wallets with trustline statuses:', wallets);
 
     // Validate wallets
     if (wallets.length === 0) {
         console.log('Blocking: No wallets provided');
         showNotification('Please add at least one wallet to proceed with the airdrop.', true);
-        checkTrustlineBtn.classList.remove('glow');
+        checkTrustlinesBtn.classList.remove('glow'); // Fixed variable name
         return;
     }
 
@@ -1859,7 +1859,7 @@
             `The following wallets have zero, empty, or invalid amounts: ${invalidAddresses}. Please enter a valid amount greater than 0 for each wallet.`,
             true
         );
-        checkTrustlineBtn.classList.remove('glow');
+        checkTrustlinesBtn.classList.remove('glow'); // Fixed variable name
         return;
     }
 
@@ -1874,7 +1874,7 @@
                 `Cannot proceed with airdrop: The following wallets lack trustlines: ${redFlaggedAddresses}. Please remove or validate these wallets.`,
                 true
             );
-            checkTrustlineBtn.classList.remove('glow');
+            checkTrustlinesBtn.classList.remove('glow'); // Fixed variable name
             return;
         }
         if (uncheckedWallets.length > 0) {
@@ -1884,7 +1884,7 @@
                 `Please click "Check Trustline" to validate the following wallets: ${uncheckedAddresses}.`,
                 true
             );
-            checkTrustlineBtn.classList.add('glow');
+            checkTrustlinesBtn.classList.add('glow'); // Fixed variable name
             return;
         }
     }
@@ -1906,7 +1906,7 @@
         console.log('Fee agreed, proceeding to airdrop');
         feeConfirmation.style.display = 'none';
         notificationOverlay.style.display = 'none';
-        checkTrustlineBtn.classList.remove('glow');
+        checkTrustlinesBtn.classList.remove('glow'); // Fixed variable name
         await proceedWithAirdrop(validWallets, tokenTypeSelect, serviceFee);
     };
 
@@ -1914,7 +1914,7 @@
         console.log('Fee disagreed, cancelling airdrop');
         feeConfirmation.style.display = 'none';
         notificationOverlay.style.display = 'none';
-        checkTrustlineBtn.classList.remove('glow');
+        checkTrustlinesBtn.classList.remove('glow'); // Fixed variable name
         showNotification('Airdrop cancelled due to fee disagreement.', true);
     };
 });
