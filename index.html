@@ -1829,67 +1829,76 @@
             }
 
             proceedBtn.addEventListener('click', async () => {
-                console.log('Proceed to Signing clicked, accessToken:', getStorageItem('access_token'));
-                const wallets = Array.from(document.getElementsByClassName('wallet-input')).map(div => ({
-                    address: div.querySelector('.wallet-address').value.trim(),
-                    amount: div.querySelector('.wallet-amount').value.trim()
-                }));
+    console.log('Proceed to Signing clicked, accessToken:', getStorageItem('access_token'));
+    const wallets = Array.from(document.getElementsByClassName('wallet-input')).map(div => ({
+        address: div.querySelector('.wallet-address').value.trim(),
+        amount: div.querySelector('.wallet-amount').value.trim()
+    }));
 
-                const invalidWallets = wallets.filter(wallet => !wallet.amount || parseFloat(wallet.amount) === 0);
-                if (invalidWallets.length > 0) {
-                    const invalidAddresses = invalidWallets.map(wallet => wallet.address).join(', ');
-                    showNotification(
-                        `The following wallets have zero or empty amounts and cannot proceed: ${invalidAddresses}. Please enter a valid amount greater than 0 for each wallet.`,
-                        true
-                    );
-                    return;
-                }
+    const invalidWallets = wallets.filter(wallet => !wallet.amount || parseFloat(wallet.amount) === 0);
+    if (invalidWallets.length > 0) {
+        const invalidAddresses = invalidWallets.map(wallet => wallet.address).join(', ');
+        showNotification(
+            `The following wallets have zero or empty amounts and cannot proceed: ${invalidAddresses}. Please enter a valid amount greater than 0 for each wallet.`,
+            true
+        );
+        return;
+    }
 
-                const validWallets = wallets.map(wallet => ({
-                    address: wallet.address,
-                    amount: parseFloat(wallet.amount)
-                }));
+    const validWallets = wallets.map(wallet => ({
+        address: wallet.address,
+        amount: parseFloat(wallet.amount)
+    }));
 
-                const serviceFee = calculateServiceFee(validWallets.length);
-                feeMessage.textContent = `You will be charged a REMI service fee of ${serviceFee} XRP to proceed with the airdrop. MAX 5 XRP`;
-                feeConfirmation.style.display = 'flex';
-                notificationOverlay.style.display = 'block';
+    const serviceFee = calculateServiceFee(validWallets.length);
+    feeMessage.textContent = `You will be charged a REMI service fee of ${serviceFee} XRP to proceed with the airdrop. MAX 5 XRP`;
+    feeConfirmation.style.display = 'flex';
+    notificationOverlay.style.display = 'block';
 
-                feeAgreeBtn.onclick = async () => {
-                    feeConfirmation.style.display = 'none';
-                    notificationOverlay.style.display = 'none';
+    feeAgreeBtn.onclick = async () => {
+        feeConfirmation.style.display = 'none';
+        notificationOverlay.style.display = 'none';
 
-                    const hasRedFlaggedWallets = Array.from(document.getElementsByClassName('wallet-input')).some(div => {
-                        const statusBox = div.querySelector('.trustline-status-box');
-                        return statusBox.classList.contains('invalid');
-                    });
+        const hasRedFlaggedWallets = Array.from(document.getElementsByClassName('wallet-input')).some(div => {
+            const statusBox = div.querySelector('.trustline-status-box');
+            return statusBox.classList.contains('invalid');
+        });
 
-                    if (hasRedFlaggedWallets) {
-                        document.getElementById('trustline-warning').style.display = 'flex';
-                        notificationOverlay.style.display = 'block';
+        if (hasRedFlaggedWallets) {
+            document.getElementById('trustline-warning').style.display = 'flex';
+            notificationOverlay.style.display = 'block';
 
-                        document.getElementById('trustline-agree-btn').onclick = async () => {
-                            document.getElementById('trustline-warning').style.display = 'none';
-                            notificationOverlay.style.display = 'none';
-                            await proceedWithAirdrop(validWallets, tokenTypeSelect, serviceFee);
-                        };
+            // Update the warning message to clarify that the airdrop will proceed regardless
+            document.getElementById('trustline-warning-message').innerHTML = `
+                <span style="color: #dc3545;">Notice:</span> You’re sending to wallets flagged in RED for not having a mainnet trustline. 
+                You may proceed with the transaction, but we recommend checking each flagged wallet for a token balance first. 
+                The airdrop will proceed to all wallets regardless of your choice below.
+            `;
 
-                        document.getElementById('trustline-disagree-btn').onclick = () => {
-                            document.getElementById('trustline-warning').style.display = 'none';
-                            notificationOverlay.style.display = 'none';
-                            showNotification('Airdrop cancelled due to trustline warning disagreement.', true);
-                        };
-                    } else {
-                        await proceedWithAirdrop(validWallets, tokenTypeSelect, serviceFee);
-                    }
-                };
+            document.getElementById('trustline-agree-btn').onclick = async () => {
+                document.getElementById('trustline-warning').style.display = 'none';
+                notificationOverlay.style.display = 'none';
+                showNotification('Proceeding with airdrop, including red-flagged wallets.');
+                await proceedWithAirdrop(validWallets, tokenTypeSelect, serviceFee);
+            };
 
-                feeDisagreeBtn.onclick = () => {
-                    feeConfirmation.style.display = 'none';
-                    notificationOverlay.style.display = 'none';
-                    showNotification('Airdrop cancelled due to fee disagreement.', true);
-                };
-            });
+            document.getElementById('trustline-disagree-btn').onclick = async () => {
+                document.getElementById('trustline-warning').style.display = 'none';
+                notificationOverlay.style.display = 'none';
+                showNotification('Proceeding with airdrop despite trustline concerns, as fees have been paid.');
+                await proceedWithAirdrop(validWallets, tokenTypeSelect, serviceFee);
+            };
+        } else {
+            await proceedWithAirdrop(validWallets, tokenTypeSelect, serviceFee);
+        }
+    };
+
+    feeDisagreeBtn.onclick = () => {
+        feeConfirmation.style.display = 'none';
+        notificationOverlay.style.display = 'none';
+        showNotification('Airdrop cancelled due to fee disagreement.', true);
+    };
+});
 
             async function proceedWithAirdrop(wallets, tokenTypeSelect, serviceFee) {
     proceedBtn.disabled = true;
