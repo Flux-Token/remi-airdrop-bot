@@ -67,6 +67,11 @@
             animation: pulse 2s infinite;
         }
 
+        #results p .status-skipped {
+    color: #ffc107; /* Yellow for skipped transactions */
+    font-weight: 600;
+        }
+
         @keyframes pulse {
             0% { transform: scale(1); text-shadow: 0 0 10px rgba(255, 111, 97, 0.5); }
             50% { transform: scale(1.1); text-shadow: 0 0 20px rgba(255, 111, 97, 0.8); }
@@ -838,6 +843,9 @@
                     <h2 id="transaction-title"></h2>
                     <img class="transaction-qr" src="" alt="Transaction QR Code">
                     <a class="transaction-qr-link qr-link" href="#" target="_blank">Open in Xaman</a>
+                    <div class="button-row">
+                        <button id="skip-transaction-btn"><i class="fas fa-forward icon"></i> Skip</button>
+                    </div>
                 </div>
                 <div id="results" class="form-section">
                     <h2>Airdrop Report <i class="fas fa-sync-alt refresh-icon" onclick="refreshAirdropReport()"></i></h2>
@@ -1817,7 +1825,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let query = `?token_type=${encodeURIComponent(tokenType)}`;
         if (tokenType !== 'XRP') {
-            query += `&issuer=${encodeURIComponent(issuer)}&currency=${encodeURIComponent(currency)}`;
+            query += `&issuer=${encodeURIComponent(issuer)}¤cy=${encodeURIComponent(currency)}`;
         }
 
         console.log('Fetching airdrop data with query:', query);
@@ -1869,6 +1877,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         let allSigned = true;
+        transactionResults = [];
         if (!data.transactions || data.transactions.length === 0) {
             showNotification('No airdrop transactions generated. Check wallet data or server response.', true);
             proceedBtn.disabled = false;
@@ -1878,10 +1887,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const total = data.transactions.length;
+        const skipButton = document.getElementById('skip-transaction-btn');
+
         for (const [index, tx] of data.transactions.entries()) {
             if (!tx.payload_uuid || !tx.sign_url || !tx.status) {
                 showNotification(`Invalid transaction data for transaction ${index + 1}`, true);
                 allSigned = false;
+                transactionResults.push({
+                    index: index,
+                    address: tx.status?.address || 'Unknown',
+                    status: 'Failed',
+                    error: 'Invalid transaction data'
+                });
                 break;
             }
 
@@ -1889,13 +1906,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error('tx.status.address is undefined for tx:', tx);
                 showNotification(`Transaction ${index + 1} has invalid status data`, true);
                 allSigned = false;
+                transactionResults.push({
+                    index: index,
+                    address: 'Unknown',
+                    status: 'Failed',
+                    error: 'Invalid status data'
+                });
                 break;
             }
 
-            if (!transactionTitle || !transactionQr || !transactionQrLink) {
-                console.error('DOM elements missing:', { transactionTitle, transactionQr, transactionQrLink });
+            if (!transactionTitle || !transactionQr || !transactionQrLink || !skipButton) {
+                console.error('DOM elements missing:', { transactionTitle, transactionQr, transactionQrLink, skipButton });
                 showNotification('UI elements missing, cannot proceed.', true);
                 allSigned = false;
+                transactionResults.push({
+                    index: index,
+                    address: tx.status.address,
+                    status: 'Failed',
+                    error: 'UI elements missing'
+                });
                 break;
             }
 
@@ -1905,13 +1934,47 @@ document.addEventListener('DOMContentLoaded', () => {
             transactionQr.style.display = 'block';
             transactionQrLink.href = tx.sign_url;
             transactionQrLink.style.display = 'block';
-            showNotification(`Airdrop initiated. Please authorize transaction ${index + 1}/${total} in Xaman.`);
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            const signed = await pollTransaction(tx.payload_uuid, index, total);
-            if (!signed) {
+            showNotification(`Airdrop initiated. Please authorize transaction ${index + 1}/${total} in Xaman or click Skip to proceed.`);
+
+            let transactionStatus = await new Promise((resolve) => {
+                const onSkip = () => {
+                    console.log(`Transaction ${index + 1}/${total} skipped`);
+                    skipButton.removeEventListener('click', onSkip);
+                    showNotification(`Transaction ${index + 1}/${total} skipped.`);
+                    resolve('skipped');
+                };
+                skipButton.addEventListener('click', onSkip);
+
+                pollTransaction(tx.payload_uuid, index, total).then(signed => {
+                    skipButton.removeEventListener('click', onSkip);
+                    resolve(signed ? 'signed' : 'failed');
+                });
+            });
+
+            if (transactionStatus === 'skipped') {
+                transactionResults.push({
+                    index: index,
+                    address: tx.status.address,
+                    status: 'Skip'
+                });
                 allSigned = false;
-                break;
+            } else if (transactionStatus === 'signed') {
+                transactionResults.push({
+                    index: index,
+                    address: tx.status.address,
+                    status: 'Signed'
+                });
+            } else {
+                transactionResults.push({
+                    index: index,
+                    address: tx.status.address,
+                    status: 'Failed',
+                    error: 'Transaction not authorized'
+                });
+                allSigned = false;
             }
+
+            await new Promise(resolve => setTimeout(resolve, 1000));
         }
 
         transactionSigning.style.display = 'none';
@@ -1921,24 +1984,39 @@ document.addEventListener('DOMContentLoaded', () => {
         transactionQrLink.href = '#';
         transactionQrLink.style.display = 'none';
 
+        airdropData.total_fee = data.total_fee;
+        airdropData.service_fee = data.service_fee;
+
         if (allSigned) {
             showNotification('Airdrop transactions authorized successfully!');
-            resultsDiv.innerHTML = '<h2>Airdrop Results</h2>' + data.transactions.map((tx, index) => `
-                <p>Transaction ${index + 1}: ${tx.status.address} - ${tx.txid || 'Pending'}</p>
-            `).join('') + '<button id="back-button" class="button">Back to Airdrop Form</button>';
-            resultsDiv.style.display = 'block';
-            const newBackButton = document.getElementById('back-button');
-            if (newBackButton) {
-                console.log('Back button found, attaching event listener');
-                newBackButton.addEventListener('click', () => {
-                    console.log('Back to Airdrop Form button clicked');
-                    clearForm();
-                });
-            } else {
-                console.error('Back button not found after updating resultsDiv');
-            }
         } else {
-            showNotification('Some airdrop transactions failed or were not authorized.', true);
+            showNotification('Some airdrop transactions were skipped, failed, or not authorized.', true);
+        }
+
+        resultsDiv.innerHTML = `
+            <h2>Airdrop Results <i class="fas fa-sync-alt refresh-icon" onclick="refreshAirdropReport()"></i></h2>
+            <p>Total Network Fee: ${airdropData.total_fee || 'N/A'} XRP</p>
+            <p>Total REMI Service Fee: ${airdropData.service_fee || 'N/A'} XRP</p>
+            ${transactionResults.map((result, idx) => `
+                <p>
+                    Transaction ${idx + 1}: ${result.address} - 
+                    <span class="${result.status === 'Skip' ? 'status-skipped' : ''}">
+                        ${result.status}${result.error ? ` (${result.error})` : ''}
+                    </span>
+                </p>
+            `).join('')}
+            <button id="back-button" class="button">Back to Airdrop Form</button>
+        `;
+        resultsDiv.style.display = 'block';
+        const newBackButton = document.getElementById('back-button');
+        if (newBackButton) {
+            console.log('Back button found, attaching event listener');
+            newBackButton.addEventListener('click', () => {
+                console.log('Back to Airdrop Form button clicked');
+                clearForm();
+            });
+        } else {
+            console.error('Back button not found after updating resultsDiv');
         }
     } catch (error) {
         console.error('Error during airdrop:', error);
