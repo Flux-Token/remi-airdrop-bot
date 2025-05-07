@@ -780,6 +780,51 @@
         .icon {
             margin-right: 8px;
         }
+
+        #export-csv-btn {
+    background: linear-gradient(90deg, #ff6f61, #ff00ff);
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 25px;
+    cursor: pointer;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 0.9em;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 5px 15px rgba(255, 111, 97, 0.4);
+    margin: 15px 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    position: relative;
+    overflow: hidden;
+}
+
+#export-csv-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transition: 0.5s;
+}
+
+#export-csv-btn:hover::before {
+    left: 100%;
+}
+
+#export-csv-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(255, 111, 97, 0.6);
+}
+
+#export-csv-btn .icon {
+    font-size: 1em;
+}
     </style>
 </head>
 <body>
@@ -841,6 +886,10 @@
                 </div>
                 <div id="results" class="form-section">
                     <h2>Airdrop Report <i class="fas fa-sync-alt refresh-icon" onclick="refreshAirdropReport()"></i></h2>
+                    <button id="export-csv-btn"><i class="fas fa-download icon"></i> Export CSV</button>
+                    <div id="transaction-results">
+                        <!-- Transaction results will be inserted here dynamically -->
+                    </div>
                     <p>Total Network Fee: N/A XRP</p>
                     <p>Total REMI Service Fee: N/A XRP</p>
                     <button id="back-button" class="button">Back to Airdrop Form</button>
@@ -1020,6 +1069,10 @@
             const walletToggle = document.getElementById('wallet-toggle');
             const disconnectButton = document.getElementById('disconnect-button');
             const scrollAnchor = document.getElementById('scroll-anchor');
+
+            // Add the Export CSV button event listener here
+            const exportCsvBtn = document.getElementById('export-csv-btn');
+            exportCsvBtn.addEventListener('click', exportToCSV);
 
             let storage = {};
             let tokenData = [];
@@ -1940,21 +1993,34 @@
         transactionQrLink.style.display = 'none';
 
         if (allSigned) {
-            showNotification('Airdrop transactions authorized successfully!');
-            resultsDiv.innerHTML = '<h2>Airdrop Results</h2>' + data.transactions.map((tx, index) => `
-                <p>Transaction ${index + 1}: ${tx.status.address} - ${tx.txid || 'Pending'}</p>
-            `).join('') + '<button id="back-button" class="button">Back to Airdrop Form</button>';
-            resultsDiv.style.display = 'block';
-            const newBackButton = document.getElementById('back-button');
-            if (newBackButton) {
-                console.log('Back button found, attaching event listener');
-                newBackButton.addEventListener('click', () => {
-                    console.log('Back to Airdrop Form button clicked');
-                    clearForm();
-                });
-            } else {
-                console.error('Back button not found after updating resultsDiv');
-            }
+    showNotification('Airdrop transactions authorized successfully!');
+    // Store the transaction results
+    transactionResults = data.transactions.map((tx, index) => ({
+        number: index + 1,
+        address: tx.status.address,
+        txid: tx.txid || 'Pending'
+    }));
+    // Insert transaction results into the transaction-results div
+    const transactionResultsDiv = document.getElementById('transaction-results');
+    transactionResultsDiv.innerHTML = transactionResults.map(tx => `
+        <p>Transaction ${tx.number}: ${tx.address} - ${tx.txid}</p>
+    `).join('');
+    // Update total fees
+    const totalNetworkFeeElement = document.querySelector('#results p:nth-child(3)');
+    const totalServiceFeeElement = document.querySelector('#results p:nth-child(4)');
+    totalNetworkFeeElement.textContent = `Total Network Fee: ${data.total_fee || 'N/A'} XRP`;
+    totalServiceFeeElement.textContent = `Total REMI Service Fee: ${serviceFee} XRP`;
+    resultsDiv.style.display = 'block';
+    const newBackButton = document.getElementById('back-button');
+    if (newBackButton) {
+        console.log('Back button found, attaching event listener');
+        newBackButton.addEventListener('click', () => {
+            console.log('Back to Airdrop Form button clicked');
+            clearForm();
+        });
+    } else {
+        console.error('Back button not found after updating resultsDiv');
+    }
         } else {
             showNotification('Some airdrop transactions failed or were not authorized.', true);
         }
@@ -1990,6 +2056,7 @@
 
         function clearForm() {
             console.log('Clearing form and resetting UI...');
+            transactionResults = [];
             const walletInputs = document.getElementsByClassName('wallet-input');
             while (walletInputs.length > 1) {
                 walletInputs[walletInputs.length - 1].remove();
@@ -2176,6 +2243,42 @@
                 showNotification('Airdrop report refreshed.');
             }, 1000);
         };
+
+        function exportToCSV() {
+    if (!transactionResults || transactionResults.length === 0) {
+        showNotification('No airdrop results available to export.', true);
+        return;
+    }
+
+    // Define CSV headers
+    const headers = ['Transaction Number', 'Wallet Address', 'Transaction ID'];
+    // Convert transaction results to CSV rows
+    const csvRows = [headers.join(',')];
+    transactionResults.forEach(tx => {
+        const row = [
+            tx.number,
+            `"${tx.address}"`, // Wrap address in quotes to handle commas
+            `"${tx.txid}"`     // Wrap txid in quotes to handle commas
+        ];
+        csvRows.push(row.join(','));
+    });
+
+    // Create CSV content
+    const csvContent = csvRows.join('\n');
+    // Create a Blob for the CSV file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    // Create a download link
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `airdrop_results_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    showNotification('Airdrop results exported successfully!');
+}
     </script>
 </body>
 </html>
