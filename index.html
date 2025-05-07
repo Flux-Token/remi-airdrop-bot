@@ -771,6 +771,16 @@
     transition: all 0.3s ease;
 }
 
+#transaction-results p .status-success {
+    color: #28a745;
+    font-weight: 600;
+}
+
+#transaction-results p .status-failed {
+    color: #dc3545;
+    font-weight: 600;
+}
+
 #results p a.qr-link:hover {
     text-decoration: underline;
     color: #ff6f61;
@@ -1895,6 +1905,28 @@
         const totalAmount = wallets.reduce((sum, wallet) => sum + (wallet.amount || 0), 0);
         const account = getStorageItem('account');
 
+        // Map wallets to include their trustline status
+        const walletInputs = Array.from(document.getElementsByClassName('wallet-input'));
+        const walletsWithStatus = wallets.map((wallet, index) => {
+            const inputDiv = walletInputs[index];
+            const statusBox = inputDiv.querySelector('.trustline-status-box');
+            const hasTrustline = statusBox.classList.contains('valid');
+            return { ...wallet, hasTrustline };
+        });
+
+        // Sort wallets: those with trustlines (valid) first, then those without (invalid)
+        walletsWithStatus.sort((a, b) => {
+            if (a.hasTrustline && !b.hasTrustline) return -1;
+            if (!a.hasTrustline && b.hasTrustline) return 1;
+            return 0;
+        });
+
+        // Update the wallets array to reflect the sorted order
+        const sortedWallets = walletsWithStatus.map(wallet => ({
+            address: wallet.address,
+            amount: wallet.amount
+        }));
+
         let query = `?token_type=${encodeURIComponent(tokenType)}`;
         if (tokenType !== 'XRP') {
             query += `&issuer=${encodeURIComponent(issuer)}¤cy=${encodeURIComponent(currency)}`;
@@ -1913,7 +1945,7 @@
                 total_amount: totalAmount,
                 issuer: tokenType !== 'XRP' ? issuer : null,
                 currency: tokenType !== 'XRP' ? currency : null,
-                wallets: wallets,
+                wallets: sortedWallets, // Use sorted wallets
                 account: account
             })
         });
@@ -1948,7 +1980,6 @@
             console.log('Fee signed, proceeding to airdrop transactions');
         }
 
-        let allSigned = true;
         if (!data.transactions || data.transactions.length === 0) {
             showNotification('No airdrop transactions generated. Check wallet data or server response.', true);
             proceedBtn.disabled = false;
@@ -1964,26 +1995,33 @@
             transaction_count: data.transactions.length
         };
 
+        // Initialize transaction results
+        transactionResults = data.transactions.map((tx, index) => ({
+            number: index + 1,
+            address: tx.status.address,
+            txid: 'Pending',
+            payload_uuid: tx.payload_uuid,
+            status: 'Pending'
+        }));
+
+        // Display initial transaction results
+        resultsDiv.style.display = 'block';
+        const transactionResultsDiv = document.getElementById('transaction-results');
+        if (transactionResultsDiv) {
+            transactionResultsDiv.innerHTML = transactionResults.map(tx => `
+                <p>Transaction ${tx.number}: ${tx.address} - <span class="txid" data-txid="${tx.txid}">${tx.txid}</span></p>
+            `).join('');
+        }
+
         const total = data.transactions.length;
+        let successfulTransactions = 0;
         for (const [index, tx] of data.transactions.entries()) {
-            if (!tx.payload_uuid || !tx.sign_url || !tx.status) {
+            if (!tx.payload_uuid || !tx.sign_url || !tx.status || !tx.status.address) {
+                console.error(`Invalid transaction data for transaction ${index + 1}:`, tx);
                 showNotification(`Invalid transaction data for transaction ${index + 1}`, true);
-                allSigned = false;
-                break;
-            }
-
-            if (!tx.status.address) {
-                console.error('tx.status.address is undefined for tx:', tx);
-                showNotification(`Transaction ${index + 1} has invalid status data`, true);
-                allSigned = false;
-                break;
-            }
-
-            if (!transactionTitle || !transactionQr || !transactionQrLink) {
-                console.error('DOM elements missing:', { transactionTitle, transactionQr, transactionQrLink });
-                showNotification('UI elements missing, cannot proceed.', true);
-                allSigned = false;
-                break;
+                transactionResults[index].status = 'Failed';
+                transactionResults[index].txid = 'Failed';
+                continue; // Continue to the next transaction
             }
 
             transactionTitle.textContent = `Sign Transaction ${index + 1} of ${total} (${tx.status.address})`;
@@ -1995,14 +2033,30 @@
             showNotification(`Airdrop initiated. Please authorize transaction ${index + 1}/${total} in Xaman.`);
             await new Promise(resolve => setTimeout(resolve, 1000));
             const signed = await pollTransaction(tx.payload_uuid, index, total);
-            if (!signed) {
-                allSigned = false;
-                // Update transaction status to reflect failure
-                tx.txid = 'Failed';
+            if (signed) {
+                transactionResults[index].status = 'Success';
+                transactionResults[index].txid = data.transactions[index].txid || 'Success';
+                successfulTransactions++;
+            } else {
+                console.error(`Transaction ${index + 1} failed for address ${tx.status.address}`);
+                showNotification(`Transaction ${index + 1} failed for address ${tx.status.address}`, true);
+                transactionResults[index].status = 'Failed';
+                transactionResults[index].txid = 'Failed';
+            }
+
+            // Update the display after each transaction
+            if (transactionResultsDiv) {
+                transactionResultsDiv.innerHTML = transactionResults.map(tx => {
+                    const statusClass = tx.status === 'Success' ? 'status-success' : tx.status === 'Failed' ? 'status-failed' : '';
+                    const txidText = tx.status === 'Pending' ? 'Pending' : tx.status === 'Success' && tx.txid !== 'Success'
+                        ? `<a href="https://xrpl.org/transaction/${tx.txid}" target="_blank" class="qr-link">${tx.txid}</a>`
+                        : tx.status;
+                    return `<p>Transaction ${tx.number}: ${tx.address} - <span class="txid ${statusClass}" data-txid="${tx.txid}">${txidText}</span></p>`;
+                }).join('');
             }
         }
 
-        // Hide transaction signing UI and clear stale data immediately after the loop
+        // Hide transaction signing UI
         transactionSigning.style.display = 'none';
         transactionTitle.textContent = '';
         transactionQr.src = '';
@@ -2010,30 +2064,15 @@
         transactionQrLink.href = '#';
         transactionQrLink.style.display = 'none';
 
-        // Update transaction results even if some transactions failed
-        showNotification(allSigned ? 'Airdrop transactions authorized successfully!' : 'Some airdrop transactions failed or were not authorized.', !allSigned);
-        // Store the transaction results
-        transactionResults = data.transactions.map((tx, index) => ({
-    number: index + 1,
-    address: tx.status.address,
-    txid: tx.txid || 'Pending',
-    payload_uuid: tx.payload_uuid // Add payload_uuid for refresh
-}));
-        // Ensure resultsDiv is visible before accessing its children
-        resultsDiv.style.display = 'block';
-        // Display transaction results
-        const transactionResultsDiv = document.getElementById('transaction-results');
-        if (transactionResultsDiv) {
-            transactionResultsDiv.innerHTML = transactionResults.map(tx => `
-                <p>Transaction ${tx.number}: ${tx.address} - <span class="txid" data-txid="${tx.txid}">${tx.txid}</span></p>
-            `).join('');
+        // Display final notification
+        if (successfulTransactions === total) {
+            showNotification('All airdrop transactions authorized successfully!');
+        } else if (successfulTransactions > 0) {
+            showNotification(`${successfulTransactions}/${total} airdrop transactions completed successfully. Check results for details.`, true);
         } else {
-            console.error('Transaction results div not found!');
-            // Fallback: append directly to resultsDiv
-            resultsDiv.innerHTML += transactionResults.map(tx => `
-                <p>Transaction ${tx.number}: ${tx.address} - <span class="txid" data-txid="${tx.txid}">${tx.txid}</span></p>
-            `).join('');
+            showNotification('All airdrop transactions failed. Check results for details.', true);
         }
+
         // Update total fees
         const totalNetworkFeeElement = document.getElementById('total-network-fee');
         const totalServiceFeeElement = document.getElementById('total-service-fee');
@@ -2043,18 +2082,21 @@
             const totalFee = (parseFloat(networkFee) + parseFloat(serviceFeeValue)).toFixed(6);
             totalNetworkFeeElement.textContent = `Total Network Fee: ${networkFee} XRP`;
             totalServiceFeeElement.textContent = `Total REMI Service Fee: ${serviceFeeValue} XRP`;
-            // Add total combined fee display
-            const totalFeeElement = document.createElement('p');
-            totalFeeElement.id = 'total-combined-fee';
+            // Add or update total combined fee display
+            let totalFeeElement = document.getElementById('total-combined-fee');
+            if (!totalFeeElement) {
+                totalFeeElement = document.createElement('p');
+                totalFeeElement.id = 'total-combined-fee';
+                totalServiceFeeElement.insertAdjacentElement('afterend', totalFeeElement);
+            }
             totalFeeElement.textContent = `Total Combined Fee: ${totalFee} XRP`;
-            totalServiceFeeElement.insertAdjacentElement('afterend', totalFeeElement);
         } else {
             console.error('Fee elements not found!');
         }
+
         const newBackButton = document.getElementById('back-button');
         if (newBackButton) {
             console.log('Back button found, attaching event listener');
-            // Remove any existing listeners to prevent duplicates
             newBackButton.removeEventListener('click', clearForm);
             newBackButton.addEventListener('click', () => {
                 console.log('Back to Airdrop Form button clicked');
@@ -2285,7 +2327,7 @@
 
     // Poll each transaction's status using its payload_uuid
     for (const tx of transactionResults) {
-        if (tx.txid !== 'Pending' && tx.txid !== 'Failed') {
+        if (tx.status === 'Success' || tx.status === 'Failed') {
             // Skip transactions that are already resolved
             continue;
         }
@@ -2301,14 +2343,17 @@
             console.log(`Callback response for transaction ${tx.number}:`, data);
 
             if (response.status === 200 && data.meta && data.meta.signed && data.response && data.response.txid) {
+                tx.status = 'Success';
                 tx.txid = data.response.txid;
                 console.log(`Updated txid for transaction ${tx.number}: ${tx.txid}`);
             } else if (response.status === 400 && (data.detail === "Payload was cancelled" || data.detail === "Payload has expired")) {
+                tx.status = 'Failed';
                 tx.txid = 'Failed';
                 console.log(`Transaction ${tx.number} failed or expired`);
             }
         } catch (error) {
             console.error(`Error refreshing transaction ${tx.number}:`, error);
+            tx.status = 'Failed';
             tx.txid = 'Failed';
         }
     }
@@ -2317,10 +2362,11 @@
     const transactionResultsDiv = document.getElementById('transaction-results');
     if (transactionResultsDiv) {
         transactionResultsDiv.innerHTML = transactionResults.map(tx => {
-            const txidText = tx.txid === 'Pending' || tx.txid === 'Failed'
-                ? tx.txid
-                : `<a href="https://xrpl.org/transaction/${tx.txid}" target="_blank" class="qr-link">${tx.txid}</a>`;
-            return `<p>Transaction ${tx.number}: ${tx.address} - <span class="txid" data-txid="${tx.txid}">${txidText}</span></p>`;
+            const statusClass = tx.status === 'Success' ? 'status-success' : tx.status === 'Failed' ? 'status-failed' : '';
+            const txidText = tx.status === 'Pending' ? 'Pending' : tx.status === 'Success' && tx.txid !== 'Success'
+                ? `<a href="https://xrpl.org/transaction/${tx.txid}" target="_blank" class="qr-link">${tx.txid}</a>`
+                : tx.status;
+            return `<p>Transaction ${tx.number}: ${tx.address} - <span class="txid ${statusClass}" data-txid="${tx.txid}">${txidText}</span></p>`;
         }).join('');
     } else {
         console.error('Transaction results div not found during refresh!');
@@ -2337,13 +2383,14 @@ function exportToCSV() {
     }
 
     // Define CSV headers
-    const headers = ['Transaction Number', 'Wallet Address', 'Transaction ID'];
+    const headers = ['Transaction Number', 'Wallet Address', 'Status', 'Transaction ID'];
     // Convert transaction results to CSV rows
     const csvRows = [headers.join(',')];
     transactionResults.forEach(tx => {
         const row = [
             tx.number,
             `"${tx.address}"`, // Wrap address in quotes to handle commas
+            `"${tx.status}"`,  // Include status
             `"${tx.txid}"`     // Wrap txid in quotes to handle commas
         ];
         csvRows.push(row.join(','));
