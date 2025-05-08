@@ -1056,61 +1056,152 @@
  }
 
  document.addEventListener('DOMContentLoaded', () => {
- const proceedBtn = document.getElementById('proceed-btn');
- if (!proceedBtn) {
- console.error('proceed-btn element not found in the DOM');
- return;
- }
- const walletList = document.getElementById('wallet-list');
- const tokenTypeSelect = document.getElementById('token-type');
- const checkTrustlinesBtn = document.getElementById('check-trustlines-btn');
- const csvUploadInput = document.getElementById('csv-upload-input');
- const loginBtn = document.getElementById('login-btn');
- const loginLoader = document.getElementById('login-loader');
- const qrCodeImg = document.getElementById('qr-code');
- const qrLink = document.getElementById('qr-link');
- const airdropForm = document.getElementById('airdrop-form');
- const loginSection = document.querySelector('.form-section.login');
- const transactionSigning = document.getElementById('transaction-signing');
- const transactionTitle = document.getElementById('transaction-title');
- const transactionQr = document.querySelector('.transaction-qr');
- const transactionQrLink = document.querySelector('.transaction-qr-link');
- const resultsDiv = document.getElementById('results');
- const notification = document.getElementById('notification');
- const notificationOverlay = document.getElementById('notification-overlay');
- const feeConfirmation = document.getElementById('fee-confirmation');
- const feeMessage = document.getElementById('fee-message');
- const feeAgreeBtn = document.getElementById('fee-agree-btn');
- const feeDisagreeBtn = document.getElementById('fee-disagree-btn');
- const totalAmountInput = document.getElementById('total-amount');
- const checkBalanceBtn = document.getElementById('check-balance-btn');
- const balanceLoader = document.getElementById('balance-loader');
- const validateWalletsBtn = document.getElementById('validate-wallets-btn');
- const validateLoader = document.getElementById('validate-loader');
- const trustlinesLoader = document.getElementById('trustlines-loader');
- const proceedLoader = document.getElementById('proceed-loader');
- const walletAddressDisplay = document.getElementById('wallet-address-display');
- const walletAddressContainer = document.getElementById('wallet-address-container');
- const walletToggle = document.getElementById('wallet-toggle');
- const disconnectButton = document.getElementById('disconnect-button');
- const scrollAnchor = document.getElementById('scroll-anchor');
+    const proceedBtn = document.getElementById('proceed-btn');
+    if (!proceedBtn) {
+        console.error('proceed-btn element not found in the DOM');
+        showMainContent(); // Show content even if proceed-btn is missing
+        return;
+    }
+    const walletList = document.getElementById('wallet-list');
+    const tokenTypeSelect = document.getElementById('token-type');
+    const checkTrustlinesBtn = document.getElementById('check-trustlines-btn');
+    const csvUploadInput = document.getElementById('csv-upload-input');
+    const loginBtn = document.getElementById('login-btn');
+    const loginLoader = document.getElementById('login-loader');
+    const qrCodeImg = document.getElementById('qr-code');
+    const qrLink = document.getElementById('qr-link');
+    const airdropForm = document.getElementById('airdrop-form');
+    const loginSection = document.querySelector('.form-section.login');
+    const transactionSigning = document.getElementById('transaction-signing');
+    const transactionTitle = document.getElementById('transaction-title');
+    const transactionQr = document.querySelector('.transaction-qr');
+    const transactionQrLink = document.querySelector('.transaction-qr-link');
+    const resultsDiv = document.getElementById('results');
+    const notification = document.getElementById('notification');
+    const notificationOverlay = document.getElementById('notification-overlay');
+    const feeConfirmation = document.getElementById('fee-confirmation');
+    const feeMessage = document.getElementById('fee-message');
+    const feeAgreeBtn = document.getElementById('fee-agree-btn');
+    const feeDisagreeBtn = document.getElementById('fee-disagree-btn');
+    const totalAmountInput = document.getElementById('total-amount');
+    const checkBalanceBtn = document.getElementById('check-balance-btn');
+    const balanceLoader = document.getElementById('balance-loader');
+    const validateWalletsBtn = document.getElementById('validate-wallets-btn');
+    const validateLoader = document.getElementById('validate-loader');
+    const trustlinesLoader = document.getElementById('trustlines-loader');
+    const proceedLoader = document.getElementById('proceed-loader');
+    const walletAddressDisplay = document.getElementById('wallet-address-display');
+    const walletAddressContainer = document.getElementById('wallet-address-container');
+    const walletToggle = document.getElementById('wallet-toggle');
+    const disconnectButton = document.getElementById('disconnect-button');
+    const scrollAnchor = document.getElementById('scroll-anchor');
 
- let storage = {};
- let tokenData = [];
- let transactionResults = [];
- let airdropData = { total_fee: null, service_fee: null };
+    let storage = {};
+    let tokenData = [];
+    let transactionResults = [];
+    let airdropData = { total_fee: null, service_fee: null };
 
- proceedBtn.addEventListener('click', async () => {
- console.log('Proceed to Signing clicked');
- const wallets = Array.from(document.getElementsByClassName('wallet-input')).map(div => {
- const address = div.querySelector('.wallet-address').value.trim();
- const amountInput = div.querySelector('.wallet-amount').value.trim();
- const amount = amountInput ? parseFloat(amountInput) : 0;
- return { address, amount };
- });
- const serviceFee = 0.1; // Adjust based on backend requirements
- await proceedWithAirdrop(wallets, tokenTypeSelect, serviceFee);
- });
+    proceedBtn.addEventListener('click', async () => {
+        console.log('Proceed to Signing clicked');
+        const wallets = Array.from(document.getElementsByClassName('wallet-input')).map(div => {
+            const address = div.querySelector('.wallet-address').value.trim();
+            const amountInput = div.querySelector('.wallet-amount').value.trim();
+            const amount = amountInput ? parseFloat(amountInput) : 0;
+            return { address, amount };
+        });
+        const serviceFee = 0.1; // Adjust based on backend requirements
+        await proceedWithAirdrop(wallets, tokenTypeSelect, serviceFee);
+    });
+
+    // Load resources and show main content
+    Promise.all([
+        loadResource('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap', 'style'),
+        loadResource('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css', 'style'),
+        loadResource('https://cdnjs.cloudflare.com/ajax/libs/decimal.js/10.3.1/decimal.min.js', 'script')
+    ]).then(() => {
+        console.log('Resources loaded, showing main content');
+        showMainContent();
+    }).catch(err => {
+        console.error('Error loading resources:', err);
+        showMainContent(); // Show content even if resources fail
+    });
+
+    // Fallback to ensure content shows after timeout
+    setTimeout(() => {
+        if (document.getElementById('preloader').style.display !== 'none') {
+            console.warn('Preloader timeout reached, forcing main content display');
+            showMainContent();
+        }
+    }, PRELOADER_TIMEOUT);
+
+    const accessToken = getStorageItem('access_token');
+    const storedAccount = getStorageItem('account');
+    if (accessToken && storedAccount) {
+        console.log('Validating existing access token...');
+        fetch(`${BACKEND_URL}/balance`, {
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'account': storedAccount
+            }
+        }).then(response => {
+            if (response.status === 401) {
+                console.log('Access token invalid or expired');
+                handleUnauthorized();
+                return;
+            } else if (response.status === 404) {
+                console.log('No XRPL account linked or not funded');
+                handleUnauthorized();
+                showNotification(
+                    'No funded XRPL account linked in Xaman. Please create and fund an account on Mainnet at https://xrpl.org, ' +
+                    'import it into Xaman, and sign in with it. Acquire XRP from an exchange like Coinbase or Bitstamp.',
+                    true
+                );
+                return;
+            } else if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        }).then(data => {
+            if (data) {
+                console.log('Access token valid, showing airdrop form');
+                loginSection.style.display = 'none';
+                loginBtn.style.display = 'none';
+                qrCodeImg.style.display = 'none';
+                qrLink.style.display = 'none';
+                airdropForm.style.display = 'block';
+                checkBalanceBtn.disabled = false;
+                validateWalletsBtn.disabled = false;
+                checkTrustlinesBtn.disabled = false;
+                proceedBtn.disabled = false;
+                walletAddressDisplay.textContent = `Signed in as: ${storedAccount}`;
+                walletAddressContainer.style.display = 'block';
+                walletAddressDisplay.style.display = 'block';
+                walletToggle.classList.remove('disconnected');
+                walletToggle.classList.add('connected');
+                disconnectButton.style.display = 'inline-block';
+                populateTokenDropdown();
+                scrollAnchor.scrollIntoView({ behavior: 'instant', block: 'start' });
+            }
+        }).catch(error => {
+            console.error('Error validating token:', error);
+            handleUnauthorized();
+            showNotification('Failed to validate session. Please log in again.', true);
+        });
+    } else {
+        console.log('No access token or account found, showing login form');
+        loginSection.style.display = 'block';
+        loginBtn.style.display = 'block';
+        airdropForm.style.display = 'none';
+        qrCodeImg.style.display = 'none';
+        qrLink.style.display = 'none';
+        walletAddressContainer.style.display = 'none';
+        walletAddressDisplay.style.display = 'none';
+        walletToggle.classList.add('disconnected');
+        walletToggle.classList.remove('connected');
+        disconnectButton.style.display = 'none';
+        scrollAnchor.scrollIntoView({ behavior: 'instant', block: 'start' });
+    }
+});
 
  function getStorageItem(key) {
  try {
