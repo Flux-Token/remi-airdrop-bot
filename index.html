@@ -1698,7 +1698,6 @@
     const wallets = Array.from(document.getElementsByClassName('wallet-input')).map(div => {
         const address = div.querySelector('.wallet-address').value.trim();
         const amountRaw = div.querySelector('.wallet-amount').value.trim();
-        // Convert empty amount to null to satisfy Pydantic validation
         const amount = amountRaw === '' ? null : amountRaw;
         return { address, amount };
     });
@@ -1726,7 +1725,7 @@
     try {
         let query = `?token_type=${encodeURIComponent(tokenType)}`;
         if (tokenType !== 'XRP') {
-            query += `&issuer=${encodeURIComponent(issuer)}¤cy=${encodeURIComponent(currency)}`;
+            query += `&issuer=${encodeURIComponent(issuer)}&currency=${encodeURIComponent(currency)}`; // Fixed encoding of 'currency'
         }
 
         console.log('Checking trustlines with query:', query);
