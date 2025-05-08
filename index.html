@@ -973,7 +973,7 @@ color: #888;
     addressInput.classList.add('wallet-address');
     addressInput.value = address;
     addressInput.placeholder = 'Enter wallet address';
-    console.log(`Set addressInput.value to: ${addressInput.value}`);
+    console.log(`Initial set - addressInput.value: ${addressInput.value}`);
 
     const amountInput = document.createElement('input');
     amountInput.type = 'number';
@@ -982,7 +982,7 @@ color: #888;
     amountInput.value = isNaN(numericAmount) ? '' : numericAmount;
     amountInput.placeholder = 'Amount';
     amountInput.step = '0.000001';
-    console.log(`Set amountInput.value to: ${amountInput.value}`);
+    console.log(`Initial set - amountInput.value: ${amountInput.value}`);
 
     const balanceSpan = document.createElement('span');
     balanceSpan.classList.add('wallet-balance');
@@ -1013,12 +1013,19 @@ color: #888;
     const walletContainer = document.getElementById('wallet-list');
     walletContainer.appendChild(walletDiv);
 
-    addressInput.addEventListener('input', updateTotalAmount);
-    amountInput.addEventListener('input', updateTotalAmount);
+    // Force-set values after appending to DOM to handle potential re-renders
+    addressInput.value = address;
+    amountInput.value = isNaN(numericAmount) ? '' : numericAmount;
+    console.log(`After DOM append - Forced set addressInput.value: ${addressInput.value}, amountInput.value: ${amountInput.value}`);
 
-    setTimeout(() => {
-        console.log(`After DOM append - addressInput.value: ${addressInput.value}, amountInput.value: ${amountInput.value}`);
-    }, 0);
+    addressInput.addEventListener('input', () => {
+        console.log(`addressInput changed to: ${addressInput.value}`);
+        updateTotalAmount();
+    });
+    amountInput.addEventListener('input', () => {
+        console.log(`amountInput changed to: ${amountInput.value}`);
+        updateTotalAmount();
+    });
 }
 
     function showMainContent() {
@@ -1536,40 +1543,20 @@ try {
         };
 
         function updateTotalAmount() {
-const walletInputs = document.getElementsByClassName('wallet-input');
-let sum = new Decimal(0);
-let hasInvalid = false;
-for (const input of walletInputs) {
-    const amountInput = input.querySelector('.wallet-amount').value.trim();
-    if (!amountInput) {
-        input.querySelector('.wallet-amount').value = '';
-        continue;
+    const walletInputs = document.getElementsByClassName('wallet-input');
+    let total = 0;
+    for (const input of walletInputs) {
+        const amountInput = input.querySelector('.wallet-amount');
+        const addressInput = input.querySelector('.wallet-address');
+        const amount = parseFloat(amountInput.value) || 0;
+        console.log(`updateTotalAmount - Address: ${addressInput.value}, Amount: ${amountInput.value}, Parsed: ${amount}`);
+        total += amount;
     }
-    try {
-        const amount = new Decimal(amountInput);
-        if (amount.isNaN() || amount.lt(0)) {
-            throw new Error(`Invalid amount: ${amountInput}`);
-        }
-        sum = sum.plus(amount);
-    } catch (e) {
-        console.warn(`Invalid amount input: ${amountInput}, error: ${e.message}`);
-        input.querySelector('.wallet-amount').value = '';
-        hasInvalid = true;
+    if (total === 0) {
+        totalAmountInput.value = '';
+    } else {
+        totalAmountInput.value = total.toFixed(6);
     }
-}
-sum = sum.toDecimalPlaces(6);
-// If sum is 0, clear the value to show the placeholder
-if (sum.equals(0)) {
-    totalAmountInput.value = '';
-} else {
-    totalAmountInput.value = sum.toDecimalPlaces(6).toNumber();
-}
-console.log(`Updated total amount: ${totalAmountInput.value || 'placeholder shown'}, precise sum: ${sum.toString()}`);
-if (hasInvalid) {
-    showNotification('Invalid amounts were reset. Please enter valid numbers.', true);
-}
-return sum;
-
 }
 
         document.getElementById('wallet-list').addEventListener('input', (event) => {
@@ -2245,7 +2232,7 @@ try {
         try {
             let query = `?token_type=${encodeURIComponent(tokenType)}&fetch_balances=true`;
             if (tokenType !== 'XRP') {
-                query += `&issuer=${encodeURIComponent(issuer)}&currency=${encodeURIComponent(currency)}`; // Fixed typo: '¤cy' to '&currency'
+                query += `&issuer=${encodeURIComponent(issuer)}&currency=${encodeURIComponent(currency)}`; // Fixed typo from previous version
             }
             const response = await fetch(`${BACKEND_URL}/check-trustlines${query}`, {
                 method: 'POST',
