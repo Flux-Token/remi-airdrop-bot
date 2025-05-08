@@ -2126,6 +2126,15 @@ async function proceedWithAirdrop(wallets, tokenTypeSelect, serviceFee) {
     }
 }
 
+function removeWallet(button) {
+    const walletDiv = button.closest('.wallet-input');
+    if (walletDiv) {
+        walletDiv.remove();
+        updateTotalAmount();
+        console.log('Removed wallet div');
+    }
+}
+
         function showNotification(message, isError = false) {
             if (notificationTimeout) {
                 clearTimeout(notificationTimeout);
@@ -2308,6 +2317,7 @@ async function proceedWithAirdrop(wallets, tokenTypeSelect, serviceFee) {
         console.log('Forced DOM reflow on walletList');
 
         // Temporary workaround to test DOM rendering
+// Temporary workaround to test DOM rendering
 walletList.innerHTML = wallets.map((wallet, index) => `
     <div class="wallet-input">
         <input type="text" class="wallet-address" value="${wallet.address || ''}" placeholder="Wallet Address">
@@ -2320,6 +2330,16 @@ walletList.innerHTML = wallets.map((wallet, index) => `
     </div>
 `).join('');
 console.log('Manually set walletList.innerHTML with static HTML');
+
+// Reattach event listeners to wallet inputs
+const walletInputs = document.getElementsByClassName('wallet-input');
+Array.from(walletInputs).forEach(input => {
+    const addressInput = input.querySelector('.wallet-address');
+    const amountInput = input.querySelector('.wallet-amount');
+    addressInput.addEventListener('input', updateTotalAmount);
+    amountInput.addEventListener('input', updateTotalAmount);
+    console.log(`Attached event listeners to wallet input: Address=${addressInput.value}, Amount=${amountInput.value}`);
+});
 
         updateTotalAmount();
         showNotification(`Successfully loaded ${wallets.length} wallets from CSV.`);
@@ -2406,14 +2426,19 @@ console.log('Manually set walletList.innerHTML with static HTML');
             showNotification('Wallets updated with trustline statuses and balances.', false);
 
             const allEligible = data.every(result => result.has_trustline);
-            if (allEligible && data.length > 0) {
-                showNotification('All wallets are eligible for airdrop (trustlines).', false);
-            } else {
-                showNotification(
-                    'Some wallets may be flagged RED but still be able to receive air drops due to known XPmarket and Xmagnetic trust line issues. Please verify before sending.',
-                    true
-                );
-            }
+console.log('All eligible:', allEligible, 'Data length:', data.length);
+if (allEligible && data.length > 0) {
+    showNotification('All wallets are eligible for airdrop (trustlines).', false);
+    proceedToSigningBtn.disabled = false;
+    proceedToSigningBtn.classList.add('glow');
+    console.log('Enabled Proceed to Signing button');
+} else {
+    showNotification(
+        'Some wallets may be flagged RED but still be able to receive air drops due to known XPmarket and Xmagnetic trust line issues. Please verify before sending.',
+        true
+    );
+    console.log('Did not enable Proceed to Signing button');
+}
         } catch (error) {
             console.error('Error fetching trustlines/balances:', error);
             showNotification(`Error fetching trustlines/balances: ${error.message}`, true);
