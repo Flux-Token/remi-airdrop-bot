@@ -971,18 +971,12 @@ color: #888;
     const addressInput = document.createElement('input');
     addressInput.type = 'text';
     addressInput.classList.add('wallet-address');
-    addressInput.value = address;
     addressInput.placeholder = 'Enter wallet address';
-    console.log(`Initial set - addressInput.value: ${addressInput.value}`);
 
     const amountInput = document.createElement('input');
-    amountInput.type = 'number';
+    amountInput.type = 'text'; // Changed to text to avoid type="number" issues
     amountInput.classList.add('wallet-amount');
-    const numericAmount = amount ? parseFloat(amount) : '';
-    amountInput.value = isNaN(numericAmount) ? '' : numericAmount;
     amountInput.placeholder = 'Amount';
-    amountInput.step = '0.000001';
-    console.log(`Initial set - amountInput.value: ${amountInput.value}`);
 
     const balanceSpan = document.createElement('span');
     balanceSpan.classList.add('wallet-balance');
@@ -999,6 +993,34 @@ color: #888;
         walletDiv.remove();
         updateTotalAmount();
     });
+
+    const amountRemoveGroup = document.createElement('div');
+    amountRemoveGroup.classList.add('amount-remove-group');
+    amountRemoveGroup.appendChild(amountInput);
+    amountRemoveGroup.appendChild(removeBtn);
+
+    walletDiv.appendChild(addressInput);
+    walletDiv.appendChild(statusBox);
+    walletDiv.appendChild(amountRemoveGroup);
+    walletDiv.appendChild(balanceSpan);
+
+    const walletContainer = document.getElementById('wallet-list');
+    walletContainer.appendChild(walletDiv);
+
+    // Set values after appending to DOM
+    addressInput.value = address || '';
+    amountInput.value = amount || '';
+    console.log(`After DOM append - Set addressInput.value: ${addressInput.value}, amountInput.value: ${amountInput.value}`);
+
+    addressInput.addEventListener('input', () => {
+        console.log(`addressInput changed to: ${addressInput.value}`);
+        updateTotalAmount();
+    });
+    amountInput.addEventListener('input', () => {
+        console.log(`amountInput changed to: ${amountInput.value}`);
+        updateTotalAmount();
+    });
+}
 
     const amountRemoveGroup = document.createElement('div');
     amountRemoveGroup.classList.add('amount-remove-group');
@@ -1545,10 +1567,20 @@ try {
         function updateTotalAmount() {
     const walletInputs = document.getElementsByClassName('wallet-input');
     let total = 0;
+    let hasInvalid = false;
     for (const input of walletInputs) {
         const amountInput = input.querySelector('.wallet-amount');
         const addressInput = input.querySelector('.wallet-address');
-        const amount = parseFloat(amountInput.value) || 0;
+        const amountValue = amountInput.value.trim();
+        let amount = 0;
+        if (amountValue) {
+            amount = parseFloat(amountValue);
+            if (isNaN(amount) || amount < 0) {
+                amountInput.value = '';
+                hasInvalid = true;
+                amount = 0;
+            }
+        }
         console.log(`updateTotalAmount - Address: ${addressInput.value}, Amount: ${amountInput.value}, Parsed: ${amount}`);
         total += amount;
     }
@@ -1556,6 +1588,9 @@ try {
         totalAmountInput.value = '';
     } else {
         totalAmountInput.value = total.toFixed(6);
+    }
+    if (hasInvalid) {
+        showNotification('Invalid amounts were reset. Please enter valid numbers.', true);
     }
 }
 
