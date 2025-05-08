@@ -964,7 +964,7 @@ color: #888;
         });
     }
 
-    function addWallet(address = '', amount = 0, balance = null) {
+    function addWallet(address = '', amount = '', balance = null) {
     const walletDiv = document.createElement('div');
     walletDiv.classList.add('wallet-input');
 
@@ -977,7 +977,9 @@ color: #888;
     const amountInput = document.createElement('input');
     amountInput.type = 'number';
     amountInput.classList.add('wallet-amount');
-    amountInput.value = amount || '';
+    // Convert amount to a number for type="number" input
+    const numericAmount = amount ? parseFloat(amount) : '';
+    amountInput.value = isNaN(numericAmount) ? '' : numericAmount;
     amountInput.placeholder = 'Amount';
     amountInput.step = '0.000001';
 
@@ -1007,7 +1009,7 @@ color: #888;
     walletDiv.appendChild(amountRemoveGroup);
     walletDiv.appendChild(balanceSpan);
 
-    const walletContainer = document.getElementById('wallet-list'); // Define walletContainer here
+    const walletContainer = document.getElementById('wallet-list');
     walletContainer.appendChild(walletDiv);
 
     addressInput.addEventListener('input', updateTotalAmount);
@@ -2157,117 +2159,54 @@ try {
     });
 
     const csvUploadInput = document.getElementById('csv-upload-input');
-    csvUploadInput.addEventListener('change', (event) => {
-const file = event.target.files[0];
-if (!file) {
-    showNotification('No file selected.', true);
-    return;
-}
-if (!file.name.endsWith('.csv')) {
-    showNotification('Please upload a CSV file.', true);
-    return;
-}
+    csvUploadInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
 
-const reader = new FileReader();
-reader.onload = async (e) => {
-    const text = e.target.result;
-    const rows = text.replace(/\r\n|\r/g, '\n').split('\n').map(row => row.trim()).filter(row => row);
-    console.log('Parsed CSV rows:', rows);
-    if (rows.length === 0) {
-        showNotification('CSV file appears empty. Please ensure it contains wallet addresses.', true);
-        return;
-    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const text = e.target.result;
+        const rows = text.replace(/\r\n|\r/g, '\n').split('\n').map(row => row.trim()).filter(row => row);
+        const wallets = [];
+        const startIndex = csvHasHeader ? 1 : 0;
 
-    const firstRow = rows[0];
-    let delimiter = ',';
-    if (firstRow.includes(';') && !firstRow.includes(',')) {
-        delimiter = ';';
-    } else if (firstRow.includes('\t') && !firstRow.includes(',')) {
-        delimiter = '\t';
-    }
-    console.log('Detected CSV delimiter:', delimiter);
-
-    const wallets = [];
-    const startIndex = csvHasHeader ? 1 : 0;
-    for (let i = startIndex; i < rows.length; i++) {
-        let columns = [];
-        let current = '';
-        let inQuotes = false;
-        const row = rows[i];
-
-        for (let j = 0; j < row.length; j++) {
-            const char = row[j];
-            if (char === '"') {
-                inQuotes = !inQuotes;
-            } else if (char === delimiter && !inQuotes) {
-                columns.push(current.trim());
-                current = '';
-            } else {
-                current += char;
+        // Simplified CSV parsing for comma-separated values without quotes
+        for (let i = startIndex; i < rows.length; i++) {
+            const columns = rows[i].split(',').map(col => col.trim());
+            if (columns.length === 0 || !columns[0]) {
+                continue;
             }
-        }
-        if (current) {
-            columns.push(current.trim());
-        }
-
-        columns = columns.map(col => {
-            if (col.startsWith('"') && col.endsWith('"')) {
-                return col.slice(1, -1).trim();
-            }
-            return col;
-        });
-
-        console.log(`Row ${i} columns:`, columns);
-        if (columns.length === 0 || !columns[0]) {
-            console.log(`Skipping row ${i}: Empty or missing address`);
-            continue;
-        }
-
-        const address = columns[0];
-        let amount = columns.length > 1 ? columns[1] : '';
-        if (amount) {
-            try {
-                const parsedAmount = parseFloat(amount);
-                if (isNaN(parsedAmount) || parsedAmount < 0) {
-                    console.log(`Invalid amount in row ${i}: ${amount}, resetting to empty`);
+            const address = columns[0];
+            let amount = columns.length > 1 ? columns[1] : '';
+            if (amount) {
+                try {
+                    const parsedAmount = parseFloat(amount);
+                    if (isNaN(parsedAmount) || parsedAmount < 0) {
+                        amount = '';
+                    }
+                } catch (e) {
                     amount = '';
                 }
-            } catch (e) {
-                console.log(`Error parsing amount in row ${i}: ${amount}, resetting to empty`);
-                amount = '';
+            }
+            if (address) {
+                wallets.push({ address, amount });
             }
         }
 
-        if (address) {
-            wallets.push({ address, amount });
-        } else {
-            console.log(`Skipping row ${i}: Address is empty after parsing`);
-        }
-    }
+        const walletList = document.getElementById('wallet-list');
+        walletList.innerHTML = '';
+        wallets.forEach((wallet, index) => {
+            const safeAddress = (wallet.address || '').replace(/"/g, '"');
+            const safeAmount = (wallet.amount || '').replace(/"/g, '"');
+            console.log(`Adding wallet ${index}: address=${safeAddress}, amount=${safeAmount}`); // Debug log
+            addWallet(safeAddress, safeAmount);
+        });
 
-    if (wallets.length === 0) {
-        showNotification('No valid wallet addresses found in CSV. Please ensure the file contains wallet addresses in the first column.', true);
-        return;
-    }
-
-    console.log('Parsed wallets:', wallets);
-
-    if (wallets.length > 150) {
-        showNotification('Too many wallets in CSV. Limit is 150.', true);
-        return;
-    }
-
-    const walletList = document.getElementById('wallet-list');
-    walletList.innerHTML = '';
-    console.log('Cleared wallet list');
-
-    // Add wallets to the UI without balances initially
-    wallets.forEach((wallet, index) => {
-        const safeAddress = (wallet.address || '').replace(/"/g, '"');
-        const safeAmount = (wallet.amount || '').replace(/"/g, '"');
-        addWallet(safeAddress, safeAmount);
-        console.log(`Added wallet ${index + 1}: Address=${safeAddress}, Amount=${safeAmount}`);
-    });
+        csvUploadInput.value = '';
+        updateTotalAmount();
+    };
+    reader.readAsText(file);
+});
 
     walletList.style.display = 'block';
     console.log('Wallet list display style:', walletList.style.display);
