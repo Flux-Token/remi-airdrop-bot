@@ -1022,80 +1022,53 @@ color: #888;
     });
 }
 
-    const amountRemoveGroup = document.createElement('div');
-    amountRemoveGroup.classList.add('amount-remove-group');
-    amountRemoveGroup.appendChild(amountInput);
-    amountRemoveGroup.appendChild(removeBtn);
+function showMainContent() {
+    const preloader = document.getElementById('preloader');
+    const mainContent = document.querySelector('.main-content');
+    const footerContainer = document.getElementById('footer-container');
+    const audio = document.getElementById('loader-audio');
+    const scrollAnchor = document.getElementById('scroll-anchor');
 
-    walletDiv.appendChild(addressInput);
-    walletDiv.appendChild(statusBox);
-    walletDiv.appendChild(amountRemoveGroup);
-    walletDiv.appendChild(balanceSpan);
+    console.log('Showing main content...');
+    document.body.style.overflow = 'hidden';
 
-    const walletContainer = document.getElementById('wallet-list');
-    walletContainer.appendChild(walletDiv);
+    const fadeOut = setInterval(() => {
+        if (audio.volume > 0.1) {
+            audio.volume -= 0.1;
+        } else {
+            audio.pause();
+            audio.currentTime = 0;
+            clearInterval(fadeOut);
+        }
+    }, 100);
 
-    // Force-set values after appending to DOM to handle potential re-renders
-    addressInput.value = address;
-    amountInput.value = isNaN(numericAmount) ? '' : numericAmount;
-    console.log(`After DOM append - Forced set addressInput.value: ${addressInput.value}, amountInput.value: ${amountInput.value}`);
+    preloader.style.opacity = '0';
+    setTimeout(() => {
+        console.log('Hiding preloader and showing main content...');
+        preloader.style.display = 'none';
+        mainContent.style.display = 'block';
+        footerContainer.style.display = 'block';
 
-    addressInput.addEventListener('input', () => {
-        console.log(`addressInput changed to: ${addressInput.value}`);
-        updateTotalAmount();
-    });
-    amountInput.addEventListener('input', () => {
-        console.log(`amountInput changed to: ${amountInput.value}`);
-        updateTotalAmount();
-    });
+        mainContent.offsetHeight;
+        footerContainer.offsetHeight;
 
-    function showMainContent() {
-        const preloader = document.getElementById('preloader');
-        const mainContent = document.querySelector('.main-content');
-        const footerContainer = document.getElementById('footer-container');
-        const audio = document.getElementById('loader-audio');
-        const scrollAnchor = document.getElementById('scroll-anchor');
+        document.body.style.overflow = 'auto';
 
-        console.log('Showing main content...');
-        document.body.style.overflow = 'hidden';
+        const accessToken = getStorageItem('access_token');
+        const storedAccount = getStorageItem('account');
+        const loginSection = document.querySelector('.form-section.login');
+        const airdropForm = document.getElementById('airdrop-form');
+        if (accessToken && storedAccount) {
+            loginSection.style.display = 'none';
+            airdropForm.style.display = 'block';
+        } else {
+            loginSection.style.display = 'block';
+            airdropForm.style.display = 'none';
+        }
 
-        const fadeOut = setInterval(() => {
-            if (audio.volume > 0.1) {
-                audio.volume -= 0.1;
-            } else {
-                audio.pause();
-                audio.currentTime = 0;
-                clearInterval(fadeOut);
-            }
-        }, 100);
-
-        preloader.style.opacity = '0';
-        setTimeout(() => {
-            console.log('Hiding preloader and showing main content...');
-            preloader.style.display = 'none';
-            mainContent.style.display = 'block';
-            footerContainer.style.display = 'block';
-
-            mainContent.offsetHeight;
-            footerContainer.offsetHeight;
-
-            document.body.style.overflow = 'auto';
-
-            const accessToken = getStorageItem('access_token');
-            const storedAccount = getStorageItem('account');
-            const loginSection = document.querySelector('.form-section.login');
-            const airdropForm = document.getElementById('airdrop-form');
-            if (accessToken && storedAccount) {
-                loginSection.style.display = 'none';
-                airdropForm.style.display = 'block';
-            } else {
-                loginSection.style.display = 'block';
-                airdropForm.style.display = 'none';
-            }
-
-            scrollAnchor.scrollIntoView({ behavior: 'instant', block: 'start' });
-        }, 500);
-    }
+        scrollAnchor.scrollIntoView({ behavior: 'instant', block: 'start' });
+    }, 500);
+}
 
     document.addEventListener('DOMContentLoaded', () => {
     console.log('DOM loaded, initializing...');
