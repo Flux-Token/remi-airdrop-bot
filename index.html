@@ -1012,6 +1012,41 @@ color: #888;
     amountInput.value = amount || '';
     console.log(`After DOM append - Set addressInput.value: ${addressInput.value}, amountInput.value: ${amountInput.value}`);
 
+    // Force-set values again after a delay to ensure DOM rendering
+    setTimeout(() => {
+        addressInput.value = address || '';
+        amountInput.value = amount || '';
+        console.log(`After delay - Forced set addressInput.value: ${addressInput.value}, amountInput.value: ${amountInput.value}`);
+    }, 50);
+
+    addressInput.addEventListener('input', () => {
+        console.log(`addressInput changed to: ${addressInput.value}`);
+        updateTotalAmount();
+    });
+    amountInput.addEventListener('input', () => {
+        console.log(`amountInput changed to: ${amountInput.value}`);
+        updateTotalAmount();
+    });
+}
+
+    const amountRemoveGroup = document.createElement('div');
+    amountRemoveGroup.classList.add('amount-remove-group');
+    amountRemoveGroup.appendChild(amountInput);
+    amountRemoveGroup.appendChild(removeBtn);
+
+    walletDiv.appendChild(addressInput);
+    walletDiv.appendChild(statusBox);
+    walletDiv.appendChild(amountRemoveGroup);
+    walletDiv.appendChild(balanceSpan);
+
+    const walletContainer = document.getElementById('wallet-list');
+    walletContainer.appendChild(walletDiv);
+
+    // Set values after appending to DOM
+    addressInput.value = address || '';
+    amountInput.value = amount || '';
+    console.log(`After DOM append - Set addressInput.value: ${addressInput.value}, amountInput.value: ${amountInput.value}`);
+
     addressInput.addEventListener('input', () => {
         console.log(`addressInput changed to: ${addressInput.value}`);
         updateTotalAmount();
@@ -2219,6 +2254,13 @@ try {
             console.log(`Adding wallet ${index}: address=${safeAddress}, amount=${safeAmount}`);
             addWallet(safeAddress, safeAmount);
         });
+
+        walletList.style.display = 'block';
+        walletList.offsetHeight;
+        setTimeout(() => {
+            updateTotalAmount();
+            showNotification(`Successfully loaded ${wallets.length} wallets from CSV.`);
+        }, 100);
 
         walletList.style.display = 'block';
         walletList.offsetHeight;
