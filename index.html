@@ -1717,7 +1717,7 @@
         return;
     }
 
-    checkTrustlinesBtn.disabled = true; // Fixed variable name
+    checkTrustlinesBtn.disabled = true;
     trustlinesLoader.style.display = 'inline-block';
 
     try {
@@ -1758,7 +1758,7 @@
             if (trustlineResult) {
                 statusBox.classList.remove('valid', 'invalid');
                 statusBox.classList.add(trustlineResult.has_trustline ? 'valid' : 'invalid');
-                statusBox.style.display = 'block'; // Ensure status box is visible
+                statusBox.style.display = 'block';
                 console.log(`Updated wallet ${address}: hasTrustline=${trustlineResult.has_trustline}`);
             } else {
                 statusBox.classList.remove('valid', 'invalid');
@@ -1768,11 +1768,10 @@
         }
 
         trustlineChecked = true;
-        checkTrustlinesBtn.classList.remove('glow'); // Fixed variable name
+        checkTrustlinesBtn.classList.remove('glow');
         showNotification('Trustline check completed.');
         console.log('Trustline check completed, trustlineChecked set to true:', trustlineChecked);
 
-        // Check if all wallets are eligible to enable proceeding
         const allEligible = data.every(result => result.has_trustline);
         if (allEligible && data.length > 0) {
             showNotification('All wallets are eligible for airdrop (trustlines).', false);
@@ -1786,7 +1785,7 @@
         console.error('Error checking trustlines:', error);
         showNotification(`Error checking trustlines: ${error.message}`, true);
     } finally {
-        checkTrustlinesBtn.disabled = false; // Fixed variable name
+        checkTrustlinesBtn.disabled = false;
         trustlinesLoader.style.display = 'none';
     }
 });
