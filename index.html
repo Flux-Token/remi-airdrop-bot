@@ -2354,20 +2354,20 @@
                         console.log('Forced DOM reflow on walletList');
 
                         walletList.innerHTML = wallets.map((wallet, index) => {
-                            const safeAddress = (wallet.address || '').replace(/"/g, '&quot;');
-                            const safeAmount = (wallet.amount || '').replace(/"/g, '&quot;');
-                            return `
-                             <div class="wallet-input">
-                                    <input type="text" class="wallet-address" value="${safeAddress}" placeholder="Wallet Address">
-                                    <div class="trustline-status-box"></div>
-                                    <div class="amount-remove-group">
-                                        <input type="number" class="wallet-amount" value="${safeAmount}" placeholder="Amount" step="0.000001" min="0">
-                                        <button onclick="removeWallet(this)">Remove</button>
-                                    </div>
-                                    <span class="wallet-balance">Balance: N/A</span>
+                        const safeAddress = (wallet.address || '').replace(/"/g, '&quot;');
+                        const safeAmount = (wallet.amount || '').replace(/"/g, '&quot;');
+                        return `
+                            <div class="wallet-input">
+                                <input type="text" class="wallet-address" value="${safeAddress}" placeholder="Wallet Address">
+                                <div class="trustline-status-box"></div>
+                                <div class="amount-remove-group">
+                                    <input type="number" class="wallet-amount" value="${safeAmount}" placeholder="Amount" step="0.000001" min="0">
+                                    <button onclick="removeWallet(this)">Remove</button>
                                 </div>
-                            `;
-                        }).join('');
+                                <span class="wallet-balance">Balance: N/A</span>
+                            </div>
+                        `;
+                    }).join('');
 
                         const walletInputs = document.getElementsByClassName('wallet-input');
                         Array.from(walletInputs).forEach(input => {
