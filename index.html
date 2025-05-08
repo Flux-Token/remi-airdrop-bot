@@ -1694,116 +1694,102 @@
             });
 
             checkTrustlinesBtn.addEventListener('click', async () => {
-                console.log('Check Trustlines clicked, accessToken:', getStorageItem('access_token'));
-                checkTrustlinesBtn.disabled = true;
-                trustlinesLoader.style.display = 'inline-block';
-                try {
-                    const wallets = Array.from(document.getElementsByClassName('wallet-input')).map(div => {
-                        const address = div.querySelector('.wallet-address').value.trim();
-                        const amountInput = div.querySelector('.wallet-amount').value.trim();
-                        if (!address) {
-                            throw new Error('Wallet address cannot be empty');
-                        }
-                        const amount = amountInput ? parseFloat(amountInput) : 0;
-                        if (isNaN(amount) || amount < 0) {
-                            throw new Error(`Invalid amount for address ${address}: ${amountInput}`);
-                        }
-                        return { address, amount };
-                    });
-                    if (wallets.length === 0) {
-                        throw new Error('At least one wallet is required');
-                    }
-                    const tokenType = tokenTypeSelect.value;
-                    const selectedOption = tokenTypeSelect.selectedOptions[0];
-                    const issuer = selectedOption.dataset.issuer || '';
-                    const currency = selectedOption.dataset.currency || tokenType;
+    console.log('Check Trustline clicked');
+    const wallets = Array.from(document.getElementsByClassName('wallet-input')).map(div => ({
+        address: div.querySelector('.wallet-address').value.trim(),
+        amount: div.querySelector('.wallet-amount').value.trim()
+    }));
 
-                    console.log('Selected token details:', {
-                        tokenType,
-                        issuer,
-                        currency,
-                        datasetCurrency: selectedOption.dataset.currency,
-                        datasetIssuer: selectedOption.dataset.issuer
-                    });
+    if (wallets.length === 0 || wallets.every(wallet => !wallet.address)) {
+        console.log('Blocking: No valid wallet addresses provided');
+        showNotification('Please add at least one wallet address to check trustlines.', true);
+        return;
+    }
 
-                    const queryParams = new URLSearchParams();
-                    queryParams.append('token_type', tokenType);
-                    if (tokenType !== 'XRP') {
-                        if (!issuer || !currency) {
-                            throw new Error('Issuer or currency missing for selected token');
-                        }
-                        queryParams.append('issuer', issuer);
-                        queryParams.append('currency', currency);
-                    }
-                    const query = `?${queryParams.toString()}`;
+    const tokenType = tokenTypeSelect.value;
+    const selectedOption = tokenTypeSelect.selectedOptions[0];
+    const issuer = selectedOption.dataset.issuer || '';
+    const currency = selectedOption.dataset.currency || '';
 
-                    console.log(`Checking trustlines for wallets:`, wallets, 'Query:', query);
-                    const trustlineResponse = await fetch(`${BACKEND_URL}/check-trustlines${query}`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${getStorageItem('access_token')}`,
-                            'account': getStorageItem('account')
-                        },
-                        body: JSON.stringify(wallets)
-                    });
-                    console.log('Trustlines response status:', trustlineResponse.status);
-                    const trustlineData = await trustlineResponse.json();
-                    console.log('Trustlines response data:', JSON.stringify(trustlineData, null, 2));
-                    if (trustlineResponse.status === 401) {
-                        handleUnauthorized();
-                        return;
-                    }
-                    if (!trustlineResponse.ok) {
-                        throw new Error(`Trustline check failed! status: ${trustlineResponse.status} - ${trustlineData.detail || 'Unknown error'}`);
-                    }
-                    if (!Array.isArray(trustlineData)) {
-                        throw new Error('Invalid trustline check response from server: Expected an array of results');
-                    }
+    if (tokenType !== 'XRP' && (!issuer || !currency)) {
+        console.log('Blocking: Invalid token selection (missing issuer or currency)');
+        showNotification('Please select a valid token with issuer and currency.', true);
+        return;
+    }
 
-                    const walletInputs = document.getElementsByClassName('wallet-input');
-                    for (const input of walletInputs) {
-                        const address = input.querySelector('.wallet-address').value.trim();
-                        const trustlineResult = trustlineData.find(w => w.address === address);
-                        const statusBox = input.querySelector('.trustline-status-box');
+    checkTrustlinesBtn.disabled = true; // Fixed variable name
+    trustlinesLoader.style.display = 'inline-block';
 
-                        statusBox.classList.remove('valid', 'invalid');
-                        statusBox.style.display = 'block';
+    try {
+        let query = `?token_type=${encodeURIComponent(tokenType)}`;
+        if (tokenType !== 'XRP') {
+            query += `&issuer=${encodeURIComponent(issuer)}¤cy=${encodeURIComponent(currency)}`;
+        }
 
-                        const hasTrustline = trustlineResult && trustlineResult.has_trustline;
+        console.log('Checking trustlines with query:', query);
+        const response = await fetch(`${BACKEND_URL}/check-trustlines${query}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${getStorageItem('access_token')}`,
+                'account': getStorageItem('account')
+            },
+            body: JSON.stringify(wallets)
+        });
 
-                        console.log(`Wallet ${address}: hasTrustline=${hasTrustline}`);
+        if (response.status === 401) {
+            console.log('Unauthorized: Handling 401 error');
+            handleUnauthorized();
+            return;
+        }
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            console.log('Trustline check failed:', errorData);
+            throw new Error(`HTTP error! status: ${response.status} - ${JSON.stringify(errorData.detail || 'Unknown error')}`);
+        }
+        const data = await response.json();
+        console.log('Trustline check response:', data);
 
-                        if (hasTrustline) {
-                            statusBox.classList.add('valid');
-                            showNotification(`Wallet ${address}: Has trustline for ${decodeHexCurrency(tokenType)}, eligible for airdrop`, false);
-                        } else {
-                            statusBox.classList.add('invalid');
-                            const error = (trustlineResult?.error || 'No trustline found');
-                            showNotification(`Wallet ${address}: ${error}`, true);
-                        }
-                    }
+        const walletInputs = document.getElementsByClassName('wallet-input');
+        for (const input of walletInputs) {
+            const address = input.querySelector('.wallet-address').value.trim();
+            const trustlineResult = data.find(w => w.address === address);
+            const statusBox = input.querySelector('.trustline-status-box');
+            if (trustlineResult) {
+                statusBox.classList.remove('valid', 'invalid');
+                statusBox.classList.add(trustlineResult.has_trustline ? 'valid' : 'invalid');
+                statusBox.style.display = 'block'; // Ensure status box is visible
+                console.log(`Updated wallet ${address}: hasTrustline=${trustlineResult.has_trustline}`);
+            } else {
+                statusBox.classList.remove('valid', 'invalid');
+                statusBox.style.display = 'none';
+                console.log(`Wallet ${address} not found in response, hiding status box`);
+            }
+        }
 
-                    const allEligible = trustlineData.every(result => result.has_trustline);
-                    if (allEligible && trustlineData.length > 0) {
-                        showNotification('All wallets are eligible for airdrop (trustlines).', false);
-                    } else {
-                        showNotification(
-                            'Some wallets are not eligible. Check the red (ineligible) markers.\nSome wallets may be flagged RED but still be able to receive air drops due to known XPmarket and Xmagnetic trust line issues. Please verify before sending.',
-                            true
-                        );
-                    }
-                } catch (error) {
-                    console.error('Error checking trustlines:', error);
-                    showNotification(
-                        `Error checking trustlines: ${error.message}. Ensure addresses are valid and funded on the XRP Ledger Mainnet.`,
-                        true
-                    );
-                } finally {
-                    checkTrustlinesBtn.disabled = false;
-                    trustlinesLoader.style.display = 'none';
-                }
-            });
+        trustlineChecked = true;
+        checkTrustlinesBtn.classList.remove('glow'); // Fixed variable name
+        showNotification('Trustline check completed.');
+        console.log('Trustline check completed, trustlineChecked set to true:', trustlineChecked);
+
+        // Check if all wallets are eligible to enable proceeding
+        const allEligible = data.every(result => result.has_trustline);
+        if (allEligible && data.length > 0) {
+            showNotification('All wallets are eligible for airdrop (trustlines).', false);
+        } else {
+            showNotification(
+                'Some wallets are not eligible. Check the red (ineligible) markers.\nSome wallets may be flagged RED but still be able to receive air drops due to known XPmarket and Xmagnetic trust line issues. Please verify before sending.',
+                true
+            );
+        }
+    } catch (error) {
+        console.error('Error checking trustlines:', error);
+        showNotification(`Error checking trustlines: ${error.message}`, true);
+    } finally {
+        checkTrustlinesBtn.disabled = false; // Fixed variable name
+        trustlinesLoader.style.display = 'none';
+    }
+});
 
             function calculateServiceFee(walletCount) {
                 const feePerWallet = 0.05;
