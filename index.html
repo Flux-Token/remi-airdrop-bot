@@ -873,7 +873,7 @@
                     <select id="token-type">
                         <option value="XRP">XRP</option>
                     </select>
-                    <input type="number" id="total-amount" placeholder="Total Amount" step="0.000001" min="0" readonly>
+                    <input type="number" id="total-amount" placeholder="Calculated Total Airdrop Amount" step="0.000001" min="0" readonly>
                     <div id="wallet-list">
                         <div class="wallet-input">
                             <input type="text" class="wallet-address" placeholder="Wallet Address">
@@ -1525,35 +1525,40 @@
             };
 
             function updateTotalAmount() {
-                const walletInputs = document.getElementsByClassName('wallet-input');
-                let sum = new Decimal(0);
-                let hasInvalid = false;
-                for (const input of walletInputs) {
-                    const amountInput = input.querySelector('.wallet-amount').value.trim();
-                    if (!amountInput) {
-                        input.querySelector('.wallet-amount').value = '';
-                        continue;
-                    }
-                    try {
-                        const amount = new Decimal(amountInput);
-                        if (amount.isNaN() || amount.lt(0)) {
-                            throw new Error(`Invalid amount: ${amountInput}`);
-                        }
-                        sum = sum.plus(amount);
-                    } catch (e) {
-                        console.warn(`Invalid amount input: ${amountInput}, error: ${e.message}`);
-                        input.querySelector('.wallet-amount').value = '';
-                        hasInvalid = true;
-                    }
-                }
-                sum = sum.toDecimalPlaces(6);
-                totalAmountInput.value = sum.toDecimalPlaces(6).toNumber();
-                console.log(`Updated total amount: ${totalAmountInput.value}, precise sum: ${sum.toString()}`);
-                if (hasInvalid) {
-                    showNotification('Invalid amounts were reset. Please enter valid numbers.', true);
-                }
-                return sum;
+    const walletInputs = document.getElementsByClassName('wallet-input');
+    let sum = new Decimal(0);
+    let hasInvalid = false;
+    for (const input of walletInputs) {
+        const amountInput = input.querySelector('.wallet-amount').value.trim();
+        if (!amountInput) {
+            input.querySelector('.wallet-amount').value = '';
+            continue;
+        }
+        try {
+            const amount = new Decimal(amountInput);
+            if (amount.isNaN() || amount.lt(0)) {
+                throw new Error(`Invalid amount: ${amountInput}`);
             }
+            sum = sum.plus(amount);
+        } catch (e) {
+            console.warn(`Invalid amount input: ${amountInput}, error: ${e.message}`);
+            input.querySelector('.wallet-amount').value = '';
+            hasInvalid = true;
+        }
+    }
+    sum = sum.toDecimalPlaces(6);
+    // If sum is 0, clear the value to show the placeholder
+    if (sum.equals(0)) {
+        totalAmountInput.value = '';
+    } else {
+        totalAmountInput.value = sum.toDecimalPlaces(6).toNumber();
+    }
+    console.log(`Updated total amount: ${totalAmountInput.value || 'placeholder shown'}, precise sum: ${sum.toString()}`);
+    if (hasInvalid) {
+        showNotification('Invalid amounts were reset. Please enter valid numbers.', true);
+    }
+    return sum;
+}
 
             document.getElementById('wallet-list').addEventListener('input', (event) => {
                 if (event.target.classList.contains('wallet-amount')) {
@@ -2306,28 +2311,26 @@ async function proceedWithAirdrop(wallets, tokenTypeSelect, serviceFee) {
             const data = await response.json();
             console.log('Trustline/balance response:', data);
 
-            // Clear and rebuild the wallet list with updated data (including balances)
-            walletList.innerHTML = '';
-            let totalAmount = 0;
-            data.forEach(result => {
-                const wallet = wallets.find(w => w.address === result.address);
-                const amount = wallet ? parseFloat(wallet.amount) || 0 : 0;
-                totalAmount += amount;
-                addWallet(result.address, amount, result.balance);
-                const walletDiv = Array.from(walletList.children).find(div =>
-                    div.querySelector('.wallet-address').value === result.address
-                );
-                if (walletDiv) {
-                    const statusBox = walletDiv.querySelector('.trustline-status-box');
-                    if (result.has_trustline !== undefined) {
+            // Update existing wallet entries with balances and trustline statuses
+            const walletInputs = document.getElementsByClassName('wallet-input');
+            for (const input of walletInputs) {
+                const address = input.querySelector('.wallet-address').value.trim();
+                const trustlineResult = data.find(w => w.address === address);
+                if (trustlineResult) {
+                    // Update balance
+                    const balanceSpan = input.querySelector('.wallet-balance');
+                    balanceSpan.textContent = trustlineResult.balance !== null ? `Balance: ${trustlineResult.balance}` : 'Balance: N/A';
+                    // Update trustline status
+                    const statusBox = input.querySelector('.trustline-status-box');
+                    if (trustlineResult.has_trustline !== undefined) {
                         statusBox.classList.remove('valid', 'invalid');
-                        statusBox.classList.add(result.has_trustline ? 'valid' : 'invalid');
+                        statusBox.classList.add(trustlineResult.has_trustline ? 'valid' : 'invalid');
                         statusBox.style.display = 'block';
                     }
+                    console.log(`Updated wallet ${address}: Balance=${trustlineResult.balance}, hasTrustline=${trustlineResult.has_trustline}`);
                 }
-            });
+            }
 
-            totalAmountInput.value = totalAmount.toFixed(6);
             trustlineChecked = true;
             checkTrustlinesBtn.classList.remove('glow');
             showNotification('Wallets updated with trustline statuses and balances.', false);
