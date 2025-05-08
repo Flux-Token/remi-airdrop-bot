@@ -968,19 +968,26 @@
         }
 
         function addWallet(address = '', amount = 0, balance = null) {
+    const walletList = document.getElementById('wallet-list'); // Define walletList here
+    if (!walletList) {
+        console.error('wallet-list element not found in the DOM');
+        showNotification('Error: Wallet list container not found in the DOM.', true);
+        return;
+    }
+
     const walletDiv = document.createElement('div');
     walletDiv.classList.add('wallet-input');
 
     const addressInput = document.createElement('input');
     addressInput.type = 'text';
     addressInput.classList.add('wallet-address');
-    addressInput.value = address;
+    addressInput.value = address || ''; // Ensure the address is set
     addressInput.placeholder = 'Enter wallet address';
 
     const amountInput = document.createElement('input');
     amountInput.type = 'number';
     amountInput.classList.add('wallet-amount');
-    amountInput.value = amount || '';
+    amountInput.value = amount || ''; // Ensure the amount is set
     amountInput.placeholder = 'Amount';
     amountInput.step = '0.000001';
 
@@ -1000,15 +1007,23 @@
         updateTotalAmount();
     });
 
+    // Group amount input and remove button
+    const amountRemoveGroup = document.createElement('div');
+    amountRemoveGroup.classList.add('amount-remove-group');
+    amountRemoveGroup.appendChild(amountInput);
+    amountRemoveGroup.appendChild(removeBtn);
+
     walletDiv.appendChild(addressInput);
-    walletDiv.appendChild(amountInput);
-    walletDiv.appendChild(balanceSpan);
     walletDiv.appendChild(statusBox);
-    walletDiv.appendChild(removeBtn);
-    walletContainer.appendChild(walletDiv);
+    walletDiv.appendChild(amountRemoveGroup);
+    walletDiv.appendChild(balanceSpan);
+
+    walletList.appendChild(walletDiv); // Use walletList instead of walletContainer
 
     addressInput.addEventListener('input', updateTotalAmount);
     amountInput.addEventListener('input', updateTotalAmount);
+
+    console.log(`Added wallet to DOM: Address=${addressInput.value}, Amount=${amountInput.value}`);
 }
 
         function showMainContent() {
@@ -2258,8 +2273,9 @@ async function proceedWithAirdrop(wallets, tokenTypeSelect, serviceFee) {
         wallets.forEach((wallet, index) => {
             const safeAddress = (wallet.address || '').replace(/"/g, '"');
             const safeAmount = (wallet.amount || '').replace(/"/g, '"');
+            console.log(`Calling addWallet for wallet ${index + 1}: Address=${safeAddress}, Amount=${safeAmount}`);
             addWallet(safeAddress, safeAmount);
-            console.log(`Added wallet ${index + 1}: Address=${safeAddress}, Amount=${safeAmount}`);
+            console.log(`Finished adding wallet ${index + 1}`);
         });
 
         walletList.style.display = 'block';
