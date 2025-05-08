@@ -2264,8 +2264,7 @@ async function proceedWithAirdrop(wallets, tokenTypeSelect, serviceFee) {
 
         walletList.style.display = 'block';
         console.log('Wallet list display style:', walletList.style.display);
-        // Force a DOM reflow to ensure the wallet list is rendered
-        walletList.offsetHeight;
+        walletList.offsetHeight; // Force DOM reflow
 
         updateTotalAmount();
         showNotification(`Successfully loaded ${wallets.length} wallets from CSV.`);
@@ -2316,52 +2315,32 @@ async function proceedWithAirdrop(wallets, tokenTypeSelect, serviceFee) {
             // Update existing wallet entries with balances and trustline statuses
             const walletInputs = document.getElementsByClassName('wallet-input');
             console.log(`Found ${walletInputs.length} wallet inputs in the DOM`);
-            if (walletInputs.length === 0) {
-                console.warn('No wallet inputs found in DOM, rebuilding list');
-                walletList.innerHTML = '';
-                data.forEach(result => {
-                    const wallet = wallets.find(w => w.address === result.address);
-                    const amount = wallet ? parseFloat(wallet.amount) || 0 : 0;
-                    addWallet(result.address, amount, result.balance);
-                    const walletDiv = Array.from(walletList.children).find(div =>
-                        div.querySelector('.wallet-address').value === result.address
-                    );
-                    if (walletDiv) {
-                        const statusBox = walletDiv.querySelector('.trustline-status-box');
-                        if (result.has_trustline !== undefined) {
-                            statusBox.classList.remove('valid', 'invalid');
-                            statusBox.classList.add(result.has_trustline ? 'valid' : 'invalid');
-                            statusBox.style.display = 'block';
-                        }
+
+            for (const input of walletInputs) {
+                const addressInput = input.querySelector('.wallet-address');
+                const amountInput = input.querySelector('.wallet-amount');
+                const address = addressInput.value.trim();
+                const trustlineResult = data.find(w => w.address === address);
+                if (trustlineResult) {
+                    // Update balance
+                    const balanceSpan = input.querySelector('.wallet-balance');
+                    balanceSpan.textContent = trustlineResult.balance !== null ? `Balance: ${trustlineResult.balance}` : 'Balance: N/A';
+                    // Update trustline status
+                    const statusBox = input.querySelector('.trustline-status-box');
+                    if (trustlineResult.has_trustline !== undefined) {
+                        statusBox.classList.remove('valid', 'invalid');
+                        statusBox.classList.add(trustlineResult.has_trustline ? 'valid' : 'invalid');
+                        statusBox.style.display = 'block';
                     }
-                });
-            } else {
-                for (const input of walletInputs) {
-                    const addressInput = input.querySelector('.wallet-address');
-                    const amountInput = input.querySelector('.wallet-amount');
-                    const address = addressInput.value.trim();
-                    const trustlineResult = data.find(w => w.address === address);
-                    if (trustlineResult) {
-                        // Update balance
-                        const balanceSpan = input.querySelector('.wallet-balance');
-                        balanceSpan.textContent = trustlineResult.balance !== null ? `Balance: ${trustlineResult.balance}` : 'Balance: N/A';
-                        // Update trustline status
-                        const statusBox = input.querySelector('.trustline-status-box');
-                        if (result.has_trustline !== undefined) {
-                            statusBox.classList.remove('valid', 'invalid');
-                            statusBox.classList.add(trustlineResult.has_trustline ? 'valid' : 'invalid');
-                            statusBox.style.display = 'block';
-                        }
-                        // Ensure address and amount are visible
-                        addressInput.style.display = 'block';
-                        amountInput.style.display = 'block';
-                        console.log(`Updated wallet ${address}: Balance=${trustlineResult.balance}, hasTrustline=${trustlineResult.has_trustline}`);
-                    }
+                    // Ensure address and amount inputs are visible
+                    addressInput.style.display = 'block';
+                    amountInput.style.display = 'block';
+                    console.log(`Updated wallet ${address}: Address=${addressInput.value}, Amount=${amountInput.value}, Balance=${trustlineResult.balance}, hasTrustline=${trustlineResult.has_trustline}`);
                 }
             }
 
             walletList.style.display = 'block';
-            walletList.offsetHeight; // Force reflow to ensure rendering
+            walletList.offsetHeight; // Force DOM reflow
 
             trustlineChecked = true;
             checkTrustlinesBtn.classList.remove('glow');
