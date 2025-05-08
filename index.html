@@ -968,36 +968,44 @@
         }
 
         function addWallet(address = '', amount = 0, balance = null) {
-    const walletList = document.getElementById('wallet-list'); // Define walletList here
+    console.log(`addWallet called with: Address=${address}, Amount=${amount}, Balance=${balance}`);
+    
+    const walletList = document.getElementById('wallet-list');
     if (!walletList) {
         console.error('wallet-list element not found in the DOM');
         showNotification('Error: Wallet list container not found in the DOM.', true);
         return;
     }
+    console.log('wallet-list element found:', walletList);
 
     const walletDiv = document.createElement('div');
     walletDiv.classList.add('wallet-input');
+    console.log('Created walletDiv:', walletDiv);
 
     const addressInput = document.createElement('input');
     addressInput.type = 'text';
     addressInput.classList.add('wallet-address');
-    addressInput.value = address || ''; // Ensure the address is set
+    addressInput.value = address || '';
     addressInput.placeholder = 'Enter wallet address';
+    console.log('Created addressInput with value:', addressInput.value);
 
     const amountInput = document.createElement('input');
     amountInput.type = 'number';
     amountInput.classList.add('wallet-amount');
-    amountInput.value = amount || ''; // Ensure the amount is set
+    amountInput.value = amount || '';
     amountInput.placeholder = 'Amount';
     amountInput.step = '0.000001';
+    console.log('Created amountInput with value:', amountInput.value);
 
     const balanceSpan = document.createElement('span');
     balanceSpan.classList.add('wallet-balance');
     balanceSpan.textContent = balance !== null ? `Balance: ${balance}` : 'Balance: N/A';
+    console.log('Created balanceSpan with text:', balanceSpan.textContent);
 
     const statusBox = document.createElement('div');
     statusBox.classList.add('trustline-status-box');
     statusBox.style.display = 'none';
+    console.log('Created statusBox');
 
     const removeBtn = document.createElement('button');
     removeBtn.textContent = 'Remove';
@@ -1006,24 +1014,37 @@
         walletDiv.remove();
         updateTotalAmount();
     });
+    console.log('Created removeBtn');
 
-    // Group amount input and remove button
     const amountRemoveGroup = document.createElement('div');
     amountRemoveGroup.classList.add('amount-remove-group');
     amountRemoveGroup.appendChild(amountInput);
     amountRemoveGroup.appendChild(removeBtn);
+    console.log('Created amountRemoveGroup with children:', amountRemoveGroup.children);
 
     walletDiv.appendChild(addressInput);
     walletDiv.appendChild(statusBox);
     walletDiv.appendChild(amountRemoveGroup);
     walletDiv.appendChild(balanceSpan);
+    console.log('Appended children to walletDiv:', walletDiv.children);
 
-    walletList.appendChild(walletDiv); // Use walletList instead of walletContainer
+    walletList.appendChild(walletDiv);
+    console.log('Appended walletDiv to walletList. Current walletList children:', walletList.children.length);
 
     addressInput.addEventListener('input', updateTotalAmount);
     amountInput.addEventListener('input', updateTotalAmount);
 
-    console.log(`Added wallet to DOM: Address=${addressInput.value}, Amount=${amountInput.value}`);
+    // Force a DOM reflow to ensure rendering
+    walletList.offsetHeight;
+    console.log('Forced DOM reflow on walletList');
+
+    // Verify the element is in the DOM
+    const addedDiv = walletList.querySelector(`.wallet-input:last-child`);
+    if (addedDiv) {
+        console.log('Verified: wallet-input added to DOM. Address input value:', addedDiv.querySelector('.wallet-address').value);
+    } else {
+        console.error('wallet-input not found in DOM after appending');
+    }
 }
 
         function showMainContent() {
@@ -2178,6 +2199,7 @@ async function proceedWithAirdrop(wallets, tokenTypeSelect, serviceFee) {
 
     const reader = new FileReader();
     reader.onload = async (e) => {
+        console.log('FileReader onload triggered');
         const text = e.target.result;
         const rows = text.replace(/\r\n|\r/g, '\n').split('\n').map(row => row.trim()).filter(row => row);
         console.log('Parsed CSV rows:', rows);
@@ -2197,6 +2219,7 @@ async function proceedWithAirdrop(wallets, tokenTypeSelect, serviceFee) {
 
         const wallets = [];
         const startIndex = csvHasHeader ? 1 : 0;
+        console.log('csvHasHeader:', csvHasHeader, 'Start index:', startIndex);
         for (let i = startIndex; i < rows.length; i++) {
             let columns = [];
             let current = '';
@@ -2253,12 +2276,12 @@ async function proceedWithAirdrop(wallets, tokenTypeSelect, serviceFee) {
             }
         }
 
+        console.log('Parsed wallets:', wallets);
+
         if (wallets.length === 0) {
             showNotification('No valid wallet addresses found in CSV. Please ensure the file contains wallet addresses in the first column.', true);
             return;
         }
-
-        console.log('Parsed wallets:', wallets);
 
         if (wallets.length > 150) {
             showNotification('Too many wallets in CSV. Limit is 150.', true);
@@ -2266,10 +2289,10 @@ async function proceedWithAirdrop(wallets, tokenTypeSelect, serviceFee) {
         }
 
         const walletList = document.getElementById('wallet-list');
+        console.log('walletList before clearing:', walletList.innerHTML);
         walletList.innerHTML = '';
-        console.log('Cleared wallet list');
+        console.log('Cleared walletList:', walletList.innerHTML);
 
-        // Add wallets to the UI without balances initially
         wallets.forEach((wallet, index) => {
             const safeAddress = (wallet.address || '').replace(/"/g, '"');
             const safeAmount = (wallet.amount || '').replace(/"/g, '"');
@@ -2278,14 +2301,29 @@ async function proceedWithAirdrop(wallets, tokenTypeSelect, serviceFee) {
             console.log(`Finished adding wallet ${index + 1}`);
         });
 
+        console.log('walletList after adding wallets:', walletList.innerHTML);
         walletList.style.display = 'block';
         console.log('Wallet list display style:', walletList.style.display);
-        walletList.offsetHeight; // Force DOM reflow
+        walletList.offsetHeight;
+        console.log('Forced DOM reflow on walletList');
+
+        // Temporary workaround to test DOM rendering
+walletList.innerHTML = wallets.map((wallet, index) => `
+    <div class="wallet-input">
+        <input type="text" class="wallet-address" value="${wallet.address || ''}" placeholder="Wallet Address">
+        <div class="trustline-status-box"></div>
+        <div class="amount-remove-group">
+            <input type="number" class="wallet-amount" value="${wallet.amount || ''}" placeholder="Amount" step="0.000001" min="0">
+            <button onclick="removeWallet(this)">Remove</button>
+        </div>
+        <span class="wallet-balance">Balance: N/A</span>
+    </div>
+`).join('');
+console.log('Manually set walletList.innerHTML with static HTML');
 
         updateTotalAmount();
         showNotification(`Successfully loaded ${wallets.length} wallets from CSV.`);
 
-        // Fetch trustlines and balances
         const tokenType = tokenTypeSelect.value;
         const selectedOption = tokenTypeSelect.selectedOptions[0];
         const issuer = selectedOption.dataset.issuer || '';
@@ -2328,7 +2366,6 @@ async function proceedWithAirdrop(wallets, tokenTypeSelect, serviceFee) {
             const data = await response.json();
             console.log('Trustline/balance response:', data);
 
-            // Update existing wallet entries with balances and trustline statuses
             const walletInputs = document.getElementsByClassName('wallet-input');
             console.log(`Found ${walletInputs.length} wallet inputs in the DOM`);
 
@@ -2338,25 +2375,31 @@ async function proceedWithAirdrop(wallets, tokenTypeSelect, serviceFee) {
                 const address = addressInput.value.trim();
                 const trustlineResult = data.find(w => w.address === address);
                 if (trustlineResult) {
-                    // Update balance
                     const balanceSpan = input.querySelector('.wallet-balance');
                     balanceSpan.textContent = trustlineResult.balance !== null ? `Balance: ${trustlineResult.balance}` : 'Balance: N/A';
-                    // Update trustline status
                     const statusBox = input.querySelector('.trustline-status-box');
                     if (trustlineResult.has_trustline !== undefined) {
                         statusBox.classList.remove('valid', 'invalid');
                         statusBox.classList.add(trustlineResult.has_trustline ? 'valid' : 'invalid');
                         statusBox.style.display = 'block';
                     }
-                    // Ensure address and amount inputs are visible
                     addressInput.style.display = 'block';
                     amountInput.style.display = 'block';
                     console.log(`Updated wallet ${address}: Address=${addressInput.value}, Amount=${amountInput.value}, Balance=${trustlineResult.balance}, hasTrustline=${trustlineResult.has_trustline}`);
+                } else {
+                    console.log(`No trustline result found for address ${address}`);
                 }
             }
 
+            console.log(`After trustline/balance update, found ${walletInputs.length} wallet inputs in the DOM`);
+            for (const input of walletInputs) {
+                const addressInput = input.querySelector('.wallet-address');
+                const amountInput = input.querySelector('.wallet-amount');
+                console.log(`Wallet in DOM: Address=${addressInput.value}, Amount=${amountInput.value}`);
+            }
+
             walletList.style.display = 'block';
-            walletList.offsetHeight; // Force DOM reflow
+            walletList.offsetHeight;
 
             trustlineChecked = true;
             checkTrustlinesBtn.classList.remove('glow');
