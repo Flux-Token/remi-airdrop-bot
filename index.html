@@ -965,48 +965,53 @@ color: #888;
     }
 
     function addWallet(address = '', amount = 0, balance = null) {
-const walletDiv = document.createElement('div');
-walletDiv.classList.add('wallet-input');
+    const walletDiv = document.createElement('div');
+    walletDiv.classList.add('wallet-input');
 
-const addressInput = document.createElement('input');
-addressInput.type = 'text';
-addressInput.classList.add('wallet-address');
-addressInput.value = address;
-addressInput.placeholder = 'Enter wallet address';
+    const addressInput = document.createElement('input');
+    addressInput.type = 'text';
+    addressInput.classList.add('wallet-address');
+    addressInput.value = address;
+    addressInput.placeholder = 'Enter wallet address';
 
-const amountInput = document.createElement('input');
-amountInput.type = 'number';
-amountInput.classList.add('wallet-amount');
-amountInput.value = amount || '';
-amountInput.placeholder = 'Amount';
-amountInput.step = '0.000001';
+    const amountInput = document.createElement('input');
+    amountInput.type = 'number';
+    amountInput.classList.add('wallet-amount');
+    amountInput.value = amount || '';
+    amountInput.placeholder = 'Amount';
+    amountInput.step = '0.000001';
 
-const balanceSpan = document.createElement('span');
-balanceSpan.classList.add('wallet-balance');
-balanceSpan.textContent = balance !== null ? `Balance: ${balance}` : 'Balance: N/A';
+    const balanceSpan = document.createElement('span');
+    balanceSpan.classList.add('wallet-balance');
+    balanceSpan.textContent = balance !== null ? `Balance: ${balance}` : 'Balance: N/A';
 
-const statusBox = document.createElement('div');
-statusBox.classList.add('trustline-status-box');
-statusBox.style.display = 'none';
+    const statusBox = document.createElement('div');
+    statusBox.classList.add('trustline-status-box');
+    statusBox.style.display = 'none';
 
-const removeBtn = document.createElement('button');
-removeBtn.textContent = 'Remove';
-removeBtn.classList.add('remove-wallet-btn');
-removeBtn.addEventListener('click', () => {
-    walletDiv.remove();
-    updateTotalAmount();
-});
+    const removeBtn = document.createElement('button');
+    removeBtn.textContent = 'Remove';
+    removeBtn.classList.add('remove-wallet-btn');
+    removeBtn.addEventListener('click', () => {
+        walletDiv.remove();
+        updateTotalAmount();
+    });
 
-walletDiv.appendChild(addressInput);
-walletDiv.appendChild(amountInput);
-walletDiv.appendChild(balanceSpan);
-walletDiv.appendChild(statusBox);
-walletDiv.appendChild(removeBtn);
-walletContainer.appendChild(walletDiv);
+    const amountRemoveGroup = document.createElement('div');
+    amountRemoveGroup.classList.add('amount-remove-group');
+    amountRemoveGroup.appendChild(amountInput);
+    amountRemoveGroup.appendChild(removeBtn);
 
-addressInput.addEventListener('input', updateTotalAmount);
-amountInput.addEventListener('input', updateTotalAmount);
+    walletDiv.appendChild(addressInput);
+    walletDiv.appendChild(statusBox);
+    walletDiv.appendChild(amountRemoveGroup);
+    walletDiv.appendChild(balanceSpan);
 
+    const walletContainer = document.getElementById('wallet-list'); // Define walletContainer here
+    walletContainer.appendChild(walletDiv);
+
+    addressInput.addEventListener('input', updateTotalAmount);
+    amountInput.addEventListener('input', updateTotalAmount);
 }
 
     function showMainContent() {
