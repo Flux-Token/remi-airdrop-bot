@@ -1695,10 +1695,13 @@
 
             checkTrustlinesBtn.addEventListener('click', async () => {
     console.log('Check Trustline clicked');
-    const wallets = Array.from(document.getElementsByClassName('wallet-input')).map(div => ({
-        address: div.querySelector('.wallet-address').value.trim(),
-        amount: div.querySelector('.wallet-amount').value.trim()
-    }));
+    const wallets = Array.from(document.getElementsByClassName('wallet-input')).map(div => {
+        const address = div.querySelector('.wallet-address').value.trim();
+        const amountRaw = div.querySelector('.wallet-amount').value.trim();
+        // Convert empty amount to null to satisfy Pydantic validation
+        const amount = amountRaw === '' ? null : amountRaw;
+        return { address, amount };
+    });
 
     if (wallets.length === 0 || wallets.every(wallet => !wallet.address)) {
         console.log('Blocking: No valid wallet addresses provided');
@@ -1727,6 +1730,7 @@
         }
 
         console.log('Checking trustlines with query:', query);
+        console.log('Request body:', wallets);
         const response = await fetch(`${BACKEND_URL}/check-trustlines${query}`, {
             method: 'POST',
             headers: {
