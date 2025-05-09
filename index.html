@@ -2083,9 +2083,10 @@ async function fetchTransactionTxid(payloadUuid) {
 }
 
 function exportAirdropResults(results, tokenType) {
+    console.log('Exporting airdrop results to CSV:', results); // Debug log
     const csvContent = [
         'REMI Airdrop Results',
-        'Transaction Number,Wallet Address,Token Amount,Transaction ID',
+        'Transaction Number,Wallet Address,Token Amount,Transaction Hash',
         ...results.map(result => 
             `${result.index},"${result.address}",${result.amount},"${result.txid || ''}"`
         )
@@ -2351,6 +2352,9 @@ async function proceedWithAirdrop(wallets, tokenTypeSelect) {
 
         resultsDiv.innerHTML = `
     <h2>Airdrop Results <i class="fas fa-sync-alt refresh-icon" onclick="refreshAirdropReport()"></i></h2>
+    <div style="display: flex; justify-content: center; margin: 10px 0;">
+        <button id="export-csv-btn" class="export-csv-btn"><i class="fas fa-download icon"></i> Export CSV</button>
+    </div>
     ${transactionResults.map(result => `
         <p>
             <span class="transaction-label">Transaction ${result.index}:</span>
@@ -2361,7 +2365,6 @@ async function proceedWithAirdrop(wallets, tokenTypeSelect) {
             ${result.error ? `<span class="error-message">(${result.error})</span>` : ''}
         </p>
     `).join('')}
-    <button id="export-csv-btn" class="export-csv-btn"><i class="fas fa-download icon"></i> Export CSV</button>
     <button id="back-button" class="button">Back to Airdrop Form</button>
 `;
         resultsDiv.style.display = 'block';
