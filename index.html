@@ -937,8 +937,53 @@ color: #888;
     const PRELOADER_TIMEOUT = 6000;
     const BACKEND_URL = 'https://remi-airdrop-bot.onrender.com';
     let notificationTimeout = null;
-
     let trustlineChecked = false;
+
+    function showMainContent() {
+    const preloader = document.getElementById('preloader');
+    const mainContent = document.querySelector('.main-content');
+    const footerContainer = document.getElementById('footer-container');
+    const loginSection = document.querySelector('.form-section.login');
+    const airdropForm = document.getElementById('airdrop-form');
+    const scrollAnchor = document.getElementById('scroll-anchor');
+
+    preloader.style.opacity = '0';
+    setTimeout(() => {
+        preloader.style.display = 'none';
+        mainContent.style.display = 'block';
+        footerContainer.style.display = 'block';
+        document.body.style.overflow = 'auto';
+        const accessToken = getStorageItem('access_token');
+        const storedAccount = getStorageItem('account');
+        if (accessToken && storedAccount) {
+            loginSection.style.display = 'none';
+            airdropForm.style.display = 'block';
+        } else {
+            loginSection.style.display = 'block';
+            airdropForm.style.display = 'none';
+        }
+        scrollAnchor.scrollIntoView({ behavior: 'instant', block: 'start' });
+    }, 500);
+}
+
+function addWallet(address = '', amount = '') {
+    const walletList = document.getElementById('wallet-list');
+    const walletDiv = document.createElement('div');
+    walletDiv.className = 'wallet-input';
+    walletDiv.innerHTML = `
+        <input type="text" class="wallet-address" placeholder="Wallet Address" value="${address}">
+        <div class="trustline-status-box"></div>
+        <div class="amount-remove-group">
+            <input type="number" class="wallet-amount" placeholder="Amount" step="0.000001" min="0" value="${amount}">
+            <button onclick="removeWallet(this)">Remove</button>
+        </div>
+    `;
+    walletList.appendChild(walletDiv);
+    updateTotalAmount();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    // ... existing code ...
 
     function loadResource(url, type) {
         return new Promise((resolve) => {
@@ -964,21 +1009,9 @@ color: #888;
         });
     }
 
-    function addWallet(address = '', amount = '') {
-    const walletList = document.getElementById('wallet-list');
-    const div = document.createElement('div');
-    div.className = 'wallet-input';
-    div.innerHTML = `
-        <input type="text" class="wallet-address" placeholder="Wallet Address" value="${address}">
-        <div class="trustline-status-box"></div>
-        <div class="amount-remove-group">
-            <input type="number" class="wallet-amount" placeholder="Amount" step="0.000001" min="0" value="${amount}">
-            <button onclick="removeWallet(this)">Remove</button>
-        </div>
-    `;
     walletList.appendChild(div);
     updateTotalAmount();
-}
+
     div.innerHTML = `
         <input type="text" class="wallet-address" placeholder="Wallet Address" value="${address}">
         <div class="trustline-status-box"></div>
@@ -990,6 +1023,33 @@ color: #888;
     walletList.appendChild(div);
     updateTotalAmount();
 
+
+
+    const addressInput = document.createElement('input');
+    addressInput.type = 'text';
+    addressInput.classList.add('wallet-address');
+    addressInput.placeholder = 'Enter wallet address';
+
+    const amountInput = document.createElement('input');
+    amountInput.type = 'text'; // Changed to text to avoid type="number" issues
+    amountInput.classList.add('wallet-amount');
+    amountInput.placeholder = 'Amount';
+
+    const balanceSpan = document.createElement('span');
+    balanceSpan.classList.add('wallet-balance');
+    balanceSpan.textContent = balance !== null ? `Balance: ${balance}` : 'Balance: N/A';
+
+    const statusBox = document.createElement('div');
+    statusBox.classList.add('trustline-status-box');
+    statusBox.style.display = 'none';
+
+    const removeBtn = document.createElement('button');
+    removeBtn.textContent = 'Remove';
+    removeBtn.classList.add('remove-wallet-btn');
+    removeBtn.addEventListener('click', () => {
+        walletDiv.remove();
+        updateTotalAmount();
+    });
 
     const amountRemoveGroup = document.createElement('div');
     amountRemoveGroup.classList.add('amount-remove-group');
@@ -1002,7 +1062,7 @@ color: #888;
     walletDiv.appendChild(balanceSpan);
 
     const walletContainer = document.getElementById('wallet-list');
-    walletContainer.appendChild(walletDiv);
+    walletContainer.appendChild(walletDiv); // Fixed typo
 
     // Set values after appending to DOM
     addressInput.value = address || '';
@@ -1030,7 +1090,6 @@ color: #888;
         console.log(`Final state for wallet - addressInput.value: ${addressInput.value}, amountInput.value: ${amountInput.value}`);
     }, 100);
 
-
     preloader.style.opacity = '0';
     setTimeout(() => {
         console.log('Hiding preloader and showing main content...');
@@ -1047,39 +1106,6 @@ color: #888;
         const storedAccount = getStorageItem('account');
         const loginSection = document.querySelector('.form-section.login');
         const airdropForm = document.getElementById('airdrop-form');
-        if (accessToken && storedAccount) {
-            loginSection.style.display = 'none';
-            airdropForm.style.display = 'block';
-        } else {
-            loginSection.style.display = 'block';
-            airdropForm.style.display = 'none';
-        }
-
-        scrollAnchor.scrollIntoView({ behavior: 'instant', block: 'start' });
-    }, 500);
-
-
-function showMainContent() {
-    const preloader = document.getElementById('preloader');
-    const mainContent = document.querySelector('.main-content');
-    const footerContainer = document.getElementById('footer-container');
-    const loginSection = document.querySelector('.form-section.login');
-    const airdropForm = document.getElementById('airdrop-form');
-    const scrollAnchor = document.getElementById('scroll-anchor');
-
-    preloader.style.opacity = '0';
-    setTimeout(() => {
-        preloader.style.display = 'none';
-        mainContent.style.display = 'block';
-        footerContainer.style.display = 'block';
-
-        mainContent.offsetHeight;
-        footerContainer.offsetHeight;
-
-        document.body.style.overflow = 'auto';
-
-        const accessToken = getStorageItem('access_token');
-        const storedAccount = getStorageItem('account');
         if (accessToken && storedAccount) {
             loginSection.style.display = 'none';
             airdropForm.style.display = 'block';
