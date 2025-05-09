@@ -1887,12 +1887,13 @@ validateWalletsBtn.addEventListener('click', async () => {
                 statusColor = '#28a745'; // Green for valid
             } else {
                 allValid = false;
-                statusText = wallet.error || 'Invalid XRPL Account';
                 statusColor = '#dc3545'; // Red for invalid
                 if (wallet.error && wallet.error.includes('actNotFound')) {
                     statusText = 'Account does not exist on XRPL Mainnet';
-                } else if (wallet.error && wallet.error.includes('actMalformed')) {
-                    statusText = 'Malformed XRPL address';
+                } else if (wallet.error && (wallet.error.includes('actMalformed') || wallet.error.includes('accountMalformed'))) {
+                    statusText = 'Invalid XRPL Account';
+                } else {
+                    statusText = wallet.error || 'Invalid XRPL Account';
                 }
             }
             return `
