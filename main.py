@@ -240,7 +240,7 @@ async def check_trustlines(
     token_type: str = Query(...),
     issuer: Optional[str] = Query(None),
     currency: Optional[str] = Query(None, alias="currency"),
-    fetch_balances: bool = Query(False),  # New parameter to fetch balances
+    fetch_balances: bool = Query(False),
     token_data: dict = Depends(get_access_token),
     request: Request = None
 ):
@@ -251,9 +251,11 @@ async def check_trustlines(
     decoded_token_type = decode_hex_currency(token_type).strip().upper()
     effective_currency = currency if currency is not None else token_type
     decoded_currency = decode_hex_currency(effective_currency).strip().upper()
-    logger.debug(f"Decoded parameters: token_type={decoded_token_type}, currency={decoded_currency}, effective_currency={effective_currency}, issuer: {issuer}")
+    # Clean issuer to remove any appended query parameters
+    clean_issuer = issuer.split("¤")[0].strip() if issuer else None
+    logger.debug(f"Decoded parameters: token_type={decoded_token_type}, currency={decoded_currency}, effective_currency={effective_currency}, issuer: {clean_issuer}")
     
-    if decoded_token_type != "XRP" and (not issuer or not decoded_currency):
+    if decoded_token_type != "XRP" and (not clean_issuer or not decoded_currency):
         raise HTTPException(
             status_code=400,
             detail="Issuer and currency are required for token trustline checks"
@@ -269,7 +271,7 @@ async def check_trustlines(
                 result = {
                     "address": wallet.address,
                     "has_trustline": False,
-                    "balance": None,  # Will be populated if fetch_balances is true
+                    "balance": None,
                     "error": None
                 }
 
@@ -305,7 +307,7 @@ async def check_trustlines(
                     for line in trustlines:
                         line_issuer = line["account"].strip()
                         line_currency = decode_hex_currency(line["currency"]).strip().upper()
-                        target_issuer = issuer.strip() if issuer else ""
+                        target_issuer = clean_issuer.strip() if clean_issuer else ""
                         target_currency = decoded_currency
 
                         logger.debug(f"Comparing trustline for {wallet.address}: "
