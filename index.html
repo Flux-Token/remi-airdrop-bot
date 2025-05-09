@@ -1323,55 +1323,62 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Initialize session and show main content
-        const accessToken = getStorageItem('access_token');
-        const storedAccount = getStorageItem('account');
-        if (accessToken && storedAccount) {
-            console.log('Validating existing access token...');
-            fetch(`${BACKEND_URL}/balance`, {
-                headers: {
-                    'Authorization': `Bearer ${accessToken}`,
-                    'account': storedAccount
-                }
-            }).then(response => {
-                if (response.status === 401 || response.status === 404) {
-                    handleUnauthorized();
-                    showMainContent();
-                    return;
-                }
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                return response.json();
-            }).then(data => {
-                if (data) {
-                    loginSection.style.display = 'none';
-                    airdropForm.style.display = 'block';
-                    proceedBtn.disabled = false;
-                    console.log('Proceed button enabled:', proceedBtn.disabled);
-                    walletAddressDisplay.textContent = `Signed in as: ${storedAccount}`;
-                    walletAddressContainer.style.display = 'block';
-                    walletToggle.classList.remove('disconnected');
-                    walletToggle.classList.add('connected');
-                    disconnectButton.style.display = 'inline-block';
-                    populateTokenDropdown();
-                    if (checkTrustlinesBtn) {
-                        checkTrustlinesBtn.disabled = false;
-                        console.log('checkTrustlinesBtn enabled after successful session validation');
-                    }
-                    showMainContent();
-                }
-            }).catch(error => {
-                console.error('Error validating token:', error);
-                handleUnauthorized();
-                const errorMessage = error.message.includes('502') 
-                    ? 'Server is currently unavailable. Please try again later or contact support.'
-                    : 'Failed to validate session. Please log in again.';
-                showNotification(errorMessage, true);
-                showMainContent();
-            });
-        } else {
+        // Initialize session and show main content
+const accessToken = getStorageItem('access_token');
+const storedAccount = getStorageItem('account');
+if (accessToken && storedAccount) {
+    console.log('Validating existing access token...');
+    fetch(`${BACKEND_URL}/balance`, {
+        headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'account': storedAccount
+        }
+    }).then(response => {
+        if (response.status === 401 || response.status === 404) {
+            handleUnauthorized();
+            showMainContent();
+            return;
+        }
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    }).then(data => {
+        if (data) {
+            loginSection.style.display = 'none';
+            airdropForm.style.display = 'block';
+            proceedBtn.disabled = false;
+            console.log('Proceed button enabled:', proceedBtn.disabled);
+            walletAddressContainer.style.display = 'none'; // Hide the wallet address container
+            walletToggle.classList.remove('disconnected');
+            walletToggle.classList.add('connected');
+            disconnectButton.style.display = 'inline-block';
+            if (data.balance_xrp && data.account) {
+                showNotification(
+                    `Total Available Balance: ${data.balance_xrp} XRP (Signed in as: ${data.account})`
+                );
+            } else {
+                showNotification('Unable to retrieve balance on session validation.', true);
+            }
+            populateTokenDropdown();
+            if (checkTrustlinesBtn) {
+                checkTrustlinesBtn.disabled = false;
+                console.log('checkTrustlinesBtn enabled after successful session validation');
+            }
             showMainContent();
         }
+    }).catch(error => {
+        console.error('Error validating token:', error);
+        handleUnauthorized();
+        const errorMessage = error.message.includes('502') 
+            ? 'Server is currently unavailable. Please try again later or contact support.'
+            : 'Failed to validate session. Please log in again.';
+        showNotification(errorMessage, true);
+        showMainContent();
+    });
+} else {
+    showMainContent();
+}
 
     } catch (error) {
         console.error('Initialization error:', error);
@@ -1594,96 +1601,123 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-        async function pollCallback(payloadUuid) {
-            let attempts = 0;
-            const maxAttempts = 48;
-            const interval = setInterval(async () => {
-                console.log(`Polling /callback (attempt ${attempts + 1}/${maxAttempts}) with payload_uuid:`, payloadUuid);
+async function pollCallback(payloadUuid) {
+    let attempts = 0;
+    const maxAttempts = 48;
+    const interval = setInterval(async () => {
+        console.log(`Polling /callback (attempt ${attempts + 1}/${maxAttempts}) with payload_uuid:`, payloadUuid);
+        try {
+            const response = await fetch(`${BACKEND_URL}/callback?payload_uuid=${payloadUuid}`, {
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+            const data = await response.json();
+            console.log('Callback response:', { status: response.status, data });
+
+            if (response.status === 202 || data.status === "pending") {
+                attempts++;
+                if (attempts >= maxAttempts) {
+                    clearInterval(interval);
+                    showNotification('Login timed out', true);
+                    loginBtn.disabled = false;
+                    loginLoader.style.display = 'none';
+                    qrCodeImg.style.display = 'none';
+                    qrLink.style.display = 'none';
+                }
+            } else if (response.status === 400 && data.detail === "Payload was cancelled") {
+                clearInterval(interval);
+                showNotification('Login was cancelled', true);
+                loginBtn.disabled = false;
+                loginLoader.style.display = 'none';
+                qrCodeImg.style.display = 'none';
+                qrLink.style.display = 'none';
+            } else if (response.status === 400 && data.detail === "Payload has expired") {
+                clearInterval(interval);
+                showNotification('Login session expired', true);
+                loginBtn.disabled = false;
+                loginLoader.style.display = 'none';
+                qrCodeImg.style.display = 'none';
+                qrLink.style.display = 'none';
+            } else if (
+                response.status === 200 &&
+                data.meta && data.meta.signed &&
+                data.response && data.response.account &&
+                data.application && data.application.issued_user_token
+            ) {
+                clearInterval(interval);
+                setStorageItem('access_token', data.application.issued_user_token);
+                setStorageItem('account', data.response.account);
+                loginSection.style.display = 'none';
+                loginBtn.style.display = 'none';
+                qrCodeImg.style.display = 'none';
+                qrLink.style.display = 'none';
+                airdropForm.style.display = 'block';
+                checkBalanceBtn.disabled = false;
+                validateWalletsBtn.disabled = false;
+                checkTrustlinesBtn.disabled = false;
+                proceedBtn.disabled = false;
+                walletAddressContainer.style.display = 'none'; // Hide the wallet address container
+                walletToggle.classList.remove('disconnected');
+                walletToggle.classList.add('connected');
+                disconnectButton.style.display = 'inline-block';
+                showNotification('Login successful!');
+
+                // Fetch and display the balance in the green notification
                 try {
-                    const response = await fetch(`${BACKEND_URL}/callback?payload_uuid=${payloadUuid}`, {
+                    const balanceResponse = await fetch(`${BACKEND_URL}/balance`, {
                         headers: {
-                            'Accept': 'application/json'
+                            'Authorization': `Bearer ${data.application.issued_user_token}`,
+                            'account': data.response.account
                         }
                     });
-                    const data = await response.json();
-                    console.log('Callback response:', { status: response.status, data });
-
-                    if (response.status === 202 || data.status === "pending") {
-                        attempts++;
-                        if (attempts >= maxAttempts) {
-                            clearInterval(interval);
-                            showNotification('Login timed out', true);
-                            loginBtn.disabled = false;
-                            loginLoader.style.display = 'none';
-                            qrCodeImg.style.display = 'none';
-                            qrLink.style.display = 'none';
-                        }
-                    } else if (response.status === 400 && data.detail === "Payload was cancelled") {
-                        clearInterval(interval);
-                        showNotification('Login was cancelled', true);
-                        loginBtn.disabled = false;
-                        loginLoader.style.display = 'none';
-                        qrCodeImg.style.display = 'none';
-                        qrLink.style.display = 'none';
-                    } else if (response.status === 400 && data.detail === "Payload has expired") {
-                        clearInterval(interval);
-                        showNotification('Login session expired', true);
-                        loginBtn.disabled = false;
-                        loginLoader.style.display = 'none';
-                        qrCodeImg.style.display = 'none';
-                        qrLink.style.display = 'none';
-                    } else if (
-                        response.status === 200 &&
-                        data.meta && data.meta.signed &&
-                        data.response && data.response.account &&
-                        data.application && data.application.issued_user_token
-                    ) {
-                        clearInterval(interval);
-                        setStorageItem('access_token', data.application.issued_user_token);
-                        setStorageItem('account', data.response.account);
-                        loginSection.style.display = 'none';
-                        loginBtn.style.display = 'none';
-                        qrCodeImg.style.display = 'none';
-                        qrLink.style.display = 'none';
-                        airdropForm.style.display = 'block';
-                        checkBalanceBtn.disabled = false;
-                        validateWalletsBtn.disabled = false;
-                        checkTrustlinesBtn.disabled = false;
-                        proceedBtn.disabled = false;
-                        walletAddressDisplay.textContent = `Signed in as: ${data.response.account}`;
-                        walletAddressContainer.style.display = 'block';
-                        walletAddressDisplay.style.display = 'block';
-                        walletToggle.classList.remove('disconnected');
-                        walletToggle.classList.add('connected');
-                        disconnectButton.style.display = 'inline-block';
-                        showNotification('Login successful!');
-                        populateTokenDropdown();
+                    if (balanceResponse.status === 401) {
+                        handleUnauthorized();
+                        return;
+                    }
+                    if (!balanceResponse.ok) {
+                        throw new Error(`HTTP error! status: ${balanceResponse.status}`);
+                    }
+                    const balanceData = await balanceResponse.json();
+                    if (balanceData.balance_xrp && balanceData.account) {
+                        showNotification(
+                            `Total Available Balance: ${balanceData.balance_xrp} XRP (Signed in as: ${balanceData.account})`
+                        );
                     } else {
-                        console.warn('Unexpected callback response:', JSON.stringify(data));
-                        attempts++;
-                        if (attempts >= maxAttempts) {
-                            clearInterval(interval);
-                            showNotification('Unexpected response from server. Please try again.', true);
-                            loginBtn.disabled = false;
-                            loginLoader.style.display = 'none';
-                            qrCodeImg.style.display = 'none';
-                            qrLink.style.display = 'none';
-                        }
+                        showNotification('Unable to retrieve balance after login.', true);
                     }
                 } catch (error) {
-                    console.error('Error polling callback:', error);
-                    attempts++;
-                    if (attempts >= maxAttempts) {
-                        clearInterval(interval);
-                        showNotification(`Error polling login status: ${error.message}. Please try again.`, true);
-                        loginBtn.disabled = false;
-                        loginLoader.style.display = 'none';
-                        qrCodeImg.style.display = 'none';
-                        qrLink.style.display = 'none';
-                    }
+                    console.error('Error fetching balance after login:', error);
+                    showNotification(`Error fetching balance: ${error.message}`, true);
                 }
-            }, 5000);
+
+                populateTokenDropdown();
+            } else {
+                console.warn('Unexpected callback response:', JSON.stringify(data));
+                attempts++;
+                if (attempts >= maxAttempts) {
+                    clearInterval(interval);
+                    showNotification('Unexpected response from server. Please try again.', true);
+                    loginBtn.disabled = false;
+                    loginLoader.style.display = 'none';
+                    qrCodeImg.style.display = 'none';
+                    qrLink.style.display = 'none';
+                }
+            }
+        } catch (error) {
+            console.error('Error polling callback:', error);
+            attempts++;
+            if (attempts >= maxAttempts) {
+                clearInterval(interval);
+                showNotification(`Error polling login status: ${error.message}. Please try again.`, true);
+                loginBtn.disabled = false;
+                loginLoader.style.display = 'none';
+                qrCodeImg.style.display = 'none';
+                qrLink.style.display = 'none';
+            }
         }
+    }, 5000);
+}
 
         async function pollTransaction(payloadUuid, index, total, isFee = false) {
             return new Promise((resolve) => {
