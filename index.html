@@ -1880,7 +1880,11 @@ document.addEventListener('DOMContentLoaded', () => {
             `Acquire XRP from an exchange like Coinbase or Bitstamp.`,
             true
         );
-        }
+    } finally {
+        checkBalanceBtn.disabled = false;
+        balanceLoader.style.display = 'none';
+    }
+});
 
         validateWalletsBtn.addEventListener('click', async () => {
             console.log('Validate Wallets clicked, accessToken:', getStorageItem('access_token'));
