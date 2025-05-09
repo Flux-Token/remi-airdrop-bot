@@ -1029,34 +1029,6 @@ color: #888;
     });
 }
 
-    const amountRemoveGroup = document.createElement('div');
-    amountRemoveGroup.classList.add('amount-remove-group');
-    amountRemoveGroup.appendChild(amountInput);
-    amountRemoveGroup.appendChild(removeBtn);
-
-    walletDiv.appendChild(addressInput);
-    walletDiv.appendChild(statusBox);
-    walletDiv.appendChild(amountRemoveGroup);
-    walletDiv.appendChild(balanceSpan);
-
-    const walletContainer = document.getElementById('wallet-list');
-    walletContainer.appendChild(walletDiv);
-
-    // Set values after appending to DOM
-    addressInput.value = address || '';
-    amountInput.value = amount || '';
-    console.log(`After DOM append - Set addressInput.value: ${addressInput.value}, amountInput.value: ${amountInput.value}`);
-
-    addressInput.addEventListener('input', () => {
-        console.log(`addressInput changed to: ${addressInput.value}`);
-        updateTotalAmount();
-    });
-    amountInput.addEventListener('input', () => {
-        console.log(`amountInput changed to: ${amountInput.value}`);
-        updateTotalAmount();
-    });
-}
-
 function showMainContent() {
     const preloader = document.getElementById('preloader');
     const mainContent = document.querySelector('.main-content');
