@@ -156,17 +156,53 @@
     }
 
     #results p {
-        background: rgba(255, 255, 255, 0.1);
-        color: #fff;
-        padding: 10px;
-        border-radius: 8px;
-        margin: 5px 0;
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        flex-wrap: nowrap;
-    }
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.15); /* Slightly more opaque to match form-section */
+    padding: 12px;
+    border-radius: 10px;
+    margin: 8px 0;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(5px); /* Add blur to match theme */
+    border: 1px solid rgba(255, 255, 255, 0.2); /* Subtle border */
+}
+
+#results p:hover {
+    background: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 5px 12px rgba(0, 0, 0, 0.4);
+    transition: all 0.3s ease;
+}
+
+#results p a.qr-link::before {
+    content: '\f0c1'; /* Font Awesome link icon */
+    font-family: 'Font Awesome 5 Free';
+    font-weight: 900;
+    margin-right: 5px;
+}
+
+#results p .transaction-label {
+    color: #00d4ff;
+    text-shadow: 0 0 5px rgba(0, 212, 255, 0.5);
+    font-weight: 600;
+    margin-right: 5px;
+}
+
+#results p .wallet-address {
+    color: #fff;
+    font-weight: 500;
+    margin-right: 5px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 150px; /* Prevent overflow on small screens */
+}
+
+#results p .amount-token {
+    color: #ff6f61;
+    text-shadow: 0 0 5px rgba(255, 111, 97, 0.5);
+    font-weight: 600;
+    margin-right: 5px;
+}
 
     #results p .scanned-check {
         color: #28a745;
@@ -181,6 +217,8 @@
         margin-right: 10px;
         transition: color 0.3s ease;
     }
+
+
 
     #results p .copy-icon:hover {
         color: #ff6f61;
@@ -475,17 +513,35 @@
         text-decoration: underline;
     }
 
-    #results p .status-sent {
-        color: #28a745;
-        font-weight: 600;
-        margin-left: 10px;
-    }
-
+    #results p .status-sent,
     #results p .status-failed {
-        color: #dc3545;
-        font-weight: 600;
-        margin-left: 10px;
-    }
+    padding: 4px 8px;
+    border-radius: 5px;
+    font-weight: 600;
+    margin-left: 5px;
+    text-transform: uppercase;
+    font-size: 0.85em;
+    color: #fff; /* Ensure text is white for contrast on gradient */
+}
+
+#results p .status-sent {
+    background: linear-gradient(90deg, #28a745, #00d4ff); /* Gradient to match theme */
+    text-shadow: 0 0 5px rgba(0, 212, 255, 0.5);
+    box-shadow: 0 0 8px rgba(40, 167, 69, 0.5);
+}
+
+#results p .status-failed {
+    background: linear-gradient(90deg, #dc3545, #ff6f61); /* Gradient to match theme */
+    text-shadow: 0 0 5px rgba(255, 111, 97, 0.5);
+    box-shadow: 0 0 8px rgba(220, 53, 69, 0.5);
+}
+
+#results p .error-message {
+    color: #dc3545;
+    text-shadow: 0 0 5px rgba(220, 53, 69, 0.5);
+    font-style: italic;
+    margin-left: 5px;
+}
 
     #results .export-csv-btn {
         background: linear-gradient(90deg, #ff6f61, #ff00ff);
@@ -604,6 +660,10 @@ margin-right: 8px;
             margin: 2px;
         }
 
+        #results p a.qr-link {
+        margin-top: 5px;
+    }
+
         input, select {
             max-width: 100%;
             padding: 10px;
@@ -629,16 +689,20 @@ margin-right: 8px;
         border: 1px solid rgba(255, 255, 255, 0.1);
     }
 
-    #results p {
-        background: rgba(255, 255, 255, 0.1);
-        color: #fff;
-        padding: 10px;
-        border-radius: 8px;
-        margin: 5px 0;
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
+    #results p .wallet-address {
+        max-width: 100%;
+        margin-bottom: 5px;
+    }
+
+    #results p .status-sent,
+    #results p .status-failed {
+        margin-left: 0;
+        margin-top: 5px;
+    }
+
+    #results p .error-message {
+        margin-left: 0;
+        margin-top: 5px;
     }
 
     #results p .scanned-check {
@@ -2286,18 +2350,20 @@ async function proceedWithAirdrop(wallets, tokenTypeSelect) {
         }
 
         resultsDiv.innerHTML = `
-            <h2>Airdrop Results <i class="fas fa-sync-alt refresh-icon" onclick="refreshAirdropReport()"></i></h2>
-            ${transactionResults.map(result => `
-                <p>
-                    Transaction ${result.index}: ${result.address} - ${result.amount} ${tokenType} 
-                    <span class="status-${result.status.toLowerCase()}">${result.status}</span>
-                    ${result.txid && result.status === 'Sent' ? `<a href="https://xrpscan.com/tx/${result.txid}" target="_blank" class="qr-link">View TX</a>` : ''}
-                    ${result.error ? `<span style="color: #dc3545;"> (${result.error})</span>` : ''}
-                </p>
-            `).join('')}
-            <button id="export-csv-btn" class="export-csv-btn"><i class="fas fa-download icon"></i> Export CSV</button>
-            <button id="back-button" class="button">Back to Airdrop Form</button>
-        `;
+    <h2>Airdrop Results <i class="fas fa-sync-alt refresh-icon" onclick="refreshAirdropReport()"></i></h2>
+    ${transactionResults.map(result => `
+        <p>
+            <span class="transaction-label">Transaction ${result.index}:</span>
+            <span class="wallet-address" title="${result.address}">${result.address}</span> - 
+            <span class="amount-token">${result.amount} ${tokenType}</span>
+            <span class="status-${result.status.toLowerCase()}">${result.status}</span>
+            ${result.txid && result.status === 'Sent' ? `<a href="https://xrpscan.com/tx/${result.txid}" target="_blank" class="qr-link">View TX</a>` : ''}
+            ${result.error ? `<span class="error-message">(${result.error})</span>` : ''}
+        </p>
+    `).join('')}
+    <button id="export-csv-btn" class="export-csv-btn"><i class="fas fa-download icon"></i> Export CSV</button>
+    <button id="back-button" class="button">Back to Airdrop Form</button>
+`;
         resultsDiv.style.display = 'block';
 
         // Attach event listeners
