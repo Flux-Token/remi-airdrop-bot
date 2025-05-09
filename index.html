@@ -932,6 +932,31 @@ color: #888;
 </div>
 <audio id="loader-audio" src="https://static.wixstatic.com/mp3/15ad31_9eab52a3faee4738927cd3aed4e536d7.mp3" preload="auto" crossorigin="anonymous"></audio>
 
+<script>
+    // Play audio as soon as the script loads
+    const audio = document.getElementById('loader-audio');
+    audio.volume = 0.5;
+
+    const playAudio = () => {
+        const playPromise = audio.play();
+        if (playPromise !== undefined) {
+            playPromise.catch(err => {
+                console.warn('Audio playback failed on load:', err);
+                // Fallback: Show a notification prompting user interaction
+                const notification = document.getElementById('notification');
+                notification.textContent = 'Click anywhere to play audio during loading...';
+                notification.className = 'notification';
+                notification.style.display = 'block';
+                document.addEventListener('click', () => {
+                    audio.play().catch(e => console.warn('Audio playback failed on click:', e));
+                    notification.style.display = 'none';
+                }, { once: true });
+            });
+        }
+    };
+    playAudio();
+</script>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/decimal.js/10.3.1/decimal.min.js"></script>
 <script>
     const PRELOADER_TIMEOUT = 6000;
@@ -970,14 +995,45 @@ function addWallet(address = '', amount = '') {
     const walletList = document.getElementById('wallet-list');
     const walletDiv = document.createElement('div');
     walletDiv.className = 'wallet-input';
-    walletDiv.innerHTML = `
-        <input type="text" class="wallet-address" placeholder="Wallet Address" value="${address}">
-        <div class="trustline-status-box"></div>
-        <div class="amount-remove-group">
-            <input type="number" class="wallet-amount" placeholder="Amount" step="0.000001" min="0" value="${amount}">
-            <button onclick="removeWallet(this)">Remove</button>
-        </div>
-    `;
+
+    // Create wallet address input
+    const addressInput = document.createElement('input');
+    addressInput.type = 'text';
+    addressInput.className = 'wallet-address';
+    addressInput.placeholder = 'Wallet Address';
+    addressInput.value = address; // Explicitly set the value
+
+    // Create trustline status box
+    const trustlineStatusBox = document.createElement('div');
+    trustlineStatusBox.className = 'trustline-status-box';
+
+    // Create amount-remove group
+    const amountRemoveGroup = document.createElement('div');
+    amountRemoveGroup.className = 'amount-remove-group';
+
+    // Create wallet amount input
+    const amountInput = document.createElement('input');
+    amountInput.type = 'number';
+    amountInput.className = 'wallet-amount';
+    amountInput.placeholder = 'Amount';
+    amountInput.step = '0.000001';
+    amountInput.min = '0';
+    amountInput.value = amount; // Explicitly set the value
+
+    // Create remove button
+    const removeButton = document.createElement('button');
+    removeButton.textContent = 'Remove';
+    removeButton.onclick = function () { removeWallet(this); };
+
+    // Assemble the amount-remove group
+    amountRemoveGroup.appendChild(amountInput);
+    amountRemoveGroup.appendChild(removeButton);
+
+    // Assemble the wallet input div
+    walletDiv.appendChild(addressInput);
+    walletDiv.appendChild(trustlineStatusBox);
+    walletDiv.appendChild(amountRemoveGroup);
+
     console.log('Adding wallet: address=', address, 'amount=', amount);
     walletList.appendChild(walletDiv);
     updateTotalAmount();
