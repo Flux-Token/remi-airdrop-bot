@@ -1209,15 +1209,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Set up Proceed to Signing button
         proceedBtn.addEventListener('click', () => {
-            console.log('Proceed to Signing button clicked');
-            const wallets = Array.from(document.getElementsByClassName('wallet-input')).map(div => {
-                const address = div.querySelector('.wallet-address').value.trim();
-                const amount = parseFloat(div.querySelector('.wallet-amount').value.trim()) || 0;
-                return { address, amount };
-            });
-            console.log('Wallets for airdrop:', wallets);
-            proceedWithAirdrop(wallets, tokenTypeSelect, airdropData && airdropData.service_fee ? airdropData.service_fee : '0');
-        });
+    console.log('Proceed to Signing button clicked');
+    const wallets = Array.from(document.getElementsByClassName('wallet-input')).map(div => {
+        const address = div.querySelector('.wallet-address').value.trim();
+        const amount = parseFloat(div.querySelector('.wallet-amount').value.trim()) || 0;
+        return { address, amount };
+    });
+    console.log('Wallets for airdrop:', wallets);
+    proceedWithAirdrop(wallets, tokenTypeSelect);
+});
 
         // Other button listeners
         if (checkTrustlinesBtn) {
@@ -2097,14 +2097,13 @@ function exportAirdropResults(results, tokenType) {
     showNotification('Airdrop results exported as CSV.');
 }
 
-async function proceedWithAirdrop(wallets, tokenTypeSelect, serviceFee) {
-    console.log('proceedWithAirdrop called with:', { wallets, tokenType: tokenTypeSelect.value, serviceFee });
+async function proceedWithAirdrop(wallets, tokenTypeSelect) {
+    console.log('proceedWithAirdrop called with:', { wallets, tokenType: tokenTypeSelect.value });
     proceedBtn.disabled = true;
     proceedLoader.style.display = 'inline-block';
     airdropForm.style.display = 'none';
     resultsDiv.innerHTML = '';
     resultsDiv.style.display = 'none';
-    transactionSigning.style.display = 'block';
     let transactionResults = [];
 
     const feeBackBtn = document.getElementById('fee-back-btn');
@@ -2131,6 +2130,52 @@ async function proceedWithAirdrop(wallets, tokenTypeSelect, serviceFee) {
             throw new Error('No valid wallets or amounts provided');
         }
         console.log('Valid wallets:', wallets);
+
+        // Calculate REMI Service Fee: 0.05 XRP per wallet, capped at 5 XRP
+        const walletCount = wallets.length;
+        const feePerWallet = 0.05; // XRP
+        const maxFee = 5; // XRP
+        let serviceFee = walletCount * feePerWallet;
+        serviceFee = Math.min(serviceFee, maxFee); // Cap at 5 XRP
+        serviceFee = serviceFee.toFixed(6); // Ensure proper decimal places
+        console.log(`Calculated REMI Service Fee: ${serviceFee} XRP for ${walletCount} wallets`);
+
+        // Show fee confirmation and wait for user response
+        const userAgreed = await new Promise((resolve) => {
+            feeMessage.textContent = `REMI Service Fee: ${serviceFee} XRP for ${walletCount} wallet${walletCount === 1 ? '' : 's'}. Please double-check your wallets and amounts before proceeding.`;
+            feeConfirmation.style.display = 'flex';
+            notificationOverlay.style.display = 'block';
+
+            const agreeHandler = () => {
+                feeConfirmation.style.display = 'none';
+                notificationOverlay.style.display = 'none';
+                feeAgreeBtn.removeEventListener('click', agreeHandler);
+                feeDisagreeBtn.removeEventListener('click', disagreeHandler);
+                resolve(true);
+            };
+
+            const disagreeHandler = () => {
+                feeConfirmation.style.display = 'none';
+                notificationOverlay.style.display = 'none';
+                feeAgreeBtn.removeEventListener('click', agreeHandler);
+                feeDisagreeBtn.removeEventListener('click', disagreeHandler);
+                resolve(false);
+            };
+
+            feeAgreeBtn.addEventListener('click', agreeHandler);
+            feeDisagreeBtn.addEventListener('click', disagreeHandler);
+        });
+
+        if (!userAgreed) {
+            console.log('User cancelled fee confirmation, returning to airdrop form');
+            airdropForm.style.display = 'block';
+            proceedBtn.disabled = false;
+            proceedLoader.style.display = 'none';
+            showNotification('Airdrop cancelled. You can now edit wallets and amounts.');
+            return;
+        }
+
+        transactionSigning.style.display = 'block';
 
         const tokenType = tokenTypeSelect.value;
         const selectedOption = tokenTypeSelect.selectedOptions[0];
