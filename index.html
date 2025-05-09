@@ -802,6 +802,47 @@ margin-right: 8px;
         animation: spin 1s linear infinite;
     }
 
+    .fee-back-btn {
+    background: linear-gradient(90deg, #ff6f61, #ff00ff);
+    color: #fff;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 25px;
+    cursor: pointer;
+    margin: 10px auto;
+    font-size: 0.9em;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 5px 15px rgba(255, 111, 97, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    width: auto;
+    max-width: 200px;
+}
+
+.fee-back-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(255, 111, 97, 0.6);
+}
+
+.fee-back-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transition: 0.5s;
+}
+
+.fee-back-btn:hover::before {
+    left: 100%;
+}
+
     .wallet-balance {
 margin-left: 10px;
 font-size: 0.9em;
@@ -897,6 +938,7 @@ color: #888;
                     <h2 id="transaction-title"></h2>
                     <img class="transaction-qr" src="" alt="Transaction QR Code">
                     <a class="transaction-qr-link qr-link" href="#" target="_blank">Open in Xaman</a>
+                    <button id="fee-back-btn" class="button fee-back-btn" style="display: none;"><i class="fas fa-arrow-left icon"></i> Back</button>
                 </div>
                 <div id="results" class="form-section">
                     <h2>Airdrop Report <i class="fas fa-sync-alt refresh-icon" onclick="refreshAirdropReport()"></i></h2>
@@ -2065,6 +2107,24 @@ async function proceedWithAirdrop(wallets, tokenTypeSelect, serviceFee) {
     transactionSigning.style.display = 'block';
     let transactionResults = [];
 
+    const feeBackBtn = document.getElementById('fee-back-btn');
+
+    // Handle Back button click to return to airdrop form
+    feeBackBtn.addEventListener('click', () => {
+        console.log('Fee Back button clicked, returning to airdrop form');
+        transactionSigning.style.display = 'none';
+        transactionTitle.textContent = '';
+        transactionQr.src = '';
+        transactionQr.style.display = 'none';
+        transactionQrLink.href = '#';
+        transactionQrLink.style.display = 'none';
+        feeBackBtn.style.display = 'none';
+        airdropForm.style.display = 'block';
+        proceedBtn.disabled = false;
+        proceedLoader.style.display = 'none';
+        showNotification('Returned to airdrop form. You can now edit wallets and amounts.');
+    });
+
     try {
         // Validate wallet data
         if (!wallets || wallets.length === 0 || wallets.every(w => !w.address || w.amount <= 0)) {
@@ -2129,6 +2189,7 @@ async function proceedWithAirdrop(wallets, tokenTypeSelect, serviceFee) {
             transactionQr.style.display = 'block';
             transactionQrLink.href = data.fee_transaction.sign_url;
             transactionQrLink.style.display = 'block';
+            feeBackBtn.style.display = 'block'; // Show the Back button during fee authorization
             showNotification(`Please authorize the REMI Service Fee payment of ${serviceFee} XRP in Xaman.`);
             await new Promise(resolve => setTimeout(resolve, 1000));
             const feeSigned = await pollTransaction(data.fee_transaction.payload_uuid, 0, 0, true);
@@ -2137,10 +2198,12 @@ async function proceedWithAirdrop(wallets, tokenTypeSelect, serviceFee) {
                 proceedBtn.disabled = false;
                 proceedLoader.style.display = 'none';
                 transactionSigning.style.display = 'none';
+                feeBackBtn.style.display = 'none';
                 airdropForm.style.display = 'block';
                 return;
             }
             console.log('Fee signed, proceeding to airdrop transactions');
+            feeBackBtn.style.display = 'none'; // Hide the Back button after fee authorization
         }
 
         let allSigned = true;
@@ -2226,6 +2289,7 @@ async function proceedWithAirdrop(wallets, tokenTypeSelect, serviceFee) {
         transactionQr.style.display = 'none';
         transactionQrLink.href = '#';
         transactionQrLink.style.display = 'none';
+        feeBackBtn.style.display = 'none';
 
         // Display results
         if (allSigned) {
@@ -2275,6 +2339,7 @@ async function proceedWithAirdrop(wallets, tokenTypeSelect, serviceFee) {
         transactionQr.style.display = 'none';
         transactionQrLink.href = '#';
         transactionQrLink.style.display = 'none';
+        feeBackBtn.style.display = 'none';
         airdropForm.style.display = 'block';
     } finally {
         proceedBtn.disabled = false;
