@@ -1001,7 +1001,6 @@ function addWallet(address = '', amount = '') {
     addressInput.type = 'text';
     addressInput.className = 'wallet-address';
     addressInput.placeholder = 'Wallet Address';
-    addressInput.value = address; // Explicitly set the value
 
     // Create trustline status box
     const trustlineStatusBox = document.createElement('div');
@@ -1018,7 +1017,6 @@ function addWallet(address = '', amount = '') {
     amountInput.placeholder = 'Amount';
     amountInput.step = '0.000001';
     amountInput.min = '0';
-    amountInput.value = amount; // Explicitly set the value
 
     // Create remove button
     const removeButton = document.createElement('button');
@@ -1034,8 +1032,15 @@ function addWallet(address = '', amount = '') {
     walletDiv.appendChild(trustlineStatusBox);
     walletDiv.appendChild(amountRemoveGroup);
 
-    console.log('Adding wallet: address=', address, 'amount=', amount);
+    // Append to DOM first
     walletList.appendChild(walletDiv);
+
+    // Set values after appending to ensure DOM update
+    addressInput.value = address;
+    amountInput.value = amount;
+
+   $<
+    console.log('Adding wallet: address=', address, 'amount=', amount);
     updateTotalAmount();
 }
 
@@ -1509,10 +1514,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const walletInputs = document.getElementsByClassName('wallet-input');
     let total = 0;
     let hasInvalid = false;
+    console.log('updateTotalAmount - Processing', walletInputs.length, 'wallets');
     for (const input of walletInputs) {
         const amountInput = input.querySelector('.wallet-amount');
         const addressInput = input.querySelector('.wallet-address');
         const amountValue = amountInput.value.trim();
+        const addressValue = addressInput.value.trim();
         let amount = 0;
         if (amountValue) {
             amount = parseFloat(amountValue);
@@ -1522,7 +1529,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 amount = 0;
             }
         }
-        console.log(`updateTotalAmount - Address: ${addressInput.value}, Amount: ${amountInput.value}, Parsed: ${amount}`);
+        console.log(`updateTotalAmount - Address: ${addressValue}, Amount: ${amountValue}, Parsed: ${amount}`);
         total += amount;
     }
     if (total === 0) {
@@ -2136,102 +2143,83 @@ try {
 
     const reader = new FileReader();
     reader.onload = (event) => {
-        const text = event.target.result;
-        const rows = text.split('\n').filter(row => row.trim() !== '');
-        const wallets = [];
-        let hasInvalid = false;
+    const text = event.target.result;
+    const rows = text.split('\n').filter(row => row.trim() !== '');
+    const wallets = [];
+    let hasInvalid = false;
 
-        rows.forEach((row, index) => {
-            const cols = row.split(',').map(col => col.trim());
-            // Skip header rows or rows with insufficient columns
-            if (cols.length < 2 || cols[0].startsWith('(')) {
-                console.log(`Skipping row ${index}: ${row}`);
-                return;
-            }
-
-            const address = cols[0];
-            const amount = cols[1];
-            let numericAmount = parseFloat(amount);
-
-            // Validate address format (basic check)
-            if (!address || !address.startsWith('r') || address.length < 25 || address.length > 35) {
-                console.log(`Invalid address at row ${index}: ${address}`);
-                hasInvalid = true;
-                return;
-            }
-
-            // Validate amount
-            if (isNaN(numericAmount) || numericAmount <= 0) {
-                console.log(`Invalid amount at row ${index}: ${amount}`);
-                hasInvalid = true;
-                return;
-            }
-
-            // Store amount as a string to match addWallet's expectation
-            wallets.push({ address, amount: numericAmount.toString() });
-        });
-
-        if (hasInvalid) {
-            showNotification('Some rows contain invalid data and were skipped. Please check the CSV format.', true);
-        }
-
-        if (wallets.length === 0) {
-            showNotification('No valid wallets found in the CSV.', true);
+    rows.forEach((row, index) => {
+        const cols = row.split(',').map(col => col.trim());
+        // Skip header rows or rows with insufficient columns
+        if (cols.length < 2 || cols[0].startsWith('(')) {
+            console.log(`Skipping row ${index}: ${row}`);
             return;
         }
 
-        const walletList = document.getElementById('wallet-list');
-        walletList.innerHTML = '';
-        wallets.forEach((wallet, index) => {
-            const safeAddress = wallet.address || '';
-            const safeAmount = wallet.amount || '';
-            console.log(`Adding wallet ${index}: address=${safeAddress}, amount=${safeAmount}, type of amount=${typeof safeAmount}`);
-            addWallet(safeAddress, safeAmount);
-        });
+        const address = cols[0];
+        const amount = cols[1];
+        let numericAmount = parseFloat(amount);
 
-        walletList.style.display = 'block';
-        walletList.offsetHeight;
-        console.log('Before updateTotalAmount delay - Checking DOM values:');
-        document.querySelectorAll('.wallet-input').forEach((input, idx) => {
-            const addr = input.querySelector('.wallet-address').value;
-            const amt = input.querySelector('.wallet-amount').value;
-            console.log(`Wallet ${idx}: address=${addr}, amount=${amt}`);
-        });
+        // Validate address format (basic check)
+        if (!address || !address.startsWith('r') || address.length < 25 || address.length > 35) {
+            console.log(`Invalid address at row ${index}: ${address}`);
+            hasInvalid = true;
+            return;
+        }
 
-        setTimeout(() => {
-            console.log('After delay, before updateTotalAmount - Checking DOM values:');
-            document.querySelectorAll('.wallet-input').forEach((input, idx) => {
-                const addr = input.querySelector('.wallet-address').value;
-                const amt = input.querySelector('.wallet-amount').value;
-                console.log(`Wallet ${idx}: address=${addr}, amount=${amt}`);
-            });
+        // Validate amount
+        if (isNaN(numericAmount) || numericAmount <= 0) {
+            console.log(`Invalid amount at row ${index}: ${amount}`);
+            hasInvalid = true;
+            return;
+        }
 
-            updateTotalAmount();
+        // Store amount as a string to match addWallet's expectation
+        wallets.push({ address, amount: numericAmount.toString() });
+    });
 
-            console.log('After updateTotalAmount - Checking DOM values:');
-            document.querySelectorAll('.wallet-input').forEach((input, idx) => {
-                const addr = input.querySelector('.wallet-address').value;
-                const amt = input.querySelector('.wallet-amount').value;
-                console.log(`Wallet ${idx}: address=${addr}, amount=${amt}`);
-            });
+    if (hasInvalid) {
+        showNotification('Some rows contain invalid data and were skipped. Please check the CSV format.', true);
+    }
 
-            showNotification(`Successfully loaded ${wallets.length} wallets from CSV.`);
+    if (wallets.length === 0) {
+        showNotification('No valid wallets found in the CSV.', true);
+        return;
+    }
 
-            // Temporarily disable checkTrustlines to isolate the issue
-            // checkTrustlines();
+    const walletList = document.getElementById('wallet-list');
+    walletList.innerHTML = '';
+    wallets.forEach((wallet, index) => {
+        const safeAddress = wallet.address || '';
+        const safeAmount = wallet.amount || '';
+        console.log(`Adding wallet ${index}: address=${safeAddress}, amount=${safeAmount}, type of amount=${typeof safeAmount}`);
+        addWallet(safeAddress, safeAmount);
+    });
 
-            // Log values after all operations
-            console.log('Final state after all operations - Checking DOM values:');
-            document.querySelectorAll('.wallet-input').forEach((input, idx) => {
-                const addr = input.querySelector('.wallet-address').value;
-                const amt = input.querySelector('.wallet-amount').value;
-                console.log(`Wallet ${idx}: address=${addr}, amount=${amt}`);
-            });
-        }, 500);
+    // Force DOM reflow to ensure inputs are rendered
+    walletList.offsetHeight;
 
-        // Reset the input value to allow re-uploading the same file
-        csvUploadInput.value = '';
-    };
+    console.log('Before updateTotalAmount - Checking DOM values:');
+    document.querySelectorAll('.wallet-input').forEach((input, idx) => {
+        const addr = input.querySelector('.wallet-address').value;
+        const amt = input.querySelector('.wallet-amount').value;
+        console.log(`Wallet ${idx}: address=${addr}, amount=${amt}`);
+    });
+
+    updateTotalAmount();
+
+    console.log('After updateTotalAmount - Checking DOM values:');
+    document.querySelectorAll('.wallet-input').forEach((input, idx) => {
+        const addr = input.querySelector('.wallet-address').value;
+        const amt = input.querySelector('.wallet-amount').value;
+        console.log(`Wallet ${idx}: address=${addr}, amount=${amt}`);
+    });
+
+    showNotification(`Successfully loaded ${wallets.length} wallets from CSV.`);
+
+    // Reset the input value to allow re-uploading the same file
+    csvUploadInput.value = '';
+};
 
     reader.onerror = () => {
         showNotification('Error reading CSV file. It may be corrupted or not accessible.', true);
