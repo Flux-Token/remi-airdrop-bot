@@ -932,31 +932,6 @@ color: #888;
 </div>
 <audio id="loader-audio" src="https://static.wixstatic.com/mp3/15ad31_9eab52a3faee4738927cd3aed4e536d7.mp3" preload="auto" crossorigin="anonymous"></audio>
 
-<script>
-    // Play audio as soon as the script loads
-    const audio = document.getElementById('loader-audio');
-    audio.volume = 0.5;
-
-    const playAudio = () => {
-        const playPromise = audio.play();
-        if (playPromise !== undefined) {
-            playPromise.catch(err => {
-                console.warn('Audio playback failed on load:', err);
-                // Fallback: Show a notification prompting user interaction
-                const notification = document.getElementById('notification');
-                notification.textContent = 'Click anywhere to play audio during loading...';
-                notification.className = 'notification';
-                notification.style.display = 'block';
-                document.addEventListener('click', () => {
-                    audio.play().catch(e => console.warn('Audio playback failed on click:', e));
-                    notification.style.display = 'none';
-                }, { once: true });
-            });
-        }
-    };
-    playAudio();
-</script>
-
 <script src="https://cdnjs.cloudflare.com/ajax/libs/decimal.js/10.3.1/decimal.min.js"></script>
 <script>
     const PRELOADER_TIMEOUT = 6000;
@@ -1054,32 +1029,328 @@ function addWallet(address = '', amount = '') {
 document.addEventListener('DOMContentLoaded', () => {
     console.log('DOM loaded, initializing...');
     try {
+        // Initialize DOM elements
+        const preloader = document.getElementById('preloader');
+        const mainContent = document.querySelector('.main-content');
+        const footerContainer = document.getElementById('footer-container');
+        const loginSection = document.querySelector('.form-section.login');
+        const airdropForm = document.getElementById('airdrop-form');
+        const scrollAnchor = document.getElementById('scroll-anchor');
+        const csvUploadInput = document.getElementById('csv-upload-input');
+        const proceedBtn = document.getElementById('proceed-btn');
+        const checkTrustlinesBtn = document.getElementById('check-trustlines-btn');
+        const validateWalletsBtn = document.getElementById('validate-wallets-btn');
+        const checkBalanceBtn = document.getElementById('check-balance-btn');
+        const tokenTypeSelect = document.getElementById('token-type');
+        const totalAmountInput = document.getElementById('total-amount');
+        const walletList = document.getElementById('wallet-list');
+        const transactionSigning = document.getElementById('transaction-signing');
+        const transactionQr = document.querySelector('.transaction-qr');
+        const transactionQrLink = document.querySelector('.transaction-qr-link');
+        const transactionTitle = document.getElementById('transaction-title');
+        const resultsDiv = document.getElementById('results');
+        const proceedLoader = document.getElementById('proceed-loader');
+        const loginBtn = document.getElementById('login-btn');
+        const loginLoader = document.getElementById('login-loader');
+        const qrCodeImg = document.getElementById('qr-code');
+        const qrLink = document.getElementById('qr-link');
+        const notification = document.getElementById('notification');
+        const notificationOverlay = document.getElementById('notification-overlay');
+        const feeConfirmation = document.getElementById('fee-confirmation');
+        const feeMessage = document.getElementById('fee-message');
+        const feeAgreeBtn = document.getElementById('fee-agree-btn');
+        const feeDisagreeBtn = document.getElementById('fee-disagree-btn');
+        const walletAddressDisplay = document.getElementById('wallet-address-display');
+        const walletAddressContainer = document.getElementById('wallet-address-container');
+        const walletToggle = document.getElementById('wallet-toggle');
+        const disconnectButton = document.getElementById('disconnect-button');
+        const csvHeaderToggle = document.getElementById('csv-header-toggle');
+
+        // Check for missing critical elements
+        if (!proceedBtn || !csvUploadInput || !airdropForm || !walletList || !tokenTypeSelect) {
+            console.error('Critical DOM elements missing:', {
+                proceedBtn, csvUploadInput, airdropForm, walletList, tokenTypeSelect
+            });
+            showNotification('Initialization error: Required elements not found.', true);
+            return;
+        }
+
+        // Initialize audio
         const audio = document.getElementById('loader-audio');
-        audio.volume = 0.5;
+        if (audio) {
+            audio.volume = 0.5;
+            audio.muted = true; // Mute initially to allow autoplay
+            audio.play().then(() => {
+                console.log('Audio playback started');
+                setTimeout(() => {
+                    audio.muted = false; // Unmute after a delay
+                }, 100);
+            }).catch(err => {
+                console.warn('Audio playback failed:', err);
+                document.addEventListener('click', () => {
+                    audio.play().catch(e => console.warn('Audio playback failed on click:', e));
+                }, { once: true });
+            });
+        }
 
-        // Simplified audio playback logic with better error handling
-        const playAudio = () => {
-            const playPromise = audio.play();
-            if (playPromise !== undefined) {
-                playPromise.catch(err => {
-                    console.warn('Audio playback failed:', err);
-                    // Add a click handler to retry audio playback on user interaction
-                    document.addEventListener('click', () => {
-                        audio.play().catch(e => console.warn('Audio playback failed on click:', e));
-                    }, { once: true });
-                });
-            }
-        };
-        playAudio();
-
-        // Ensure the preloader timeout always executes, even if there are errors
+        // Set up preloader timeout
         setTimeout(() => {
             console.log('Preloader timeout reached, forcing main content display...');
             showMainContent();
         }, PRELOADER_TIMEOUT);
+
+        // Set up CSV upload handler
+        csvUploadInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) {
+                showNotification('No file selected.', true);
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const text = event.target.result;
+                const rows = text.split('\n').filter(row => row.trim() !== '');
+                const wallets = [];
+                let hasInvalid = false;
+
+                rows.forEach((row, index) => {
+                    const cols = row.split(',').map(col => col.trim());
+                    if (cols.length < 2 || cols[0].startsWith('(')) {
+                        console.log(`Skipping row ${index}: ${row}`);
+                        return;
+                    }
+
+                    const address = cols[0];
+                    const amount = cols[1];
+                    let numericAmount = parseFloat(amount);
+
+                    if (!address || !address.startsWith('r') || address.length < 25 || address.length > 35) {
+                        console.log(`Invalid address at row ${index}: ${address}`);
+                        hasInvalid = true;
+                        return;
+                    }
+
+                    if (isNaN(numericAmount) || numericAmount <= 0) {
+                        console.log(`Invalid amount at row ${index}: ${amount}`);
+                        hasInvalid = true;
+                        return;
+                    }
+
+                    wallets.push({ address, amount: numericAmount.toString() });
+                });
+
+                if (hasInvalid) {
+                    showNotification('Some rows contain invalid data and were skipped. Please check the CSV format.', true);
+                }
+
+                if (wallets.length === 0) {
+                    showNotification('No valid wallets found in the CSV.', true);
+                    return;
+                }
+
+                walletList.innerHTML = '';
+                wallets.forEach((wallet, index) => {
+                    const safeAddress = wallet.address || '';
+                    const safeAmount = wallet.amount || '';
+                    console.log(`Adding wallet ${index}: address=${safeAddress}, amount=${safeAmount}, type of amount=${typeof safeAmount}`);
+                    addWallet(safeAddress, safeAmount);
+                });
+
+                requestAnimationFrame(() => {
+                    console.log('After adding wallets - Checking DOM values:');
+                    document.querySelectorAll('.wallet-input').forEach((input, idx) => {
+                        const addr = input.querySelector('.wallet-address').value;
+                        const amt = input.querySelector('.wallet-amount').value;
+                        console.log(`Wallet ${idx}: address=${addr}, amount=${amt}`);
+                    });
+
+                    updateTotalAmount();
+
+                    console.log('After updateTotalAmount - Checking DOM values:');
+                    document.querySelectorAll('.wallet-input').forEach((input, idx) => {
+                        const addr = input.querySelector('.wallet-address').value;
+                        const amt = input.querySelector('.wallet-amount').value;
+                        console.log(`Wallet ${idx}: address=${addr}, amount=${amt}`);
+                    });
+
+                    showNotification(`Successfully loaded ${wallets.length} wallets from CSV.`);
+                });
+
+                csvUploadInput.value = '';
+            };
+
+            reader.onerror = () => {
+                showNotification('Error reading CSV file. It may be corrupted or not accessible.', true);
+            };
+            reader.readAsText(file);
+        });
+
+        // Set up Proceed to Signing button
+        proceedBtn.addEventListener('click', () => {
+            console.log('Proceed to Signing button clicked');
+            const wallets = Array.from(document.getElementsByClassName('wallet-input')).map(div => {
+                const address = div.querySelector('.wallet-address').value.trim();
+                const amount = parseFloat(div.querySelector('.wallet-amount').value.trim()) || 0;
+                return { address, amount };
+            });
+            console.log('Wallets for airdrop:', wallets);
+            proceedWithAirdrop(wallets, tokenTypeSelect, airdropData && airdropData.service_fee ? airdropData.service_fee : '0');
+        });
+
+        // Other button listeners
+        if (checkTrustlinesBtn) {
+            checkTrustlinesBtn.addEventListener('click', checkTrustlines);
+        }
+        if (validateWalletsBtn) {
+            validateWalletsBtn.addEventListener('click', async () => {
+                console.log('Validate Wallets clicked');
+                validateWalletsBtn.disabled = true;
+                validateLoader.style.display = 'inline-block';
+                try {
+                    const wallets = Array.from(document.getElementsByClassName('wallet-input')).map(div => {
+                        const address = div.querySelector('.wallet-address').value.trim();
+                        const amountInput = div.querySelector('.wallet-amount').value.trim();
+                        if (!address) throw new Error('Wallet address cannot be empty');
+                        if (!/^r[0-9a-zA-Z]{24,34}$/.test(address)) {
+                            throw new Error(`Invalid XRPL address: ${address}`);
+                        }
+                        const amount = amountInput ? parseFloat(amountInput) : 0;
+                        if (isNaN(amount) || amount < 0) {
+                            throw new Error(`Invalid amount for ${address}: ${amountInput}`);
+                        }
+                        return { address, null};
+                    });
+                    if (wallets.length === 0) throw new Error('At least one wallet is required');
+                    const response = await fetch(`${BACKEND_URL}/validate-wallets?token_type=${encodeURIComponent(tokenTypeSelect.value)}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${getStorageItem('access_token')}`,
+                            'account': getStorageItem('account')
+                        },
+                        body: JSON.stringify(wallets)
+                    });
+                    if (response.status === 401) {
+                        handleUnauthorized();
+                        return;
+                    }
+                    if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({}));
+                        throw new Error(`HTTP error! status: ${response.status} - ${errorData.detail || 'Unknown error'}`);
+                    }
+                    const data = await response.json();
+                    resultsDiv.innerHTML = '<h2>Wallet Validation Results</h2>' + data.map(wallet => `
+                        <p>${wallet.address}: ${wallet.status}${wallet.error ? ` (${wallet.error})` : ''}</p>
+                    `).join('');
+                    resultsDiv.style.display = 'block';
+                    showNotification('Wallet validation completed!');
+                } catch (error) {
+                    console.error('Error validating wallets:', error);
+                    showNotification(`Error validating wallets: ${error.message}`, true);
+                } finally {
+                    validateWalletsBtn.disabled = false;
+                    validateLoader.style.display = 'none';
+                }
+            });
+        }
+        if (checkBalanceBtn) {
+            checkBalanceBtn.addEventListener('click', async () => {
+                console.log('Check Balance clicked');
+                checkBalanceBtn.disabled = true;
+                balanceLoader.style.display = 'inline-block';
+                try {
+                    const tokenType = tokenTypeSelect.value;
+                    const selectedOption = tokenTypeSelect.selectedOptions[0];
+                    const issuer = selectedOption.dataset.issuer || '';
+                    const currency = selectedOption.dataset.currency || '';
+                    let query = tokenType !== 'XRP' ? `?issuer=${encodeURIComponent(issuer)}¤cy=${encodeURIComponent(currency)}` : '';
+                    const response = await fetch(`${BACKEND_URL}/balance${query}`, {
+                        headers: {
+                            'Authorization': `Bearer ${getStorageItem('access_token')}`,
+                            'account': getStorageItem('account')
+                        }
+                    });
+                    if (response.status === 401) {
+                        handleUnauthorized();
+                        return;
+                    }
+                    if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({}));
+                        throw new Error(`HTTP error! status: ${response.status} - ${errorData.detail || 'Unknown error'}`);
+                    }
+                    const data = await response.json();
+                    const tokenName = tokenType === 'XRP' ? 'XRP' : decodeHexCurrency(tokenType);
+                    showNotification(
+                        `Total Available Balance: ${tokenType === 'XRP' ? data.balance_xrp : data.balance_token} ${tokenName} (Signed in as: ${data.account})`
+                    );
+                } catch (error) {
+                    console.error('Error checking balance:', error);
+                    showNotification(`Error checking balance: ${error.message}`, true);
+                } finally {
+                    checkBalanceBtn.disabled = false;
+                    balanceLoader.style.display = 'none';
+                }
+            });
+        }
+        if (csvHeaderToggle) {
+            csvHeaderToggle.addEventListener('click', () => {
+                csvHasHeader = !csvHasHeader;
+                csvHeaderToggle.textContent = `CSV Has Header: ${csvHasHeader ? 'Yes' : 'No'}`;
+                console.log('CSV header toggle set to:', csvHasHeader);
+            });
+        }
+
+        // Initialize session
+        const accessToken = getStorageItem('access_token');
+        const storedAccount = getStorageItem('account');
+        if (accessToken && storedAccount) {
+            console.log('Validating existing access token...');
+            fetch(`${BACKEND_URL}/balance`, {
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'account': storedAccount
+                }
+            }).then(response => {
+                if (response.status === 401 || response.status === 404) {
+                    handleUnauthorized();
+                    return;
+                }
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            }).then(data => {
+                if (data) {
+                    loginSection.style.display = 'none';
+                    airdropForm.style.display = 'block';
+                    proceedBtn.disabled = false;
+                    walletAddressDisplay.textContent = `Signed in as: ${storedAccount}`;
+                    walletAddressContainer.style.display = 'block';
+                    walletToggle.classList.remove('disconnected');
+                    walletToggle.classList.add('connected');
+                    disconnectButton.style.display = 'inline-block';
+                    populateTokenDropdown();
+                    scrollAnchor.scrollIntoView({ behavior: 'instant', block: 'start' });
+                }
+            }).catch(error => {
+                console.error('Error validating token:', error);
+                handleUnauthorized();
+                showNotification('Failed to validate session. Please log in again.', true);
+            });
+        } else {
+            loginSection.style.display = 'block';
+            airdropForm.style.display = 'none';
+            walletAddressContainer.style.display = 'none';
+            walletToggle.classList.add('disconnected');
+            walletToggle.classList.remove('connected');
+            disconnectButton.style.display = 'none';
+            scrollAnchor.scrollIntoView({ behavior: 'instant', block: 'start' });
+        }
+
     } catch (error) {
-        console.error('Error in DOMContentLoaded event listener:', error);
-        // Ensure the preloader is hidden even if an error occurs
+        console.error('Initialization error:', error);
+        showNotification(`Initialization failed: ${error.message}`, true);
         setTimeout(() => {
             console.log('Preloader timeout reached (error fallback), forcing main content display...');
             showMainContent();
@@ -1087,18 +1358,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-proceedBtn.addEventListener('click', () => {
-    console.log('Proceed to Signing button clicked');
-    proceedWithAirdrop(
-        Array.from(document.getElementsByClassName('wallet-input')).map(div => {
-            const address = div.querySelector('.wallet-address').value.trim();
-            const amount = parseFloat(div.querySelector('.wallet-amount').value.trim()) || 0;
-            return { address, amount };
-        }),
-        tokenTypeSelect,
-        airdropData.service_fee || '0'
-    );
-});
 
         const loginBtn = document.getElementById('login-btn');
         const loginLoader = document.getElementById('login-loader');
