@@ -1032,18 +1032,20 @@ function addWallet(address = '', amount = '') {
     walletDiv.appendChild(trustlineStatusBox);
     walletDiv.appendChild(amountRemoveGroup);
 
-    // Append to DOM first
+    // Append to DOM
     walletList.appendChild(walletDiv);
 
-    // Set values after appending and force DOM update
+    // Set values using both value property and attribute
     addressInput.value = address;
     amountInput.value = amount;
+    addressInput.setAttribute('value', address);
+    amountInput.setAttribute('value', amount);
 
-    // Dispatch change event to ensure UI updates
-    addressInput.dispatchEvent(new Event('input'));
-    amountInput.dispatchEvent(new Event('input'));
+    // Debug: Log values after setting
+    console.log('After setting values: addressInput=', addressInput.value, 'amountInput=', amountInput.value);
+    console.log('DOM attributes: addressInput.value=', addressInput.getAttribute('value'), 'amountInput.value=', amountInput.getAttribute('value'));
 
-    console.log('Adding wallet: address=', address, 'amount=', amount);
+    // Do not call updateTotalAmount here; defer to CSV handler
 }
 
 
@@ -1491,21 +1493,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        window.addWallet = function() {
-            const walletList = document.getElementById('wallet-list');
-            const div = document.createElement('div');
-            div.className = 'wallet-input';
-            div.innerHTML = `
-                <input type="text" class="wallet-address" placeholder="Wallet Address">
-                <div class="trustline-status-box"></div>
-                <div class="amount-remove-group">
-                    <input type="number" class="wallet-amount" placeholder="Amount" step="0.000001" min="0">
-                    <button onclick="removeWallet(this)">Remove</button>
-                </div>
-            `;
-            walletList.appendChild(div);
-            updateTotalAmount();
-        };
 
         window.removeWallet = function(button) {
             button.parentElement.parentElement.remove();
@@ -2198,25 +2185,26 @@ try {
         addWallet(safeAddress, safeAmount);
     });
 
-    // Log DOM values before updating total
-    console.log('After adding wallets - Checking DOM values:');
-    document.querySelectorAll('.wallet-input').forEach((input, idx) => {
-        const addr = input.querySelector('.wallet-address').value;
-        const amt = input.querySelector('.wallet-amount').value;
-        console.log(`Wallet ${idx}: address=${addr}, amount=${amt}`);
+    // Delay updateTotalAmount to ensure DOM rendering
+    requestAnimationFrame(() => {
+        console.log('After adding wallets - Checking DOM values:');
+        document.querySelectorAll('.wallet-input').forEach((input, idx) => {
+            const addr = input.querySelector('.wallet-address').value;
+            const amt = input.querySelector('.wallet-amount').value;
+            console.log(`Wallet ${idx}: address=${addr}, amount=${amt}`);
+        });
+
+        updateTotalAmount();
+
+        console.log('After updateTotalAmount - Checking DOM values:');
+        document.querySelectorAll('.wallet-input').forEach((input, idx) => {
+            const addr = input.querySelector('.wallet-address').value;
+            const amt = input.querySelector('.wallet-amount').value;
+            console.log(`Wallet ${idx}: address=${addr}, amount=${amt}`);
+        });
+
+        showNotification(`Successfully loaded ${wallets.length} wallets from CSV.`);
     });
-
-    updateTotalAmount();
-
-    // Log DOM values after updating total
-    console.log('After updateTotalAmount - Checking DOM values:');
-    document.querySelectorAll('.wallet-input').forEach((input, idx) => {
-        const addr = input.querySelector('.wallet-address').value;
-        const amt = input.querySelector('.wallet-amount').value;
-        console.log(`Wallet ${idx}: address=${addr}, amount=${amt}`);
-    });
-
-    showNotification(`Successfully loaded ${wallets.length} wallets from CSV.`);
 
     // Reset the input value to allow re-uploading the same file
     csvUploadInput.value = '';
