@@ -25,9 +25,20 @@ import httpx
 load_dotenv()
 
 # Configure logging
-# Configure logging
-logging.basicConfig(level=logging.DEBUG)  # Changed from INFO to DEBUG
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s %(levelname)s %(name)s: %(message)s',
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler('app.log')
+    ]
+)
 logger = logging.getLogger(__name__)
+
+# Log startup
+logger.debug("Starting FastAPI application...")
+logger.debug(f"XAMAN_API_KEY: {'set' if XAMAN_API_KEY else 'not set'}")
+logger.debug(f"XAMAN_API_SECRET: {'set' if XAMAN_API_SECRET else 'not set'}")
 
 # FastAPI app
 app = FastAPI()
@@ -229,12 +240,13 @@ async def check_trustlines(
     logger.info(f"Received request to /check-trustlines with wallets: {wallets}, token_type: {token_type}, issuer: {issuer}, currency: {currency}, fetch_balances: {fetch_balances}")
     logger.debug(f"Raw query string: {request.query_params}")
     
+    # Decode token_type and currency consistently
+    decoded_token_type = decode_hex_currency(token_type).strip().upper()
     effective_currency = currency if currency is not None else token_type
-    decoded_token_type = decode_hex_currency(token_type)
-    decoded_currency = decode_hex_currency(effective_currency)
+    decoded_currency = decode_hex_currency(effective_currency).strip().upper()
     logger.debug(f"Decoded parameters: token_type={decoded_token_type}, currency={decoded_currency}, effective_currency={effective_currency}, issuer: {issuer}")
     
-    if decoded_token_type != "XRP" and (not issuer or not effective_currency):
+    if decoded_token_type != "XRP" and (not issuer or not decoded_currency):
         raise HTTPException(
             status_code=400,
             detail="Issuer and currency are required for token trustline checks"
@@ -263,24 +275,6 @@ async def check_trustlines(
                     results.append(result)
                     continue
 
-                # Fetch balance if requested
-                if fetch_balances:
-                    balance = 0
-                    if decoded_token_type == "XRP":
-                        balance = float(account_response.result["account_data"]["Balance"]) / 1_000_000
-                        logger.debug(f"XRP balance for {wallet.address}: {balance}")
-                    else:
-                        account_lines_request = AccountLines(account=wallet.address, ledger_index="validated")
-                        lines_response = await asyncio.wait_for(client.request(account_lines_request), timeout=30)
-                        if lines_response.is_successful():
-                            for line in lines_response.result.get("lines", []):
-                                if (line["account"] == issuer and 
-                                    line["currency"] == effective_currency):
-                                    balance = float(line["balance"])
-                                    logger.debug(f"Token balance for {wallet.address}: {balance}")
-                                    break
-                    result["balance"] = balance
-
                 # Check trustlines (only if token_type is not XRP)
                 if decoded_token_type == "XRP":
                     logger.debug(f"Token type is XRP for {wallet.address}, trustline not required")
@@ -303,9 +297,9 @@ async def check_trustlines(
                     trustline_exists = False
                     for line in trustlines:
                         line_issuer = line["account"].strip()
-                        line_currency = line["currency"].strip()
+                        line_currency = decode_hex_currency(line["currency"]).strip().upper()
                         target_issuer = issuer.strip() if issuer else ""
-                        target_currency = effective_currency.strip()
+                        target_currency = decoded_currency
 
                         logger.debug(f"Comparing trustline for {wallet.address}: "
                                     f"line_issuer={line_issuer}, target_issuer={target_issuer}, "
@@ -314,10 +308,13 @@ async def check_trustlines(
                         if line_issuer == target_issuer and line_currency == target_currency:
                             trustline_exists = True
                             logger.info(f"Trustline match found for {wallet.address}: {line}")
+                            if fetch_balances:
+                                result["balance"] = float(line.get("balance", 0))
+                                logger.debug(f"Balance for {wallet.address}: {result['balance']}")
                             break
                     result["has_trustline"] = trustline_exists
                     if not trustline_exists:
-                        result["error"] = "No trustline found"
+                        result["error"] = "No trustline found for specified token"
 
                 results.append(result)
             except Exception as e:
