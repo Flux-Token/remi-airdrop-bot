@@ -875,7 +875,6 @@ color: #888;
                     <div id="wallet-list">
                         <div class="wallet-input">
                             <input type="text" class="wallet-address" placeholder="Wallet Address">
-                            console.log('Adding wallet: address=', address, 'amount=', amount);
                             <div class="trustline-status-box"></div>
                             <div class="amount-remove-group">
                                 <input type="number" class="wallet-amount" placeholder="Amount" step="0.000001" min="0">
@@ -979,6 +978,7 @@ function addWallet(address = '', amount = '') {
             <button onclick="removeWallet(this)">Remove</button>
         </div>
     `;
+    console.log('Adding wallet: address=', address, 'amount=', amount);
     walletList.appendChild(walletDiv);
     updateTotalAmount();
 }
@@ -2080,7 +2080,6 @@ try {
 
     const reader = new FileReader();
     reader.onload = (event) => {
-        console.log('Adding wallet: address=', address, 'amount=', amount);
         const text = event.target.result;
         const rows = text.split('\n').filter(row => row.trim() !== '');
         const wallets = [];
