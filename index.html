@@ -1079,11 +1079,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const audio = document.getElementById('loader-audio');
         if (audio) {
             audio.volume = 0.5;
-            audio.muted = true; // Mute initially to allow autoplay
+            audio.muted = true;
             audio.play().then(() => {
                 console.log('Audio playback started');
                 setTimeout(() => {
-                    audio.muted = false; // Unmute after a delay
+                    audio.muted = false;
                 }, 100);
             }).catch(err => {
                 console.warn('Audio playback failed:', err);
@@ -1092,12 +1092,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }, { once: true });
             });
         }
-
-        // Set up preloader timeout
-        setTimeout(() => {
-            console.log('Preloader timeout reached, forcing main content display...');
-            showMainContent();
-        }, PRELOADER_TIMEOUT);
 
         // Set up CSV upload handler
         csvUploadInput.addEventListener('change', (e) => {
@@ -1200,8 +1194,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Other button listeners
         if (checkTrustlinesBtn) {
-            checkTrustlinesBtn.addEventListener('click', checkTrustlines);
-        }
+    console.log('checkTrustlinesBtn found, will enable after successful login');
+    checkTrustlinesBtn.disabled = true; // Disabled initially
+}
         if (validateWalletsBtn) {
             validateWalletsBtn.addEventListener('click', async () => {
                 console.log('Validate Wallets clicked');
@@ -1301,52 +1296,57 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        // Initialize session
+        // Initialize session and show main content
         const accessToken = getStorageItem('access_token');
-        const storedAccount = getStorageItem('account');
-        if (accessToken && storedAccount) {
-            console.log('Validating existing access token...');
-            fetch(`${BACKEND_URL}/balance`, {
-                headers: {
-                    'Authorization': `Bearer ${accessToken}`,
-                    'account': storedAccount
-                }
-            }).then(response => {
-                if (response.status === 401 || response.status === 404) {
-                    handleUnauthorized();
-                    return;
-                }
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                return response.json();
-            }).then(data => {
-                if (data) {
-                    loginSection.style.display = 'none';
-                    airdropForm.style.display = 'block';
-                    proceedBtn.disabled = false; // Enable proceed button for authenticated users
-                    console.log('Proceed button enabled:', proceedBtn.disabled);
-                    walletAddressDisplay.textContent = `Signed in as: ${storedAccount}`;
-                    walletAddressContainer.style.display = 'block';
-                    walletToggle.classList.remove('disconnected');
-                    walletToggle.classList.add('connected');
-                    disconnectButton.style.display = 'inline-block';
-                    populateTokenDropdown();
-                    scrollAnchor.scrollIntoView({ behavior: 'instant', block: 'start' });
-                }
+const storedAccount = getStorageItem('account');
+if (accessToken && storedAccount) {
+    console.log('Validating existing access token...');
+    fetch(`${BACKEND_URL}/balance`, {
+        headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'account': storedAccount
+        }
+    }).then(response => {
+        if (response.status === 401 || response.status === 404) {
+            handleUnauthorized();
+            showMainContent();
+            return;
+        }
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    }).then(data => {
+        if (data) {
+            loginSection.style.display = 'none';
+            airdropForm.style.display = 'block';
+            proceedBtn.disabled = false;
+            console.log('Proceed button enabled:', proceedBtn.disabled);
+            walletAddressDisplay.textContent = `Signed in as: ${storedAccount}`;
+            walletAddressContainer.style.display = 'block';
+            walletToggle.classList.remove('disconnected');
+            walletToggle.classList.add('connected');
+            disconnectButton.style.display = 'inline-block';
+            populateTokenDropdown();
+            showMainContent();
+        }
+    }).catch(error => {
+        console.error('Error validating token:', error);
+        handleUnauthorized();
+        showNotification('Failed to validate session. Please log in again.', true);
+        showMainContent();
+    });
+} else {
+    showMainContent();
+}
             }).catch(error => {
                 console.error('Error validating token:', error);
                 handleUnauthorized();
                 showNotification('Failed to validate session. Please log in again.', true);
+                showMainContent();
             });
         } else {
-            loginSection.style.display = 'block';
-            airdropForm.style.display = 'none';
-            walletAddressContainer.style.display = 'none';
-            walletToggle.classList.add('disconnected');
-            walletToggle.classList.remove('connected');
-            disconnectButton.style.display = 'none';
-            scrollAnchor.scrollIntoView({ behavior: 'instant', block: 'start' });
+            showMainContent();
         }
 
     } catch (error) {
@@ -1506,73 +1506,6 @@ document.addEventListener('DOMContentLoaded', () => {
             updateTotalAmount();
         });
 
-        const accessToken = getStorageItem('access_token');
-        const storedAccount = getStorageItem('account');
-        if (accessToken && storedAccount) {
-            console.log('Validating existing access token...');
-            fetch(`${BACKEND_URL}/balance`, {
-                headers: {
-                    'Authorization': `Bearer ${accessToken}`,
-                    'account': storedAccount
-                }
-            }).then(response => {
-                if (response.status === 401) {
-                    console.log('Access token invalid or expired');
-                    handleUnauthorized();
-                    return;
-                } else if (response.status === 404) {
-                    console.log('No XRPL account linked or not funded');
-                    handleUnauthorized();
-                    showNotification(
-                        'No funded XRPL account linked in Xaman. Please create and fund an account on Mainnet at https://xrpl.org, ' +
-                        'import it into Xaman, and sign in with it. Acquire XRP from an exchange like Coinbase or Bitstamp.',
-                        true
-                    );
-                    return;
-                } else if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                return response.json();
-            }).then(data => {
-                if (data) {
-                    console.log('Access token valid, showing airdrop form');
-                    loginSection.style.display = 'none';
-                    loginBtn.style.display = 'none';
-                    qrCodeImg.style.display = 'none';
-                    qrLink.style.display = 'none';
-                    airdropForm.style.display = 'block';
-                    checkBalanceBtn.disabled = false;
-                    validateWalletsBtn.disabled = false;
-                    checkTrustlinesBtn.disabled = false;
-                    proceedBtn.disabled = false;
-                    walletAddressDisplay.textContent = `Signed in as: ${storedAccount}`;
-                    walletAddressContainer.style.display = 'block';
-                    walletAddressDisplay.style.display = 'block';
-                    walletToggle.classList.remove('disconnected');
-                    walletToggle.classList.add('connected');
-                    disconnectButton.style.display = 'inline-block';
-                    populateTokenDropdown();
-                    scrollAnchor.scrollIntoView({ behavior: 'instant', block: 'start' });
-                }
-            }).catch(error => {
-                console.error('Error validating token:', error);
-                handleUnauthorized();
-                showNotification('Failed to validate session. Please log in again.', true);
-            });
-        } else {
-            console.log('No access token or account found, showing login form');
-            loginSection.style.display = 'block';
-            loginBtn.style.display = 'block';
-            airdropForm.style.display = 'none';
-            qrCodeImg.style.display = 'none';
-            qrLink.style.display = 'none';
-            walletAddressContainer.style.display = 'none';
-            walletAddressDisplay.style.display = 'none';
-            walletToggle.classList.add('disconnected');
-            walletToggle.classList.remove('connected');
-            disconnectButton.style.display = 'none';
-            scrollAnchor.scrollIntoView({ behavior: 'instant', block: 'start' });
-        }
 
         walletToggle.addEventListener('click', () => {
             if (walletToggle.classList.contains('connected')) {
@@ -1598,41 +1531,44 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         loginBtn.addEventListener('click', async () => {
-            console.log('Login button clicked, calling /initiate-oauth...');
-            loginBtn.disabled = true;
-            loginLoader.style.display = 'inline-block';
-            try {
-                const response = await fetch(`${BACKEND_URL}/initiate-oauth`, { method: 'POST' });
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}));
-                    throw new Error(`HTTP error! status: ${response.status} - ${errorData.detail || 'Unknown error'}`);
-                }
-                const data = await response.json();
-                console.log('Initiate-oauth response:', data);
-                if (!data.payload_uuid || !data.qr_code_url || !data.authorize_url) {
-                    throw new Error('Invalid OAuth initiation response');
-                }
-                setStorageItem('payload_uuid', data.payload_uuid);
-                qrCodeImg.src = data.qr_code_url;
-                qrCodeImg.style.display = 'block';
-                qrLink.href = data.authorize_url;
-                qrLink.style.display = 'block';
-                showNotification('Please scan the QR code or click the link to log in with Xaman.');
-                const signInWindow = window.open(data.authorize_url, '_blank');
-                if (!signInWindow || signInWindow.closed || typeof signInWindow.closed === 'undefined') {
-                    console.log('Pop-up blocked, QR code and link displayed.');
-                    showNotification('Pop-up blocked. Please click the "Open in Xaman" link or scan the QR code.', true);
-                }
-                pollCallback(data.payload_uuid);
-            } catch (error) {
-                console.error('Error initiating login:', error);
-                showNotification(`Error initiating login: ${error.message}`, true);
-                loginBtn.disabled = false;
-                loginLoader.style.display = 'none';
-                qrCodeImg.style.display = 'none';
-                qrLink.style.display = 'none';
-            }
-        });
+    console.log('Login button clicked, calling /initiate-oauth...');
+    loginBtn.disabled = true;
+    loginLoader.style.display = 'inline-block';
+    try {
+        const response = await fetch(`${BACKEND_URL}/initiate-oauth`, { method: 'POST' });
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            const errorMessage = response.status === 502
+                ? 'Server is currently unavailable. Please try again later or contact support.'
+                : `HTTP error! status: ${response.status} - ${errorData.detail || 'Unknown error'}`;
+            throw new Error(errorMessage);
+        }
+        const data = await response.json();
+        console.log('Initiate-oauth response:', data);
+        if (!data.payload_uuid || !data.qr_code_url || !data.authorize_url) {
+            throw new Error('Invalid OAuth initiation response');
+        }
+        setStorageItem('payload_uuid', data.payload_uuid);
+        qrCodeImg.src = data.qr_code_url;
+        qrCodeImg.style.display = 'block';
+        qrLink.href = data.authorize_url;
+        qrLink.style.display = 'block';
+        showNotification('Please scan the QR code or click the link to log in with Xaman.');
+        const signInWindow = window.open(data.authorize_url, '_blank');
+        if (!signInWindow || signInWindow.closed || typeof signInWindow.closed === 'undefined') {
+            console.log('Pop-up blocked, QR code and link displayed.');
+            showNotification('Pop-up blocked. Please click the "Open in Xaman" link or scan the QR code.', true);
+        }
+        pollCallback(data.payload_uuid);
+    } catch (error) {
+        console.error('Error initiating login:', error);
+        showNotification(`Error initiating login: ${error.message}`, true);
+        loginBtn.disabled = false;
+        loginLoader.style.display = 'none';
+        qrCodeImg.style.display = 'none';
+        qrLink.style.display = 'none';
+    }
+});
 
         async function pollCallback(payloadUuid) {
             let attempts = 0;
