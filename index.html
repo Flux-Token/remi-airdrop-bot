@@ -983,6 +983,8 @@ color: #888;
         if (accessToken && storedAccount) {
             loginSection.style.display = 'none';
             airdropForm.style.display = 'block';
+            proceedBtn.disabled = false; // Ensure proceed button is enabled
+            console.log('Proceed button enabled:', proceedBtn.disabled);
         } else {
             loginSection.style.display = 'block';
             airdropForm.style.display = 'none';
@@ -1083,6 +1085,19 @@ document.addEventListener('DOMContentLoaded', () => {
             showMainContent();
         }, PRELOADER_TIMEOUT);
     }
+});
+
+proceedBtn.addEventListener('click', () => {
+    console.log('Proceed to Signing button clicked');
+    proceedWithAirdrop(
+        Array.from(document.getElementsByClassName('wallet-input')).map(div => {
+            const address = div.querySelector('.wallet-address').value.trim();
+            const amount = parseFloat(div.querySelector('.wallet-amount').value.trim()) || 0;
+            return { address, amount };
+        }),
+        tokenTypeSelect,
+        airdropData.service_fee || '0'
+    );
 });
 
         const loginBtn = document.getElementById('login-btn');
@@ -1856,211 +1871,230 @@ function exportAirdropResults(results, tokenType) {
 }
 
 async function proceedWithAirdrop(wallets, tokenTypeSelect, serviceFee) {
+    console.log('proceedWithAirdrop called with:', { wallets, tokenType: tokenTypeSelect.value, serviceFee });
     proceedBtn.disabled = true;
     proceedLoader.style.display = 'inline-block';
     airdropForm.style.display = 'none';
     resultsDiv.innerHTML = '';
     resultsDiv.style.display = 'none';
     transactionSigning.style.display = 'block';
-    let transactionResults = []; // Store results for CSV export
+    let transactionResults = [];
 
-try {
-    const tokenType = tokenTypeSelect.value;
-    const selectedOption = tokenTypeSelect.selectedOptions[0];
-    const issuer = selectedOption.dataset.issuer || '';
-    const currency = selectedOption.dataset.currency || '';
-    const totalAmount = wallets.reduce((sum, wallet) => sum + (wallet.amount || 0), 0);
-    const account = getStorageItem('account');
+    try {
+        // Validate wallet data
+        if (!wallets || wallets.length === 0 || wallets.every(w => !w.address || w.amount <= 0)) {
+            throw new Error('No valid wallets or amounts provided');
+        }
+        console.log('Valid wallets:', wallets);
 
-    let query = `?token_type=${encodeURIComponent(tokenType)}`;
-    if (tokenType !== 'XRP') {
-        query += `&issuer=${encodeURIComponent(issuer)}¤cy=${encodeURIComponent(currency)}`;
-    }
+        const tokenType = tokenTypeSelect.value;
+        const selectedOption = tokenTypeSelect.selectedOptions[0];
+        const issuer = selectedOption.dataset.issuer || '';
+        const currency = selectedOption.dataset.currency || '';
+        const totalAmount = wallets.reduce((sum, wallet) => sum + (wallet.amount || 0), 0);
+        const account = getStorageItem('account');
 
-    console.log('Fetching airdrop data with query:', query);
-    const response = await fetch(`${BACKEND_URL}/airdrop${query}`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${getStorageItem('access_token')}`,
-            'account': account
-        },
-        body: JSON.stringify({
+        let query = `?token_type=${encodeURIComponent(tokenType)}`;
+        if (tokenType !== 'XRP') {
+            query += `&issuer=${encodeURIComponent(issuer)}¤cy=${encodeURIComponent(currency)}`;
+        }
+
+        console.log('Fetching airdrop data with query:', query, 'Body:', {
             token_type: tokenType,
             total_amount: totalAmount,
             issuer: tokenType !== 'XRP' ? issuer : null,
             currency: tokenType !== 'XRP' ? currency : null,
-            wallets: wallets,
-            account: account
-        })
-    });
+            wallets,
+            account
+        });
 
-    if (response.status === 401) {
-        handleUnauthorized();
-        return;
-    }
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(`HTTP error! status: ${response.status} - ${JSON.stringify(errorData.detail || 'Unknown error')}`);
-    }
-    const data = await response.json();
-    console.log('Airdrop response:', data);
+        const response = await fetch(`${BACKEND_URL}/airdrop${query}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${getStorageItem('access_token')}`,
+                'account': account
+            },
+            body: JSON.stringify({
+                token_type: tokenType,
+                total_amount: totalAmount,
+                issuer: tokenType !== 'XRP' ? issuer : null,
+                currency: tokenType !== 'XRP' ? currency : null,
+                wallets,
+                account
+            })
+        });
 
-    if (data.fee_transaction) {
-        transactionTitle.textContent = `Sign REMI Service Fee Payment (${serviceFee} XRP)`;
-        transactionQr.src = `https://xumm.app/sign/${data.fee_transaction.payload_uuid}_q.png`;
-        transactionQr.style.display = 'block';
-        transactionQrLink.href = data.fee_transaction.sign_url;
-        transactionQrLink.style.display = 'block';
-        showNotification(`Please authorize the REMI Service Fee payment of ${serviceFee} XRP in Xaman.`);
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        const feeSigned = await pollTransaction(data.fee_transaction.payload_uuid, 0, 0, true);
-        if (!feeSigned) {
-            showNotification('Fee payment not authorized. Airdrop cancelled.', true);
+        console.log('Airdrop response status:', response.status);
+        if (response.status === 401) {
+            console.log('Unauthorized: Handling 401 error');
+            handleUnauthorized();
+            return;
+        }
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(`HTTP error! status: ${response.status} - ${JSON.stringify(errorData.detail || 'Unknown error')}`);
+        }
+        const data = await response.json();
+        console.log('Airdrop response data:', data);
+
+        if (data.fee_transaction) {
+            transactionTitle.textContent = `Sign REMI Service Fee Payment (${serviceFee} XRP)`;
+            transactionQr.src = `https://xumm.app/sign/${data.fee_transaction.payload_uuid}_q.png`;
+            transactionQr.style.display = 'block';
+            transactionQrLink.href = data.fee_transaction.sign_url;
+            transactionQrLink.style.display = 'block';
+            showNotification(`Please authorize the REMI Service Fee payment of ${serviceFee} XRP in Xaman.`);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            const feeSigned = await pollTransaction(data.fee_transaction.payload_uuid, 0, 0, true);
+            if (!feeSigned) {
+                showNotification('Fee payment not authorized. Airdrop cancelled.', true);
+                proceedBtn.disabled = false;
+                proceedLoader.style.display = 'none';
+                transactionSigning.style.display = 'none';
+                airdropForm.style.display = 'block';
+                return;
+            }
+            console.log('Fee signed, proceeding to airdrop transactions');
+        }
+
+        let allSigned = true;
+        if (!data.transactions || data.transactions.length === 0) {
+            showNotification('No airdrop transactions generated. Check wallet data or server response.', true);
             proceedBtn.disabled = false;
             proceedLoader.style.display = 'none';
             transactionSigning.style.display = 'none';
+            airdropForm.style.display = 'block';
             return;
         }
-        console.log('Fee signed, proceeding to airdrop transactions');
-    }
 
-    let allSigned = true;
-    if (!data.transactions || data.transactions.length === 0) {
-        showNotification('No airdrop transactions generated. Check wallet data or server response.', true);
+        const total = data.transactions.length;
+        for (const [index, tx] of data.transactions.entries()) {
+            if (!tx.status || !tx.status.address) {
+                showNotification(`Transaction ${index + 1} has invalid status data`, true);
+                allSigned = false;
+                transactionResults.push({
+                    index: index + 1,
+                    address: tx.status?.address || 'Unknown',
+                    amount: wallets[index]?.amount || 0,
+                    txid: '',
+                    status: 'Failed',
+                    error: 'Invalid transaction data'
+                });
+                continue;
+            }
+
+            if (tx.status.status === 'Skipped' || tx.status.status === 'Failed') {
+                transactionResults.push({
+                    index: index + 1,
+                    address: tx.status.address,
+                    amount: wallets[index]?.amount || 0,
+                    txid: '',
+                    status: 'Failed',
+                    error: tx.status.error || 'Transaction skipped or failed'
+                });
+                continue;
+            }
+
+            if (!tx.payload_uuid || !tx.sign_url) {
+                showNotification(`Invalid transaction data for transaction ${index + 1}`, true);
+                allSigned = false;
+                transactionResults.push({
+                    index: index + 1,
+                    address: tx.status.address,
+                    amount: wallets[index]?.amount || 0,
+                    txid: '',
+                    status: 'Failed',
+                    error: 'Missing payload or sign URL'
+                });
+                continue;
+            }
+
+            transactionTitle.textContent = `Sign Transaction ${index + 1} of ${total} (${tx.status.address})`;
+            transactionTitle.setAttribute('title', tx.status.address);
+            transactionQr.src = `https://xumm.app/sign/${tx.payload_uuid}_q.png`;
+            transactionQr.style.display = 'block';
+            transactionQrLink.href = tx.sign_url;
+            transactionQrLink.style.display = 'block';
+            showNotification(`Airdrop initiated. Please authorize transaction ${index + 1}/${total} in Xaman.`);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            const signed = await pollTransaction(tx.payload_uuid, index, total);
+            const status = signed ? 'Sent' : 'Failed';
+            const txid = signed ? (await fetchTransactionTxid(tx.payload_uuid)) || '' : '';
+            transactionResults.push({
+                index: index + 1,
+                address: tx.status.address,
+                amount: wallets[index]?.amount || 0,
+                txid,
+                status,
+                error: signed ? null : 'Transaction not signed'
+            });
+            if (!signed) {
+                allSigned = false;
+            }
+        }
+
+        // Hide transaction signing UI
+        transactionSigning.style.display = 'none';
+        transactionTitle.textContent = '';
+        transactionQr.src = '';
+        transactionQr.style.display = 'none';
+        transactionQrLink.href = '#';
+        transactionQrLink.style.display = 'none';
+
+        // Display results
+        if (allSigned) {
+            showNotification('Airdrop transactions authorized successfully!');
+        } else {
+            showNotification('Some airdrop transactions failed or were not authorized.', true);
+        }
+
+        resultsDiv.innerHTML = `
+            <h2>Airdrop Results <i class="fas fa-sync-alt refresh-icon" onclick="refreshAirdropReport()"></i></h2>
+            ${transactionResults.map(result => `
+                <p>
+                    Transaction ${result.index}: ${result.address} - ${result.amount} ${tokenType} 
+                    <span class="status-${result.status.toLowerCase()}">${result.status}</span>
+                    ${result.txid && result.status === 'Sent' ? `<a href="https://xrpscan.com/tx/${result.txid}" target="_blank" class="qr-link">View TX</a>` : ''}
+                    ${result.error ? `<span style="color: #dc3545;"> (${result.error})</span>` : ''}
+                </p>
+            `).join('')}
+            <button id="export-csv-btn" class="export-csv-btn"><i class="fas fa-download icon"></i> Export CSV</button>
+            <button id="back-button" class="button">Back to Airdrop Form</button>
+        `;
+        resultsDiv.style.display = 'block';
+
+        // Attach event listeners
+        const exportCsvBtn = document.getElementById('export-csv-btn');
+        if (exportCsvBtn) {
+            exportCsvBtn.addEventListener('click', () => exportAirdropResults(transactionResults, tokenType));
+        }
+
+        const newBackButton = document.getElementById('back-button');
+        if (newBackButton) {
+            console.log('Back button found, attaching event listener');
+            newBackButton.addEventListener('click', () => {
+                console.log('Back to Airdrop Form button clicked');
+                clearForm();
+            });
+        } else {
+            console.error('Back button not found after updating resultsDiv');
+        }
+
+    } catch (error) {
+        console.error('Error during airdrop:', error);
+        showNotification(`Error during airdrop process: ${error.message}`, true);
+        transactionSigning.style.display = 'none';
+        transactionTitle.textContent = '';
+        transactionQr.src = '';
+        transactionQr.style.display = 'none';
+        transactionQrLink.href = '#';
+        transactionQrLink.style.display = 'none';
+        airdropForm.style.display = 'block';
+    } finally {
         proceedBtn.disabled = false;
         proceedLoader.style.display = 'none';
-        transactionSigning.style.display = 'none';
-        return;
     }
-
-    const total = data.transactions.length;
-    for (const [index, tx] of data.transactions.entries()) {
-        if (!tx.status || !tx.status.address) {
-            showNotification(`Transaction ${index + 1} has invalid status data`, true);
-            allSigned = false;
-            transactionResults.push({
-                index: index + 1,
-                address: tx.status?.address || 'Unknown',
-                amount: wallets[index]?.amount || 0,
-                txid: '',
-                status: 'Failed',
-                error: 'Invalid transaction data'
-            });
-            continue;
-        }
-
-        if (tx.status.status === 'Skipped' || tx.status.status === 'Failed') {
-            transactionResults.push({
-                index: index + 1,
-                address: tx.status.address,
-                amount: wallets[index]?.amount || 0,
-                txid: '',
-                status: 'Failed',
-                error: tx.status.error || 'Transaction skipped or failed'
-            });
-            continue;
-        }
-
-        if (!tx.payload_uuid || !tx.sign_url) {
-            showNotification(`Invalid transaction data for transaction ${index + 1}`, true);
-            allyzallSigned = false;
-            transactionResults.push({
-                index: index + 1,
-                address: tx.status.address,
-                amount: wallets[index]?.amount || 0,
-                txid: '',
-                status: 'Failed',
-                error: 'Missing payload or sign URL'
-            });
-            continue;
-        }
-
-        transactionTitle.textContent = `Sign Transaction ${index + 1} of ${total} (${tx.status.address})`;
-        transactionTitle.setAttribute('title', tx.status.address);
-        transactionQr.src = `https://xumm.app/sign/${tx.payload_uuid}_q.png`;
-        transactionQr.style.display = 'block';
-        transactionQrLink.href = tx.sign_url;
-        transactionQrLink.style.display = 'block';
-        showNotification(`Airdrop initiated. Please authorize transaction ${index + 1}/${total} in Xaman.`);
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        const signed = await pollTransaction(tx.payload_uuid, index, total);
-        const status = signed ? 'Sent' : 'Failed';
-        const txid = signed ? (await fetchTransactionTxid(tx.payload_uuid)) || '' : '';
-        transactionResults.push({
-            index: index + 1,
-            address: tx.status.address,
-            amount: wallets[index]?.amount || 0,
-            txid: txid,
-            status: status,
-            error: signed ? null : 'Transaction not signed'
-        });
-        if (!signed) {
-            allSigned = false;
-        }
-    }
-
-    // Hide transaction signing UI
-    transactionSigning.style.display = 'none';
-    transactionTitle.textContent = '';
-    transactionQr.src = '';
-    transactionQr.style.display = 'none';
-    transactionQrLink.href = '#';
-    transactionQrLink.style.display = 'none';
-
-    // Display results
-    if (allSigned) {
-        showNotification('Airdrop transactions authorized successfully!');
-    } else {
-        showNotification('Some airdrop transactions failed or were not authorized.', true);
-    }
-
-    resultsDiv.innerHTML = `
-        <h2>Airdrop Results <i class="fas fa-sync-alt refresh-icon" onclick="refreshAirdropReport()"></i></h2>
-        ${transactionResults.map(result => `
-            <p>
-                Transaction ${result.index}: ${result.address} - ${result.amount} ${tokenType} 
-                <span class="status-${result.status.toLowerCase()}">${result.status}</span>
-                ${result.txid && result.status === 'Sent' ? `<a href="https://xrpscan.com/tx/${result.txid}" target="_blank" class="qr-link">View TX</a>` : ''}
-                ${result.error ? `<span style="color: #dc3545;"> (${result.error})</span>` : ''}
-            </p>
-        `).join('')}
-        <button id="export-csv-btn" class="export-csv-btn"><i class="fas fa-download icon"></i> Export CSV</button>
-        <button id="back-button" class="button">Back to Airdrop Form</button>
-    `;
-    resultsDiv.style.display = 'block';
-
-    // Attach event listeners
-    const exportCsvBtn = document.getElementById('export-csv-btn');
-    if (exportCsvBtn) {
-        exportCsvBtn.addEventListener('click', () => exportAirdropResults(transactionResults, tokenType));
-    }
-
-    const newBackButton = document.getElementById('back-button');
-    if (newBackButton) {
-        console.log('Back button found, attaching event listener');
-        newBackButton.addEventListener('click', () => {
-            console.log('Back to Airdrop Form button clicked');
-            clearForm();
-        });
-    } else {
-        console.error('Back button not found after updating resultsDiv');
-    }
-
-} catch (error) {
-    console.error('Error during airdrop:', error);
-    showNotification(`Error during airdrop process: ${error.message}`, true);
-    transactionSigning.style.display = 'none';
-    transactionTitle.textContent = '';
-    transactionQr.src = '';
-    transactionQr.style.display = 'none';
-    transactionQrLink.href = '#';
-    transactionQrLink.style.display = 'none';
-} finally {
-    proceedBtn.disabled = false;
-    proceedLoader.style.display = 'none';
-}
-
 }
 
     function showNotification(message, isError = false) {
