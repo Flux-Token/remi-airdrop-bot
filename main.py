@@ -24,6 +24,13 @@ import httpx
 # Load environment variables from .env file
 load_dotenv()
 
+# Configuration
+XAMAN_API_KEY = os.getenv("XAMAN_API_KEY")
+XAMAN_API_SECRET = os.getenv("XAMAN_API_SECRET")
+if not XAMAN_API_KEY or not XAMAN_API_SECRET:
+    logger.error("XAMAN_API_KEY or XAMAN_API_SECRET not set in .env file")
+    raise ValueError("XAMAN_API_KEY and XAMAN_API_SECRET must be set in .env file")
+
 # Configure logging
 logging.basicConfig(
     level=logging.DEBUG,
