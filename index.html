@@ -982,113 +982,6 @@ function addWallet(address = '', amount = '') {
     updateTotalAmount();
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    // ... existing code ...
-
-    function loadResource(url, type) {
-        return new Promise((resolve) => {
-            const element = document.createElement(type === 'script' ? 'script' : 'link');
-            if (type === 'script') {
-                element.src = url;
-                element.async = true;
-                element.defer = true;
-            } else {
-                element.rel = 'stylesheet';
-                element.href = url;
-                element.crossOrigin = 'anonymous';
-            }
-            element.onload = () => {
-                console.log(`${url} loaded successfully`);
-                resolve();
-            };
-            element.onerror = (err) => {
-                console.error(`Error loading ${url}:`, err);
-                resolve(); // Resolve even on error to avoid blocking
-            };
-            document.head.appendChild(element);
-        });
-    }
-
-    walletList.appendChild(div);
-    updateTotalAmount();
-
-    div.innerHTML = `
-        <input type="text" class="wallet-address" placeholder="Wallet Address" value="${address}">
-        <div class="trustline-status-box"></div>
-        <div class="amount-remove-group">
-            <input type="number" class="wallet-amount" placeholder="Amount" step="0.000001" min="0" value="${amount}">
-            <button onclick="removeWallet(this)">Remove</button>
-        </div>
-    `;
-    walletList.appendChild(div);
-    updateTotalAmount();
-
-
-
-    const addressInput = document.createElement('input');
-    addressInput.type = 'text';
-    addressInput.classList.add('wallet-address');
-    addressInput.placeholder = 'Enter wallet address';
-
-    const amountInput = document.createElement('input');
-    amountInput.type = 'text'; // Changed to text to avoid type="number" issues
-    amountInput.classList.add('wallet-amount');
-    amountInput.placeholder = 'Amount';
-
-    const balanceSpan = document.createElement('span');
-    balanceSpan.classList.add('wallet-balance');
-    balanceSpan.textContent = balance !== null ? `Balance: ${balance}` : 'Balance: N/A';
-
-    const statusBox = document.createElement('div');
-    statusBox.classList.add('trustline-status-box');
-    statusBox.style.display = 'none';
-
-    const removeBtn = document.createElement('button');
-    removeBtn.textContent = 'Remove';
-    removeBtn.classList.add('remove-wallet-btn');
-    removeBtn.addEventListener('click', () => {
-        walletDiv.remove();
-        updateTotalAmount();
-    });
-
-    const amountRemoveGroup = document.createElement('div');
-    amountRemoveGroup.classList.add('amount-remove-group');
-    amountRemoveGroup.appendChild(amountInput);
-    amountRemoveGroup.appendChild(removeBtn);
-
-    walletDiv.appendChild(addressInput);
-    walletDiv.appendChild(statusBox);
-    walletDiv.appendChild(amountRemoveGroup);
-    walletDiv.appendChild(balanceSpan);
-
-    const walletContainer = document.getElementById('wallet-list');
-    walletContainer.appendChild(walletDiv); // Fixed typo
-
-    // Set values after appending to DOM
-    addressInput.value = address || '';
-    amountInput.value = amount || '';
-    console.log(`After DOM append - Set addressInput.value: ${addressInput.value}, amountInput.value: ${amountInput.value}`);
-
-    // Force-set values again after a delay to ensure DOM rendering
-    setTimeout(() => {
-        addressInput.value = address || '';
-        amountInput.value = amount || '';
-        console.log(`After delay - Forced set addressInput.value: ${addressInput.value}, amountInput.value: ${amountInput.value}`);
-    }, 50);
-
-    addressInput.addEventListener('input', () => {
-        console.log(`addressInput changed to: ${addressInput.value}`);
-        updateTotalAmount();
-    });
-    amountInput.addEventListener('input', () => {
-        console.log(`amountInput changed to: ${amountInput.value}`);
-        updateTotalAmount();
-    });
-
-    // Log final state of this wallet
-    setTimeout(() => {
-        console.log(`Final state for wallet - addressInput.value: ${addressInput.value}, amountInput.value: ${amountInput.value}`);
-    }, 100);
 
     preloader.style.opacity = '0';
     setTimeout(() => {
@@ -1116,9 +1009,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         scrollAnchor.scrollIntoView({ behavior: 'instant', block: 'start' });
     }, 500);
-}
 
-    document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', () => {
     console.log('DOM loaded, initializing...');
     try {
         const audio = document.getElementById('loader-audio');
