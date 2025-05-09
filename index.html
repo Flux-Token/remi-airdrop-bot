@@ -711,6 +711,11 @@ margin-right: 8px;
         margin-left: 10px;
     }
 
+    #results p .wallet-address::before {
+    content: none !important;
+    display: none !important;
+}
+
     .notification-overlay {
         position: fixed;
         top: 0;
@@ -2069,17 +2074,44 @@ validateWalletsBtn.addEventListener('click', async () => {
 });
 
 async function fetchTransactionTxid(payloadUuid) {
-    try {
-        const response = await fetch(`${BACKEND_URL}/callback?payload_uuid=${payloadUuid}`);
-        const data = await response.json();
-        if (response.status === 200 && data.meta && data.meta.signed && data.response && data.response.txid) {
-            return data.response.txid;
+    const maxAttempts = 5;
+    const delayBetweenAttempts = 2000; // 2 seconds
+    let attempts = 0;
+
+    while (attempts < maxAttempts) {
+        try {
+            console.log(`Fetching txid for payload ${payloadUuid}, attempt ${attempts + 1}/${maxAttempts}`);
+            const response = await fetch(`${BACKEND_URL}/callback?payload_uuid=${payloadUuid}`);
+            const data = await response.json();
+            console.log(`Callback response for txid fetch (attempt ${attempts + 1}):`, data);
+
+            if (response.status === 200 && data.meta && data.meta.signed && data.response && data.response.txid) {
+                console.log(`Successfully retrieved txid: ${data.response.txid}`);
+                return data.response.txid;
+            }
+
+            // If txid is not available yet, wait and retry
+            attempts++;
+            if (attempts < maxAttempts) {
+                console.log(`txid not available, retrying in ${delayBetweenAttempts}ms...`);
+                await new Promise(resolve => setTimeout(resolve, delayBetweenAttempts));
+            } else {
+                console.error(`Failed to retrieve txid after ${maxAttempts} attempts`);
+                return null;
+            }
+        } catch (error) {
+            console.error(`Error fetching txid for payload ${payloadUuid} on attempt ${attempts + 1}:`, error);
+            attempts++;
+            if (attempts < maxAttempts) {
+                console.log(`Retrying after error in ${delayBetweenAttempts}ms...`);
+                await new Promise(resolve => setTimeout(resolve, delayBetweenAttempts));
+            } else {
+                console.error(`Failed to retrieve txid after ${maxAttempts} attempts due to error`);
+                return null;
+            }
         }
-        return null;
-    } catch (error) {
-        console.error(`Error fetching txid for payload ${payloadUuid}:`, error);
-        return null;
     }
+    return null;
 }
 
 function exportAirdropResults(results, tokenType) {
