@@ -2348,16 +2348,6 @@ try {
 
 // Ensure the next event listener is syntactically correct
 tokenTypeSelect.addEventListener('change', () => {
-    const selectedOption = tokenTypeSelect.selectedOptions[0];
-    if (selectedOption.value === 'XRP') {
-        issuerInput.style.display = 'none';
-        currencyInput.style.display = 'none';
-    } else {
-        issuerInput.style.display = 'block';
-        currencyInput.style.display = 'block';
-        issuerInput.value = selectedOption.dataset.issuer || '';
-        currencyInput.value = selectedOption.dataset.currency || '';
-    }
     trustlineChecked = false;
     checkTrustlinesBtn.classList.add('glow');
 });
