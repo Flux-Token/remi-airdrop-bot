@@ -875,6 +875,7 @@ color: #888;
                     <div id="wallet-list">
                         <div class="wallet-input">
                             <input type="text" class="wallet-address" placeholder="Wallet Address">
+                            console.log('Adding wallet: address=', address, 'amount=', amount);
                             <div class="trustline-status-box"></div>
                             <div class="amount-remove-group">
                                 <input type="number" class="wallet-amount" placeholder="Amount" step="0.000001" min="0">
@@ -982,33 +983,6 @@ function addWallet(address = '', amount = '') {
     updateTotalAmount();
 }
 
-
-    preloader.style.opacity = '0';
-    setTimeout(() => {
-        console.log('Hiding preloader and showing main content...');
-        preloader.style.display = 'none';
-        mainContent.style.display = 'block';
-        footerContainer.style.display = 'block';
-
-        mainContent.offsetHeight;
-        footerContainer.offsetHeight;
-
-        document.body.style.overflow = 'auto';
-
-        const accessToken = getStorageItem('access_token');
-        const storedAccount = getStorageItem('account');
-        const loginSection = document.querySelector('.form-section.login');
-        const airdropForm = document.getElementById('airdrop-form');
-        if (accessToken && storedAccount) {
-            loginSection.style.display = 'none';
-            airdropForm.style.display = 'block';
-        } else {
-            loginSection.style.display = 'block';
-            airdropForm.style.display = 'none';
-        }
-
-        scrollAnchor.scrollIntoView({ behavior: 'instant', block: 'start' });
-    }, 500);
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log('DOM loaded, initializing...');
@@ -2106,6 +2080,7 @@ try {
 
     const reader = new FileReader();
     reader.onload = (event) => {
+        console.log('Adding wallet: address=', address, 'amount=', amount);
         const text = event.target.result;
         const rows = text.split('\n').filter(row => row.trim() !== '');
         const wallets = [];
