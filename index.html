@@ -1219,73 +1219,7 @@ document.addEventListener('DOMContentLoaded', () => {
     proceedWithAirdrop(wallets, tokenTypeSelect);
 });
 
-        // Other button listeners
-        if (checkTrustlinesBtn) {
-            console.log('checkTrustlinesBtn found, will enable after successful login');
-            checkTrustlinesBtn.disabled = true; // Disabled initially
-        }
-        if (validateWalletsBtn) {
-            validateWalletsBtn.addEventListener('click', async () => {
-                console.log('Validate Wallets clicked');
-                validateWalletsBtn.disabled = true;
-                validateLoader.style.display = 'inline-block';
-                try {
-                    const wallets = Array.from(document.getElementsByClassName('wallet-input')).map(div => {
-                        const address = div.querySelector('.wallet-address').value.trim();
-                        const amountInput = div.querySelector('.wallet-amount').value.trim();
-                        if (!address) throw new Error('Wallet address cannot be empty');
-                        if (!/^r[0-9a-zA-Z]{24,34}$/.test(address)) {
-                            throw new Error(`Invalid XRPL address: ${address}`);
-                        }
-                        const amount = amountInput ? parseFloat(amountInput) : 0;
-                        if (isNaN(amount) || amount < 0) {
-                            throw new Error(`Invalid amount for ${address}: ${amountInput}`);
-                        }
-                        return { address, amount };
-                    });
-                    if (wallets.length === 0) throw new Error('At least one wallet is required');
-                    const response = await fetch(`${BACKEND_URL}/validate-wallets?token_type=${encodeURIComponent(tokenTypeSelect.value)}`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${getStorageItem('access_token')}`,
-                            'account': getStorageItem('account')
-                        },
-                        body: JSON.stringify(wallets)
-                    });
-                    if (response.status === 401) {
-                        handleUnauthorized();
-                        return;
-                    }
-                    if (!response.ok) {
-                        const errorData = await response.json().catch(() => ({}));
-                        throw new Error(`HTTP error! status: ${response.status} - ${errorData.detail || 'Unknown error'}`);
-                    }
-                    const data = await response.json();
-                    resultsDiv.innerHTML = '<h2>Wallet Validation Results</h2>' + data.map(wallet => `
-                        <p>${wallet.address}: ${wallet.status}${wallet.error ? ` (${wallet.error})` : ''}</p>
-                    `).join('');
-                    resultsDiv.style.display = 'block';
-                    showNotification('Wallet validation completed!');
-                } catch (error) {
-                    console.error('Error validating wallets:', error);
-                    showNotification(`Error validating wallets: ${error.message}`, true);
-                } finally {
-                    validateWalletsBtn.disabled = false;
-                    validateLoader.style.display = 'none';
-                }
-            });
-        
-        }
-        if (csvHeaderToggle) {
-            csvHeaderToggle.addEventListener('click', () => {
-                csvHasHeader = !csvHasHeader;
-                csvHeaderToggle.textContent = `CSV Has Header: ${csvHasHeader ? 'Yes' : 'No'}`;
-                console.log('CSV header toggle set to:', csvHasHeader);
-            });
-        }
 
-        // Initialize session and show main content
         // Initialize session and show main content
 const accessToken = getStorageItem('access_token');
 const storedAccount = getStorageItem('account');
@@ -1883,82 +1817,115 @@ async function pollCallback(payloadUuid) {
     }
 });
 
-        validateWalletsBtn.addEventListener('click', async () => {
-            console.log('Validate Wallets clicked, accessToken:', getStorageItem('access_token'));
-            validateWalletsBtn.disabled = true;
-            validateLoader.style.display = 'inline-block';
-            try {
-                const wallets = Array.from(document.getElementsByClassName('wallet-input')).map(div => {
-                    const address = div.querySelector('.wallet-address').value.trim();
-                    const amountInput = div.querySelector('.wallet-amount').value.trim();
-                    if (!address) {
-                        throw new Error('Wallet address cannot be empty');
-                    }
-                    const xrplAddressRegex = /^r[0-9a-zA-Z]{24,34}$/;
-                    if (!xrplAddressRegex.test(address)) {
-                        throw new Error(`Invalid XRPL address format: ${address}. Must start with 'r' and be 25-35 alphanumeric characters.`);
-                    }
-                    const amount = amountInput ? parseFloat(amountInput) : 0;
-                    if (isNaN(amount) || amount < 0) {
-                        throw new Error(`Invalid amount for address ${address}: ${amountInput}`);
-                    }
-                    return { address, amount };
-                });
-                if (wallets.length === 0) {
-                    throw new Error('At least one wallet is required');
-                }
-                const tokenType = tokenTypeSelect.value;
-                const selectedOption = tokenTypeSelect.selectedOptions[0];
-                const issuer = selectedOption.dataset.issuer || '';
-                const currency = selectedOption.dataset.currency || '';
-
-                let query = `?token_type=${encodeURIComponent(tokenType)}`;
-                if (tokenType !== 'XRP') {
-                    if (!issuer || !currency) {
-                        throw new Error('Issuer or currency missing for selected token');
-                    }
-                    query += `&issuer=${encodeURIComponent(issuer)}&currency=${encodeURIComponent(currency)}`;
-                }
-
-                console.log('Validating wallets:', wallets, 'Query:', query);
-                const response = await fetch(`${BACKEND_URL}/validate-wallets${query}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${getStorageItem('access_token')}`,
-                        'account': getStorageItem('account')
-                    },
-                    body: JSON.stringify(wallets)
-                });
-                if (response.status === 401) {
-                    handleUnauthorized();
-                    return;
-                }
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}));
-                    throw new Error(`HTTP error! status: ${response.status} - ${errorData.detail || 'Unknown error'}`);
-                }
-                const data = await response.json();
-                if (!Array.isArray(data)) {
-                    throw new Error('Invalid validation response from server');
-                }
-                resultsDiv.innerHTML = '<h2>Wallet Validation Results</h2>' + data.map(wallet => `
-                    <p>${wallet.address}: ${wallet.status}${wallet.error ? ` (${wallet.error})` : ''}</p>
-                `).join('');
-                resultsDiv.style.display = 'block';
-                showNotification('Wallet validation completed!');
-            } catch (error) {
-                console.error('Error validating wallets:', error);
-                showNotification(
-                    `Error validating wallets: ${error.message}. Ensure addresses are valid on the XRP Ledger Mainnet. ` +
-                    `Acquire XRP from an exchange like Coinbase or Bitstamp.`,
-                    true
-                );
-            } finally {
-                validateWalletsBtn.disabled = false;
-                validateLoader.style.display = 'none';
+validateWalletsBtn.addEventListener('click', async () => {
+    console.log('Validate Wallets clicked, accessToken:', getStorageItem('access_token'));
+    validateWalletsBtn.disabled = true;
+    validateLoader.style.display = 'inline-block';
+    try {
+        const wallets = Array.from(document.getElementsByClassName('wallet-input')).map(div => {
+            const address = div.querySelector('.wallet-address').value.trim();
+            const amountInput = div.querySelector('.wallet-amount').value.trim();
+            if (!address) {
+                throw new Error('Wallet address cannot be empty');
             }
+            // Basic format check to catch obvious errors before sending to backend
+            if (!address.startsWith('r') || address.length < 25 || address.length > 35) {
+                throw new Error(`Invalid XRPL address format: ${address}. Must start with 'r' and be 25-35 characters.`);
+            }
+            const amount = amountInput ? parseFloat(amountInput) : 0;
+            if (isNaN(amount) || amount < 0) {
+                throw new Error(`Invalid amount for address ${address}: ${amountInput}`);
+            }
+            return { address, amount };
         });
+        if (wallets.length === 0) {
+            throw new Error('At least one wallet is required');
+        }
+        const tokenType = tokenTypeSelect.value;
+        const selectedOption = tokenTypeSelect.selectedOptions[0];
+        const issuer = selectedOption.dataset.issuer || '';
+        const currency = selectedOption.dataset.currency || '';
+
+        let query = `?token_type=${encodeURIComponent(tokenType)}`;
+        if (tokenType !== 'XRP') {
+            if (!issuer || !currency) {
+                throw new Error('Issuer or currency missing for selected token');
+            }
+            query += `&issuer=${encodeURIComponent(issuer)}¤cy=${encodeURIComponent(currency)}`;
+        }
+
+        console.log('Validating wallets:', wallets, 'Query:', query);
+        const response = await fetch(`${BACKEND_URL}/validate-wallets${query}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${getStorageItem('access_token')}`,
+                'account': getStorageItem('account')
+            },
+            body: JSON.stringify(wallets)
+        });
+        if (response.status === 401) {
+            handleUnauthorized();
+            return;
+        }
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(`HTTP error! status: ${response.status} - ${errorData.detail || 'Unknown error'}`);
+        }
+        const data = await response.json();
+        if (!Array.isArray(data)) {
+            throw new Error('Invalid validation response from server');
+        }
+
+        // Process validation results
+        let allValid = true;
+        const resultsHtml = data.map(wallet => {
+            let statusText = '';
+            let statusColor = '';
+            if (wallet.status === 'Valid') {
+                statusText = 'Valid XRPL Account';
+                statusColor = '#28a745'; // Green for valid
+            } else {
+                allValid = false;
+                statusText = wallet.error || 'Invalid XRPL Account';
+                statusColor = '#dc3545'; // Red for invalid
+                if (wallet.error && wallet.error.includes('actNotFound')) {
+                    statusText = 'Account does not exist on XRPL Mainnet';
+                } else if (wallet.error && wallet.error.includes('actMalformed')) {
+                    statusText = 'Malformed XRPL address';
+                }
+            }
+            return `
+                <p>
+                    ${wallet.address}: 
+                    <span style="color: ${statusColor};">${statusText}</span>
+                    ${wallet.error && wallet.status !== 'Valid' ? `<span style="color: #dc3545;"> (${wallet.error})</span>` : ''}
+                </p>
+            `;
+        }).join('');
+
+        resultsDiv.innerHTML = `
+            <h2>Wallet Validation Results</h2>
+            ${resultsHtml}
+            <p style="margin-top: 10px;">
+                ${allValid ? '<span style="color: #28a745;">All wallets are valid and funded on the XRPL Mainnet.</span>' : 
+                '<span style="color: #dc3545;">Some wallets are invalid or not funded. Please correct them before proceeding.</span>'}
+            </p>
+        `;
+        resultsDiv.style.display = 'block';
+        showNotification(allValid ? 'All wallets validated successfully!' : 'Some wallets failed validation. Please review the results.', !allValid);
+    } catch (error) {
+        console.error('Error validating wallets:', error);
+        showNotification(
+            `Error validating wallets: ${error.message}. Ensure addresses are valid, funded accounts on the XRP Ledger Mainnet. ` +
+            `Acquire XRP from an exchange like Coinbase or Bitstamp.`,
+            true
+        );
+    } finally {
+        validateWalletsBtn.disabled = false;
+        validateLoader.style.display = 'none';
+    }
+});
 
         checkTrustlinesBtn.addEventListener('click', async () => {
     console.log('Check Trustline clicked');
