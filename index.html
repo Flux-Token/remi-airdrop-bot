@@ -1219,6 +1219,18 @@ document.addEventListener('DOMContentLoaded', () => {
     proceedWithAirdrop(wallets, tokenTypeSelect);
 });
 
+        // Other button listeners
+        if (checkTrustlinesBtn) {
+            console.log('checkTrustlinesBtn found, will enable after successful login');
+            checkTrustlinesBtn.disabled = true; // Disabled initially
+        }
+        if (csvHeaderToggle) {
+            csvHeaderToggle.addEventListener('click', () => {
+                csvHasHeader = !csvHasHeader;
+                csvHeaderToggle.textContent = `CSV Has Header: ${csvHasHeader ? 'Yes' : 'No'}`;
+                console.log('CSV header toggle set to:', csvHasHeader);
+            });
+        }
 
         // Initialize session and show main content
 const accessToken = getStorageItem('access_token');
@@ -1226,56 +1238,45 @@ const storedAccount = getStorageItem('account');
 if (accessToken && storedAccount) {
     console.log('Validating existing access token...');
     fetch(`${BACKEND_URL}/balance`, {
-        headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'account': storedAccount
-        }
-    }).then(response => {
-        if (response.status === 401 || response.status === 404) {
-            handleUnauthorized();
-            showMainContent();
-            return;
-        }
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return response.json();
-    }).then(data => {
-        if (data) {
-            loginSection.style.display = 'none';
-            airdropForm.style.display = 'block';
-            proceedBtn.disabled = false;
-            console.log('Proceed button enabled:', proceedBtn.disabled);
-            walletAddressContainer.style.display = 'none'; // Hide the wallet address container
-            walletToggle.classList.remove('disconnected');
-            walletToggle.classList.add('connected');
-            disconnectButton.style.display = 'inline-block';
-            if (data.balance_xrp && data.account) {
-                showNotification(
-                    `Total Available Balance: ${data.balance_xrp} XRP (Signed in as: ${data.account})`
-                );
-            } else {
-                showNotification('Unable to retrieve balance on session validation.', true);
-            }
-            populateTokenDropdown();
-            if (checkTrustlinesBtn) {
-                checkTrustlinesBtn.disabled = false;
-                console.log('checkTrustlinesBtn enabled after successful session validation');
-            }
-            showMainContent();
-        }
-    }).catch(error => {
-        console.error('Error validating token:', error);
+    headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'account': storedAccount
+    }
+}).then(response => {
+    if (response.status === 401 || response.status === 404) {
         handleUnauthorized();
-        const errorMessage = error.message.includes('502') 
-            ? 'Server is currently unavailable. Please try again later or contact support.'
-            : 'Failed to validate session. Please log in again.';
-        showNotification(errorMessage, true);
         showMainContent();
-    });
-} else {
+        return;
+    }
+    if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return response.json();
+}).then(data => {
+    if (data) {
+        loginSection.style.display = 'none';
+        airdropForm.style.display = 'block';
+        proceedBtn.disabled = false;
+        console.log('Proceed button enabled:', proceedBtn.disabled);
+        walletAddressContainer.style.display = 'none'; // Hide the wallet address container
+        walletToggle.classList.remove('disconnected');
+        walletToggle.classList.add('connected');
+        disconnectButton.style.display = 'inline-block';
+        populateTokenDropdown();
+        if (checkTrustlinesBtn) {
+            checkTrustlinesBtn.disabled = false;
+            console.log('checkTrustlinesBtn enabled after successful session validation');
+        }
+        showMainContent();
+    }
+}).catch(error => {
+    console.error('Error validating session:', error);
+    handleUnauthorized();
     showMainContent();
-}
+});
+    } else {
+        showMainContent();
+    }
 
     } catch (error) {
         console.error('Initialization error:', error);
@@ -1287,6 +1288,11 @@ if (accessToken && storedAccount) {
     }
 });
 
+        let storage = {};
+        let tokenData = [];
+        let transactionResults = [];
+        let airdropData = { total_fee: null, service_fee: null };
+        let csvHasHeader = true;
 
         const loginBtn = document.getElementById('login-btn');
         const loginLoader = document.getElementById('login-loader');
@@ -1320,11 +1326,6 @@ if (accessToken && storedAccount) {
         const walletToggle = document.getElementById('wallet-toggle');
         const disconnectButton = document.getElementById('disconnect-button');
         const scrollAnchor = document.getElementById('scroll-anchor');
-
-        let storage = {};
-        let tokenData = [];
-        let transactionResults = [];
-        let airdropData = { total_fee: null, service_fee: null };
 
         function getStorageItem(key) {
             try {
@@ -1424,6 +1425,8 @@ if (accessToken && storedAccount) {
 
         tokenTypeSelect.addEventListener('change', () => {
             console.log('Token type changed, clearing trustline status and amounts');
+            trustlineChecked = false;
+            checkTrustlinesBtn.classList.add('glow');
             clearTrustlineStatus();
             totalAmountInput.value = '';
             const walletInputs = document.getElementsByClassName('wallet-input');
@@ -1433,7 +1436,6 @@ if (accessToken && storedAccount) {
             }
             updateTotalAmount();
         });
-
 
         walletToggle.addEventListener('click', () => {
             if (walletToggle.classList.contains('connected')) {
@@ -1559,35 +1561,6 @@ async function pollCallback(payloadUuid) {
                 walletToggle.classList.add('connected');
                 disconnectButton.style.display = 'inline-block';
                 showNotification('Login successful!');
-
-                // Fetch and display the balance in the green notification
-                try {
-                    const balanceResponse = await fetch(`${BACKEND_URL}/balance`, {
-                        headers: {
-                            'Authorization': `Bearer ${data.application.issued_user_token}`,
-                            'account': data.response.account
-                        }
-                    });
-                    if (balanceResponse.status === 401) {
-                        handleUnauthorized();
-                        return;
-                    }
-                    if (!balanceResponse.ok) {
-                        throw new Error(`HTTP error! status: ${balanceResponse.status}`);
-                    }
-                    const balanceData = await balanceResponse.json();
-                    if (balanceData.balance_xrp && balanceData.account) {
-                        showNotification(
-                            `Total Available Balance: ${balanceData.balance_xrp} XRP (Signed in as: ${balanceData.account})`
-                        );
-                    } else {
-                        showNotification('Unable to retrieve balance after login.', true);
-                    }
-                } catch (error) {
-                    console.error('Error fetching balance after login:', error);
-                    showNotification(`Error fetching balance: ${error.message}`, true);
-                }
-
                 populateTokenDropdown();
             } else {
                 console.warn('Unexpected callback response:', JSON.stringify(data));
@@ -1658,7 +1631,6 @@ async function pollCallback(payloadUuid) {
                 }, 5000);
             });
         }
-
 
         window.removeWallet = function(button) {
             button.parentElement.parentElement.remove();
@@ -1900,19 +1872,21 @@ validateWalletsBtn.addEventListener('click', async () => {
                 <p>
                     ${wallet.address}: 
                     <span style="color: ${statusColor};">${statusText}</span>
-                    ${wallet.error && wallet.status !== 'Valid' ? `<span style="color: #dc3545;"> (${wallet.error})</span>` : ''}
                 </p>
             `;
         }).join('');
 
         resultsDiv.innerHTML = `
-            <h2>Wallet Validation Results</h2>
-            ${resultsHtml}
-            <p style="margin-top: 10px;">
-                ${allValid ? '<span style="color: #28a745;">All wallets are valid and funded on the XRPL Mainnet.</span>' : 
-                '<span style="color: #dc3545;">Some wallets are invalid or not funded. Please correct them before proceeding.</span>'}
-            </p>
-        `;
+    <h2>Wallet Validation Results</h2>
+    <div class="validation-results">
+        ${resultsHtml}
+        <p style="margin-top: 10px;">
+            ${allValid ? '<span style="color: #28a745;">All wallets are valid and funded on the XRPL Mainnet.</span>' : 
+            '<span style="color: #dc3545;">Some wallets are invalid or not funded. Please correct them before proceeding.</span>'}
+        </p>
+    </div>
+    <button id="back-button" class="button">Back to Airdrop Form</button>
+`;
         resultsDiv.style.display = 'block';
         showNotification(allValid ? 'All wallets validated successfully!' : 'Some wallets failed validation. Please review the results.', !allValid);
     } catch (error) {
@@ -2333,15 +2307,14 @@ async function proceedWithAirdrop(wallets, tokenTypeSelect) {
         }
 
         const newBackButton = document.getElementById('back-button');
-        if (newBackButton) {
-            console.log('Back button found, attaching event listener');
-            newBackButton.addEventListener('click', () => {
-                console.log('Back to Airdrop Form button clicked');
-                clearForm();
-            });
-        } else {
-            console.error('Back button not found after updating resultsDiv');
-        }
+if (newBackButton) {
+    newBackButton.addEventListener('click', () => {
+        console.log('Back to Airdrop Form button clicked');
+        clearForm();
+    });
+} else {
+    console.error('Back button not found after updating resultsDiv');
+}
 
     } catch (error) {
         console.error('Error during airdrop:', error);
@@ -2411,13 +2384,16 @@ async function proceedWithAirdrop(wallets, tokenTypeSelect) {
         }
     }
 
-    let csvHasHeader = true;
     const csvHeaderToggle = document.getElementById('csv-header-toggle');
+if (csvHeaderToggle) {
     csvHeaderToggle.addEventListener('click', () => {
         csvHasHeader = !csvHasHeader;
         csvHeaderToggle.textContent = `CSV Has Header: ${csvHasHeader ? 'Yes' : 'No'}`;
         console.log('CSV header toggle set to:', csvHasHeader);
     });
+} else {
+    console.error('csv-header-toggle element not found');
+}
 
     const csvUploadInput = document.getElementById('csv-upload-input');
     csvUploadInput.addEventListener('change', (e) => {
