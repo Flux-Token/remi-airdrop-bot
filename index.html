@@ -934,7 +934,7 @@ color: #888;
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/decimal.js/10.3.1/decimal.min.js"></script>
 <script>
-    const PRELOADER_TIMEOUT = 6000;
+    const PRELOADER_TIMEOUT = 3000;
     const BACKEND_URL = 'https://remi-airdrop-bot.onrender.com';
     let notificationTimeout = null;
     let trustlineChecked = false;
@@ -1100,49 +1100,40 @@ document.addEventListener('DOMContentLoaded', () => {
                 showNotification('No file selected.', true);
                 return;
             }
-
             const reader = new FileReader();
             reader.onload = (event) => {
                 const text = event.target.result;
                 const rows = text.split('\n').filter(row => row.trim() !== '');
                 const wallets = [];
                 let hasInvalid = false;
-
                 rows.forEach((row, index) => {
                     const cols = row.split(',').map(col => col.trim());
                     if (cols.length < 2 || cols[0].startsWith('(')) {
                         console.log(`Skipping row ${index}: ${row}`);
                         return;
                     }
-
                     const address = cols[0];
                     const amount = cols[1];
                     let numericAmount = parseFloat(amount);
-
                     if (!address || !address.startsWith('r') || address.length < 25 || address.length > 35) {
                         console.log(`Invalid address at row ${index}: ${address}`);
                         hasInvalid = true;
                         return;
                     }
-
                     if (isNaN(numericAmount) || numericAmount <= 0) {
                         console.log(`Invalid amount at row ${index}: ${amount}`);
                         hasInvalid = true;
                         return;
                     }
-
                     wallets.push({ address, amount: numericAmount.toString() });
                 });
-
                 if (hasInvalid) {
                     showNotification('Some rows contain invalid data and were skipped. Please check the CSV format.', true);
                 }
-
                 if (wallets.length === 0) {
                     showNotification('No valid wallets found in the CSV.', true);
                     return;
                 }
-
                 walletList.innerHTML = '';
                 wallets.forEach((wallet, index) => {
                     const safeAddress = wallet.address || '';
@@ -1150,7 +1141,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     console.log(`Adding wallet ${index}: address=${safeAddress}, amount=${safeAmount}, type of amount=${typeof safeAmount}`);
                     addWallet(safeAddress, safeAmount);
                 });
-
                 requestAnimationFrame(() => {
                     console.log('After adding wallets - Checking DOM values:');
                     document.querySelectorAll('.wallet-input').forEach((input, idx) => {
@@ -1158,22 +1148,17 @@ document.addEventListener('DOMContentLoaded', () => {
                         const amt = input.querySelector('.wallet-amount').value;
                         console.log(`Wallet ${idx}: address=${addr}, amount=${amt}`);
                     });
-
                     updateTotalAmount();
-
                     console.log('After updateTotalAmount - Checking DOM values:');
                     document.querySelectorAll('.wallet-input').forEach((input, idx) => {
                         const addr = input.querySelector('.wallet-address').value;
                         const amt = input.querySelector('.wallet-amount').value;
                         console.log(`Wallet ${idx}: address=${addr}, amount=${amt}`);
                     });
-
                     showNotification(`Successfully loaded ${wallets.length} wallets from CSV.`);
                 });
-
                 csvUploadInput.value = '';
             };
-
             reader.onerror = () => {
                 showNotification('Error reading CSV file. It may be corrupted or not accessible.', true);
             };
@@ -1194,9 +1179,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Other button listeners
         if (checkTrustlinesBtn) {
-    console.log('checkTrustlinesBtn found, will enable after successful login');
-    checkTrustlinesBtn.disabled = true; // Disabled initially
-}
+            console.log('checkTrustlinesBtn found, will enable after successful login');
+            checkTrustlinesBtn.disabled = true; // Disabled initially
+        }
         if (validateWalletsBtn) {
             validateWalletsBtn.addEventListener('click', async () => {
                 console.log('Validate Wallets clicked');
@@ -1298,51 +1283,49 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Initialize session and show main content
         const accessToken = getStorageItem('access_token');
-const storedAccount = getStorageItem('account');
-if (accessToken && storedAccount) {
-    console.log('Validating existing access token...');
-    fetch(`${BACKEND_URL}/balance`, {
-        headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'account': storedAccount
-        }
-    }).then(response => {
-        if (response.status === 401 || response.status === 404) {
-            handleUnauthorized();
-            showMainContent();
-            return;
-        }
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return response.json();
-    }).then(data => {
-        if (data) {
-            loginSection.style.display = 'none';
-            airdropForm.style.display = 'block';
-            proceedBtn.disabled = false;
-            console.log('Proceed button enabled:', proceedBtn.disabled);
-            walletAddressDisplay.textContent = `Signed in as: ${storedAccount}`;
-            walletAddressContainer.style.display = 'block';
-            walletToggle.classList.remove('disconnected');
-            walletToggle.classList.add('connected');
-            disconnectButton.style.display = 'inline-block';
-            populateTokenDropdown();
-            showMainContent();
-        }
-    }).catch(error => {
-        console.error('Error validating token:', error);
-        handleUnauthorized();
-        showNotification('Failed to validate session. Please log in again.', true);
-        showMainContent();
-    });
-} else {
-    showMainContent();
-}
+        const storedAccount = getStorageItem('account');
+        if (accessToken && storedAccount) {
+            console.log('Validating existing access token...');
+            fetch(`${BACKEND_URL}/balance`, {
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'account': storedAccount
+                }
+            }).then(response => {
+                if (response.status === 401 || response.status === 404) {
+                    handleUnauthorized();
+                    showMainContent();
+                    return;
+                }
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            }).then(data => {
+                if (data) {
+                    loginSection.style.display = 'none';
+                    airdropForm.style.display = 'block';
+                    proceedBtn.disabled = false;
+                    console.log('Proceed button enabled:', proceedBtn.disabled);
+                    walletAddressDisplay.textContent = `Signed in as: ${storedAccount}`;
+                    walletAddressContainer.style.display = 'block';
+                    walletToggle.classList.remove('disconnected');
+                    walletToggle.classList.add('connected');
+                    disconnectButton.style.display = 'inline-block';
+                    populateTokenDropdown();
+                    if (checkTrustlinesBtn) {
+                        checkTrustlinesBtn.disabled = false;
+                        console.log('checkTrustlinesBtn enabled after successful session validation');
+                    }
+                    showMainContent();
+                }
             }).catch(error => {
                 console.error('Error validating token:', error);
                 handleUnauthorized();
-                showNotification('Failed to validate session. Please log in again.', true);
+                const errorMessage = error.message.includes('502') 
+                    ? 'Server is currently unavailable. Please try again later or contact support.'
+                    : 'Failed to validate session. Please log in again.';
+                showNotification(errorMessage, true);
                 showMainContent();
             });
         } else {
@@ -1931,104 +1914,105 @@ if (accessToken && storedAccount) {
         });
 
         checkTrustlinesBtn.addEventListener('click', async () => {
-console.log('Check Trustline clicked');
-const wallets = Array.from(document.getElementsByClassName('wallet-input')).map(div => {
-    const address = div.querySelector('.wallet-address').value.trim();
-    const amountRaw = div.querySelector('.wallet-amount').value.trim();
-    const amount = amountRaw === '' ? null : amountRaw;
-    return { address, amount };
-});
-
-if (wallets.length === 0 || wallets.every(wallet => !wallet.address)) {
-    console.log('Blocking: No valid wallet addresses provided');
-    showNotification('Please add at least one wallet address to check trustlines.', true);
-    return;
-}
-
-const tokenType = tokenTypeSelect.value;
-const selectedOption = tokenTypeSelect.selectedOptions[0];
-const issuer = selectedOption.dataset.issuer || '';
-const currency = selectedOption.dataset.currency || '';
-
-if (tokenType !== 'XRP' && (!issuer || !currency)) {
-    console.log('Blocking: Invalid token selection (missing issuer or currency)');
-    showNotification('Please select a valid token with issuer and currency.', true);
-    return;
-}
-
-checkTrustlinesBtn.disabled = true;
-trustlinesLoader.style.display = 'inline-block';
-
-try {
-    let query = `?token_type=${encodeURIComponent(tokenType)}`;
-    if (tokenType !== 'XRP') {
-        query += `&issuer=${encodeURIComponent(issuer)}&currency=${encodeURIComponent(currency)}`;
-    }
-
-    console.log('Checking trustlines with query:', query);
-    console.log('Request body:', wallets);
-    const response = await fetch(`${BACKEND_URL}/check-trustlines${query}`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${getStorageItem('access_token')}`,
-            'account': getStorageItem('account')
-        },
-        body: JSON.stringify(wallets)
+    console.log('Check Trustline clicked');
+    const wallets = Array.from(document.getElementsByClassName('wallet-input')).map(div => {
+        const address = div.querySelector('.wallet-address').value.trim();
+        const amountRaw = div.querySelector('.wallet-amount').value.trim();
+        const amount = amountRaw === '' ? null : amountRaw;
+        return { address, amount };
     });
 
-    if (response.status === 401) {
-        console.log('Unauthorized: Handling 401 error');
-        handleUnauthorized();
+    if (wallets.length === 0 || wallets.every(wallet => !wallet.address)) {
+        console.log('Blocking: No valid wallet addresses provided');
+        showNotification('Please add at least one wallet address to check trustlines.', true);
         return;
     }
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.log('Trustline check failed:', errorData);
-        throw new Error(`HTTP error! status: ${response.status} - ${JSON.stringify(errorData.detail || 'Unknown error')}`);
-    }
-    const data = await response.json();
-    console.log('Trustline check response:', data);
 
-    const walletInputs = document.getElementsByClassName('wallet-input');
-    for (const input of walletInputs) {
-        const address = input.querySelector('.wallet-address').value.trim();
-        const trustlineResult = data.find(w => w.address === address);
-        const statusBox = input.querySelector('.trustline-status-box');
-        if (trustlineResult) {
-            statusBox.classList.remove('valid', 'invalid');
-            statusBox.classList.add(trustlineResult.has_trustline ? 'valid' : 'invalid');
-            statusBox.style.display = 'block';
-            console.log(`Updated wallet ${address}: hasTrustline=${trustlineResult.has_trustline}`);
-        } else {
-            statusBox.classList.remove('valid', 'invalid');
-            statusBox.style.display = 'none';
-            console.log(`Wallet ${address} not found in response, hiding status box`);
+    const tokenType = tokenTypeSelect.value;
+    const selectedOption = tokenTypeSelect.selectedOptions[0];
+    const issuer = selectedOption.dataset.issuer || '';
+    const currency = selectedOption.dataset.currency || '';
+
+    if (tokenType !== 'XRP' && (!issuer || !currency)) {
+        console.log('Blocking: Invalid token selection (missing issuer or currency)');
+        showNotification('Please select a valid token with issuer and currency.', true);
+        return;
+    }
+
+    checkTrustlinesBtn.disabled = true;
+    trustlinesLoader.style.display = 'inline-block';
+
+    try {
+        let query = `?token_type=${encodeURIComponent(tokenType)}`;
+        if (tokenType !== 'XRP') {
+            query += `&issuer=${encodeURIComponent(issuer)}¤cy=${encodeURIComponent(currency)}`;
         }
+
+        console.log('Checking trustlines with query:', query);
+        console.log('Request body:', wallets);
+        const response = await fetch(`${BACKEND_URL}/check-trustlines${query}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${getStorageItem('access_token')}`,
+                'account': getStorageItem('account')
+            },
+            body: JSON.stringify(wallets)
+        });
+
+        if (response.status === 401) {
+            console.log('Unauthorized: Handling 401 error');
+            handleUnauthorized();
+            return;
+        }
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            const errorMessage = response.status === 502
+                ? 'Server is currently unavailable. Please try again later or contact support.'
+                : `HTTP error! status: ${response.status} - ${JSON.stringify(errorData.detail || 'Unknown error')}`;
+            throw new Error(errorMessage);
+        }
+        const data = await response.json();
+        console.log('Trustline check response:', data);
+
+        const walletInputs = document.getElementsByClassName('wallet-input');
+        for (const input of walletInputs) {
+            const address = input.querySelector('.wallet-address').value.trim();
+            const trustlineResult = data.find(w => w.address === address);
+            const statusBox = input.querySelector('.trustline-status-box');
+            if (trustlineResult) {
+                statusBox.classList.remove('valid', 'invalid');
+                statusBox.classList.add(trustlineResult.has_trustline ? 'valid' : 'invalid');
+                statusBox.style.display = 'block';
+                console.log(`Updated wallet ${address}: hasTrustline=${trustlineResult.has_trustline}`);
+            } else {
+                statusBox.classList.remove('valid', 'invalid');
+                statusBox.style.display = 'none';
+                console.log(`Wallet ${address} not found in response, hiding status box`);
+            }
+        }
+
+        trustlineChecked = true;
+        checkTrustlinesBtn.classList.remove('glow');
+        showNotification('Trustline check completed.');
+        console.log('Trustline check completed, trustlineChecked set to true:', trustlineChecked);
+
+        const allEligible = data.every(result => result.has_trustline);
+        if (allEligible && data.length > 0) {
+            showNotification('All wallets are eligible for airdrop (trustlines).', false);
+        } else {
+            showNotification(
+                'Some wallets may be flagged RED but still be able to receive air drops due to known XPmarket and Xmagnetic trust line issues. Please verify before sending.',
+                true
+            );
+        }
+    } catch (error) {
+        console.error('Error checking trustlines:', error);
+        showNotification(`Error checking trustlines: ${error.message}`, true);
+    } finally {
+        checkTrustlinesBtn.disabled = false;
+        trustlinesLoader.style.display = 'none';
     }
-
-    trustlineChecked = true;
-    checkTrustlinesBtn.classList.remove('glow');
-    showNotification('Trustline check completed.');
-    console.log('Trustline check completed, trustlineChecked set to true:', trustlineChecked);
-
-    const allEligible = data.every(result => result.has_trustline);
-    if (allEligible && data.length > 0) {
-        showNotification('All wallets are eligible for airdrop (trustlines).', false);
-    } else {
-        showNotification(
-            'Some wallets may be flagged RED but still be able to receive air drops due to known XPmarket and Xmagnetic trust line issues. Please verify before sending.',
-            true
-        );
-    }
-} catch (error) {
-    console.error('Error checking trustlines:', error);
-    showNotification(`Error checking trustlines: ${error.message}`, true);
-} finally {
-    checkTrustlinesBtn.disabled = false;
-    trustlinesLoader.style.display = 'none';
-}
-
 });
 
 async function fetchTransactionTxid(payloadUuid) {
