@@ -1035,13 +1035,15 @@ function addWallet(address = '', amount = '') {
     // Append to DOM first
     walletList.appendChild(walletDiv);
 
-    // Set values after appending to ensure DOM update
+    // Set values after appending and force DOM update
     addressInput.value = address;
     amountInput.value = amount;
 
-   $<
+    // Dispatch change event to ensure UI updates
+    addressInput.dispatchEvent(new Event('input'));
+    amountInput.dispatchEvent(new Event('input'));
+
     console.log('Adding wallet: address=', address, 'amount=', amount);
-    updateTotalAmount();
 }
 
 
@@ -2196,10 +2198,8 @@ try {
         addWallet(safeAddress, safeAmount);
     });
 
-    // Force DOM reflow to ensure inputs are rendered
-    walletList.offsetHeight;
-
-    console.log('Before updateTotalAmount - Checking DOM values:');
+    // Log DOM values before updating total
+    console.log('After adding wallets - Checking DOM values:');
     document.querySelectorAll('.wallet-input').forEach((input, idx) => {
         const addr = input.querySelector('.wallet-address').value;
         const amt = input.querySelector('.wallet-amount').value;
@@ -2208,6 +2208,7 @@ try {
 
     updateTotalAmount();
 
+    // Log DOM values after updating total
     console.log('After updateTotalAmount - Checking DOM values:');
     document.querySelectorAll('.wallet-input').forEach((input, idx) => {
         const addr = input.querySelector('.wallet-address').value;
