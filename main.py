@@ -490,7 +490,7 @@ async def check_balances(
                     continue
 
                 # Validate XRPL address format
-                if not wallet.address.startswith("r") || len(wallet.address) < 25 || len(wallet.address) > 35:
+                if not wallet.address.startswith("r") or len(wallet.address) < 25 or len(wallet.address) > 35:
                     logger.error(f"Invalid XRPL address format: {wallet.address}")
                     results.append({
                         "address": wallet.address,
