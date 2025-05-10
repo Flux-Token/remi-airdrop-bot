@@ -988,16 +988,17 @@ async def airdrop(
             "Authorization": f"Bearer {token_data['token']}"
         }
 
-        # Memo to be added to all transactions
+        # Memo to be added to all transactions with hex-encoded fields
         memo_data = "REMI Powered Airdrop"
-        memo_hex = memo_data.encode("utf-8").hex().upper()  # Convert to hex as required by XRPL
+        memo_type = "Airdrop"
+        memo_format = "text/plain"
         memo = {
             "Memos": [
                 {
                     "Memo": {
-                        "MemoData": memo_hex,
-                        "MemoType": "Airdrop",  # Optional: specify a type for the memo
-                        "MemoFormat": "text/plain"  # Optional: specify the format
+                        "MemoData": memo_data.encode("utf-8").hex().upper(),
+                        "MemoType": memo_type.encode("utf-8").hex().upper(),
+                        "MemoFormat": memo_format.encode("utf-8").hex().upper()
                     }
                 }
             ]
