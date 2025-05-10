@@ -448,7 +448,7 @@ async def check_balances(
                             command="account_lines",
                             account=wallet.address,
                             ledger_index="validated",
-                            peer=issuer if issuer else None,
+                            peer=issuer,
                             limit=1000
                         )
                         trustline_response = await asyncio.wait_for(client.request(trustline_request), timeout=30)
@@ -511,9 +511,10 @@ async def check_balances(
                                             logger.warning(f"Failed to decode expected currency {decoded_currency} for {wallet.address}: {str(e)}")
                                             expected_currency_decoded = decoded_currency  # Fallback to raw form
                                     for line in trustlines:
-                                        counterparty = line.get("counterparty", "")
-                                        token_currency = line.get("currency", "")
-                                        balance_str = line.get("balance", "0")
+                                        # Extract counterparty, currency, and balance from the trustline
+                                        counterparty = line.get("specification", {}).get("counterparty", "")
+                                        token_currency = line.get("specification", {}).get("currency", "")
+                                        balance_str = line.get("state", {}).get("balance", "0")
                                         logger.debug(f"XRPScan trustline for {wallet.address}: counterparty={counterparty}, currency={token_currency}, balance={balance_str}, expected_issuer={issuer}, expected_currency_decoded={expected_currency_decoded}, expected_currency_raw={decoded_currency}")
                                         if (counterparty == issuer and 
                                             (token_currency == expected_currency_decoded or 
