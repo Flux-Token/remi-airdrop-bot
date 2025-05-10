@@ -1224,6 +1224,57 @@ color: #888;
     document.addEventListener('DOMContentLoaded', () => {
         console.log('DOM loaded, initializing...');
         try {
+
+            // DOM Elements
+        const preloader = document.getElementById('preloader');
+        const mainContent = document.querySelector('.main-content');
+        const footerContainer = document.getElementById('footer-container');
+        const loginSection = document.querySelector('.form-section.login');
+        const airdropForm = document.getElementById('airdrop-form');
+        const scrollAnchor = document.getElementById('scroll-anchor');
+        const csvUploadInput = document.getElementById('csv-upload-input');
+        const proceedBtn = document.getElementById('proceed-btn');
+        const checkTrustlinesBtn = document.getElementById('check-trustlines-btn');
+        const validateWalletsBtn = document.getElementById('validate-wallets-btn');
+        const trustlinesLoader = document.getElementById('trustlines-loader');
+        const validateLoader = document.getElementById('validate-loader');
+        const checkBalanceBtn = document.getElementById('check-balance-btn');
+        const balanceLoader = document.getElementById('balance-loader'); // Add this line back
+        console.log('Initialized balanceLoader:', balanceLoader); // Add debugging log
+        const tokenTypeSelect = document.getElementById('token-type');
+        const totalAmountInput = document.getElementById('total-amount');
+        const walletList = document.getElementById('wallet-list');
+        const transactionSigning = document.getElementById('transaction-signing');
+        const transactionQr = document.querySelector('.transaction-qr');
+        const transactionQrLink = document.querySelector('.transaction-qr-link');
+        const transactionTitle = document.getElementById('transaction-title');
+        const resultsDiv = document.getElementById('results');
+        const proceedLoader = document.getElementById('proceed-loader');
+        const loginBtn = document.getElementById('login-btn');
+        const loginLoader = document.getElementById('login-loader');
+        const qrCodeImg = document.getElementById('qr-code');
+        const qrLink = document.getElementById('qr-link');
+        const notification = document.getElementById('notification');
+        const notificationOverlay = document.getElementById('notification-overlay');
+        const feeConfirmation = document.getElementById('fee-confirmation');
+        const feeMessage = document.getElementById('fee-message');
+        const feeAgreeBtn = document.getElementById('fee-agree-btn');
+        const feeDisagreeBtn = document.getElementById('fee-disagree-btn');
+        const walletAddressDisplay = document.getElementById('wallet-address-display');
+        const walletAddressContainer = document.getElementById('wallet-address-container');
+        const walletToggle = document.getElementById('wallet-toggle');
+        const disconnectButton = document.getElementById('disconnect-button');
+        const csvHeaderToggle = document.getElementById('csv-header-toggle');
+
+        // Add balanceLoader to the critical elements check
+        if (!proceedBtn || !csvUploadInput || !airdropForm || !walletList || !tokenTypeSelect || !balanceLoader) {
+            console.error('Critical DOM elements missing:', {
+                proceedBtn, csvUploadInput, airdropForm, walletList, tokenTypeSelect, balanceLoader
+            });
+            showNotification('Initialization error: Required elements not found.', true);
+            return;
+        }
+
             if (!proceedBtn || !csvUploadInput || !airdropForm || !walletList || !tokenTypeSelect) {
                 console.error('Critical DOM elements missing:', {
                     proceedBtn, csvUploadInput, airdropForm, walletList, tokenTypeSelect
@@ -1783,133 +1834,138 @@ color: #888;
     }
 
     checkBalanceBtn.addEventListener('click', async () => {
-    console.log('Check Balance clicked, accessToken:', getStorageItem('access_token'));
-    checkBalanceBtn.disabled = true;
-    
-    // Reinitialize balanceLoader to ensure it exists
-    const balanceLoader = document.getElementById('balance-loader');
-    if (!balanceLoader) {
-        console.error('balanceLoader element not found');
-        showNotification('Error: Balance loader element not found. Please try again.', true);
-        checkBalanceBtn.disabled = false;
-        return;
-    }
-    
-    balanceLoader.style.display = 'inline-block';
-    try {
-        // Collect wallet addresses from the form
-        const wallets = Array.from(document.getElementsByClassName('wallet-input')).map(div => {
-            const address = div.querySelector('.wallet-address').value.trim();
-            const amountInput = div.querySelector('.wallet-amount').value.trim();
-            if (!address) {
-                throw new Error('Wallet address cannot be empty');
-            }
-            if (!address.startsWith('r') || address.length < 25 || address.length > 35) {
-                throw new Error(`Invalid XRPL address format: ${address}. Must start with 'r' and be 25-35 characters.`);
-            }
-            const amount = amountInput ? parseFloat(amountInput) : 0;
-            if (isNaN(amount) || amount < 0) {
-                throw new Error(`Invalid amount for address ${address}: ${amountInput}`);
-            }
-            return { address, amount };
-        });
+       console.log('Check Balance clicked, accessToken:', getStorageItem('access_token'));
+       checkBalanceBtn.disabled = true;
+       
+       // Reinitialize balanceLoader to ensure it exists
+       const balanceLoader = document.getElementById('balance-loader');
+       console.log('Initialized balanceLoader on click:', balanceLoader); // Add debugging log
+       if (!balanceLoader) {
+           console.error('balanceLoader element not found');
+           showNotification('Error: Balance loader element not found. Please try again.', true);
+           checkBalanceBtn.disabled = false;
+           return;
+       }
+       
+       balanceLoader.style.display = 'inline-block';
+       try {
+           // Collect wallet addresses from the form
+           const wallets = Array.from(document.getElementsByClassName('wallet-input')).map(div => {
+               const address = div.querySelector('.wallet-address').value.trim();
+               const amountInput = div.querySelector('.wallet-amount').value.trim();
+               if (!address) {
+                   throw new Error('Wallet address cannot be empty');
+               }
+               // Basic format check to catch obvious errors before sending to backend
+               if (!address.startsWith('r') || address.length < 25 || address.length > 35) {
+                   throw new Error(`Invalid XRPL address format: ${address}. Must start with 'r' and be 25-35 characters.`);
+               }
+               const amount = amountInput ? parseFloat(amountInput) : 0;
+               if (isNaN(amount) || amount < 0) {
+                   throw new Error(`Invalid amount for address ${address}: ${amountInput}`);
+               }
+               return { address, amount };
+           });
 
-        if (wallets.length === 0) {
-            throw new Error('At least one wallet is required to check balances');
-        }
+           if (wallets.length === 0) {
+               throw new Error('At least one wallet is required to check balances');
+           }
 
-        const tokenType = tokenTypeSelect.value;
-        const selectedOption = tokenTypeSelect.selectedOptions[0];
-        const issuer = selectedOption.dataset.issuer || '';
-        const currency = selectedOption.dataset.currency || '';
+           const tokenType = tokenTypeSelect.value;
+           const selectedOption = tokenTypeSelect.selectedOptions[0];
+           const issuer = selectedOption.dataset.issuer || '';
+           const currency = selectedOption.dataset.currency || '';
 
-        let query = `?token_type=${encodeURIComponent(tokenType)}`;
-        if (tokenType !== 'XRP') {
-            if (!issuer || !currency) {
-                throw new Error('Issuer or currency missing for selected token');
-            }
-            if (!issuer.startsWith('r') || issuer.length < 25 || issuer.length > 35) {
-                throw new Error('Invalid issuer address for selected token');
-            }
-            query += `&issuer=${encodeURIComponent(issuer)}¤cy=${encodeURIComponent(currency)}`;
-        }
+           let query = `?token_type=${encodeURIComponent(tokenType)}`;
+           if (tokenType !== 'XRP') {
+               if (!issuer || !currency) {
+                   throw new Error('Issuer or currency missing for selected token');
+               }
+               if (!issuer.startsWith('r') || issuer.length < 25 || issuer.length > 35) {
+                   throw new Error('Invalid issuer address for selected token');
+               }
+               query += `&issuer=${encodeURIComponent(issuer)}¤cy=${encodeURIComponent(currency)}`;
+           }
 
-        console.log('Fetching balances for wallets:', wallets, 'Query:', query);
-        const response = await fetch(`${BACKEND_URL}/check-balances${query}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${getStorageItem('access_token')}`,
-                'account': getStorageItem('account')
-            },
-            body: JSON.stringify(wallets)
-        });
+           console.log('Fetching balances for wallets:', wallets, 'Query:', query);
+           const response = await fetch(`${BACKEND_URL}/check-balances${query}`, {
+               method: 'POST',
+               headers: {
+                   'Content-Type': 'application/json',
+                   'Authorization': `Bearer ${getStorageItem('access_token')}`,
+                   'account': getStorageItem('account')
+               },
+               body: JSON.stringify(wallets)
+           });
 
-        if (response.status === 401) {
-            handleUnauthorized();
-            return;
-        }
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(`HTTP error! status: ${response.status} - ${errorData.detail || 'Unknown error'}`);
-        }
+           if (response.status === 401) {
+               handleUnauthorized();
+               return;
+           }
+           if (!response.ok) {
+               const errorData = await response.json().catch(() => ({}));
+               throw new Error(`HTTP error! status: ${response.status} - ${errorData.detail || 'Unknown error'}`);
+           }
 
-        const data = await response.json();
-        console.log('Balance check response:', data);
+           const data = await response.json();
+           console.log('Balance check response:', data);
 
-        if (!Array.isArray(data)) {
-            throw new Error('Invalid balance check response from server');
-        }
+           if (!Array.isArray(data)) {
+               throw new Error('Invalid balance check response from server');
+           }
 
-        let displayCurrency = tokenType === 'XRP' ? 'XRP' : currency;
-        if (tokenType !== 'XRP' && currency && currency.length === 40 && /^[0-9A-Fa-f]+$/.test(currency)) {
-            displayCurrency = decodeHexCurrency(currency);
-        }
+           // Decode the currency for display
+           let displayCurrency = tokenType === 'XRP' ? 'XRP' : currency;
+           if (tokenType !== 'XRP' && currency && currency.length === 40 && /^[0-9A-Fa-f]+$/.test(currency)) {
+               displayCurrency = decodeHexCurrency(currency);
+           }
 
-        const resultsHtml = data.map(wallet => {
-            let balanceText = '';
-            if (wallet.has_balance) {
-                balanceText = `${wallet.balance} <span class="balance-currency">${displayCurrency}</span>`;
-            } else {
-                balanceText = `0 <span class="balance-currency">${displayCurrency}</span>`;
-            }
-            return `
-                <p>
-                    <span class="wallet-address" title="${wallet.address}">${wallet.address}</span> - 
-                    <span class="balance-amount">${balanceText}</span>
-                    ${wallet.error ? `<span class="error-message">(${wallet.error})</span>` : ''}
-                </p>
-            `;
-        }).join('');
+           // Process and display the balance results
+           const resultsHtml = data.map(wallet => {
+               let balanceText = '';
+               if (wallet.has_balance) {
+                   balanceText = `${wallet.balance} <span class="balance-currency">${displayCurrency}</span>`;
+               } else {
+                   balanceText = `0 <span class="balance-currency">${displayCurrency}</span>`;
+               }
+               return `
+                   <p>
+                       <span class="wallet-address" title="${wallet.address}">${wallet.address}</span> - 
+                       <span class="balance-amount">${balanceText}</span>
+                       ${wallet.error ? `<span class="error-message">(${wallet.error})</span>` : ''}
+                   </p>
+               `;
+           }).join('');
 
-        resultsDiv.innerHTML = `
-            <h2>Wallet Balances</h2>
-            <div class="balance-results">
-                ${resultsHtml}
-            </div>
-            <button id="back-button" class="button">Back to Airdrop Form</button>
-        `;
-        resultsDiv.style.display = 'block';
-        showNotification('Balance check completed.');
+           resultsDiv.innerHTML = `
+               <h2>Wallet Balances</h2>
+               <div class="balance-results">
+                   ${resultsHtml}
+               </div>
+               <button id="back-button" class="button">Back to Airdrop Form</button>
+           `;
+           resultsDiv.style.display = 'block';
+           showNotification('Balance check completed.');
 
-        const backButton = document.getElementById('back-button');
-        backButton.addEventListener('click', () => {
-            resultsDiv.style.display = 'none';
-            airdropForm.style.display = 'block';
-        });
+           // Add event listener to the back button
+           const backButton = document.getElementById('back-button');
+           backButton.addEventListener('click', () => {
+               resultsDiv.style.display = 'none';
+               airdropForm.style.display = 'block';
+           });
 
-    } catch (error) {
-        console.error('Error checking balances:', error);
-        showNotification(
-            `Error checking balances: ${error.message}. Ensure all wallets are valid and funded on the XRP Ledger Mainnet. ` +
-            `Acquire XRP from an exchange like Coinbase or Bitstamp.`,
-            true
-        );
-    } finally {
-        checkBalanceBtn.disabled = false;
-        balanceLoader.style.display = 'none';
-    }
-});
+       } catch (error) {
+           console.error('Error checking balances:', error);
+           showNotification(
+               `Error checking balances: ${error.message}. Ensure all wallets are valid and funded on the XRP Ledger Mainnet. ` +
+               `Acquire XRP from an exchange like Coinbase or Bitstamp.`,
+               true
+           );
+       } finally {
+           checkBalanceBtn.disabled = false;
+           balanceLoader.style.display = 'none';
+       }
+   });
 
     validateWalletsBtn.addEventListener('click', async () => {
         console.log('Validate Wallets clicked, accessToken:', getStorageItem('access_token'));
