@@ -988,6 +988,21 @@ async def airdrop(
             "Authorization": f"Bearer {token_data['token']}"
         }
 
+        # Memo to be added to all transactions
+        memo_data = "REMI Powered Airdrop"
+        memo_hex = memo_data.encode("utf-8").hex().upper()  # Convert to hex as required by XRPL
+        memo = {
+            "Memos": [
+                {
+                    "Memo": {
+                        "MemoData": memo_hex,
+                        "MemoType": "Airdrop",  # Optional: specify a type for the memo
+                        "MemoFormat": "text/plain"  # Optional: specify the format
+                    }
+                }
+            ]
+        }
+
         # Check trustlines and balances for all wallets
         trustline_results = []
         async with httpx.AsyncClient() as http_client:
@@ -1131,7 +1146,7 @@ async def airdrop(
                         "error": str(e)
                     })
 
-        # Create fee transaction
+        # Create fee transaction with memo
         if service_fee > 0:
             fee_amount = xrp_to_drops(service_fee)
             logger.info(f"Creating fee transaction: {service_fee} XRP ({fee_amount} drops) to {FEE_WALLET_ADDRESS}")
@@ -1142,9 +1157,10 @@ async def airdrop(
                 "Amount": str(fee_amount),
                 "Fee": str(fee),
                 "Sequence": int(sequence_int),
-                "LastLedgerSequence": int(last_ledger_sequence)
+                "LastLedgerSequence": int(last_ledger_sequence),
+                **memo  # Add the memo to the fee transaction
             }
-            logger.info(f"Fee transaction: {fee_tx}")
+            logger.info(f"Fee transaction with memo: {fee_tx}")
             payload = {"txjson": fee_tx}
             response = requests.post(
                 "https://xumm.app/api/v1/platform/payload",
@@ -1168,7 +1184,7 @@ async def airdrop(
             total_network_fee += float(fee) / 1_000_000
             sequence_int += 1
 
-        # Create airdrop transactions
+        # Create airdrop transactions with memo
         for i, (wallet, trustline_result) in enumerate(zip(request.wallets, trustline_results)):
             wallet.address = wallet.address.strip()
             if float(wallet.amount or 0) <= 0:
@@ -1200,7 +1216,7 @@ async def airdrop(
                     logger.info(f"Wallet {wallet.address} has balance but no trustline, proceeding with transaction")
 
             if request.token_type != "XRP":
-                # Create token payment transaction
+                # Create token payment transaction with memo
                 payment_tx = {
                     "TransactionType": "Payment",
                     "Account": account,
@@ -1212,9 +1228,10 @@ async def airdrop(
                     },
                     "Fee": str(fee),
                     "Sequence": int(sequence_int),
-                    "LastLedgerSequence": int(last_ledger_sequence)
+                    "LastLedgerSequence": int(last_ledger_sequence),
+                    **memo  # Add the memo to the token payment transaction
                 }
-                logger.info(f"Token payment transaction: {payment_tx}")
+                logger.info(f"Token payment transaction with memo: {payment_tx}")
                 payload = {"txjson": payment_tx}
                 response = requests.post(
                     "https://xumm.app/api/v1/platform/payload",
@@ -1248,7 +1265,7 @@ async def airdrop(
                 total_network_fee += float(fee) / 1_000_000
                 sequence_int += 1
             else:
-                # XRP payment
+                # XRP payment with memo
                 amount = xrp_to_drops(float(wallet.amount or 0))
                 logger.info(f"XRP payment amount: {amount} drops")
                 payment_tx = {
@@ -1258,9 +1275,10 @@ async def airdrop(
                     "Amount": str(amount),
                     "Fee": str(fee),
                     "Sequence": int(sequence_int),
-                    "LastLedgerSequence": int(last_ledger_sequence)
+                    "LastLedgerSequence": int(last_ledger_sequence),
+                    **memo  # Add the memo to the XRP payment transaction
                 }
-                logger.info(f"Payment transaction (XRP): {payment_tx}")
+                logger.info(f"Payment transaction (XRP) with memo: {payment_tx}")
                 payload = {"txjson": payment_tx}
                 logger.info(
                     f"Sending Xumm payload for XRP payment "
