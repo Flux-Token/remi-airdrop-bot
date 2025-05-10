@@ -1804,7 +1804,6 @@ color: #888;
             if (!address) {
                 throw new Error('Wallet address cannot be empty');
             }
-            // Basic format check to catch obvious errors before sending to backend
             if (!address.startsWith('r') || address.length < 25 || address.length > 35) {
                 throw new Error(`Invalid XRPL address format: ${address}. Must start with 'r' and be 25-35 characters.`);
             }
@@ -1862,19 +1861,17 @@ color: #888;
             throw new Error('Invalid balance check response from server');
         }
 
-        // Decode the currency for display
         let displayCurrency = tokenType === 'XRP' ? 'XRP' : currency;
         if (tokenType !== 'XRP' && currency && currency.length === 40 && /^[0-9A-Fa-f]+$/.test(currency)) {
             displayCurrency = decodeHexCurrency(currency);
         }
 
-        // Process and display the balance results
         const resultsHtml = data.map(wallet => {
             let balanceText = '';
             if (wallet.has_balance) {
                 balanceText = `${wallet.balance} <span class="balance-currency">${displayCurrency}</span>`;
             } else {
-                balanceText = '0 <span class="balance-currency">${displayCurrency}</span>';
+                balanceText = `0 <span class="balance-currency">${displayCurrency}</span>`;
             }
             return `
                 <p>
@@ -1895,7 +1892,6 @@ color: #888;
         resultsDiv.style.display = 'block';
         showNotification('Balance check completed.');
 
-        // Add event listener to the back button
         const backButton = document.getElementById('back-button');
         backButton.addEventListener('click', () => {
             resultsDiv.style.display = 'none';
