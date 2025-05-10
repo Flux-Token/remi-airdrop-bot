@@ -749,6 +749,11 @@ margin-right: 8px;
         background: linear-gradient(90deg, #dc3545, #ff6f61);
     }
 
+    #proceed-btn.glow {
+        animation: glow 1.5s ease-in-out infinite alternate;
+        box-shadow: 0 0 15px rgba(255, 111, 97, 0.8), 0 0 25px rgba(255, 0, 255, 0.6);
+    }
+
     .fee-confirmation {
         position: fixed;
         top: 50%;
@@ -1055,6 +1060,7 @@ color: #888;
     const BACKEND_URL = 'https://remi-airdrop-bot.onrender.com';
     let notificationTimeout = null;
     let trustlineChecked = false;
+    let walletsValidated = false; // New variable to track wallet validation
     let storage = {};
     let tokenData = [];
     let transactionResults = [];
@@ -1100,12 +1106,22 @@ color: #888;
     const disconnectButton = document.getElementById('disconnect-button');
     const csvHeaderToggle = document.getElementById('csv-header-toggle');
 
+    // Function to update the Proceed button state
+    function updateProceedButtonState() {
+        if (walletsValidated && trustlineChecked) {
+            proceedBtn.disabled = false;
+            proceedBtn.classList.add('glow');
+            console.log('Proceed button enabled: Both wallets validated and trustlines checked.');
+        } else {
+            proceedBtn.disabled = true;
+            proceedBtn.classList.remove('glow');
+            console.log('Proceed button disabled: Awaiting wallet validation or trustline check.');
+        }
+    }
+
     function showMainContent() {
-        // Show the preloader for 6 seconds
         setTimeout(() => {
-            // Fade out the preloader
             preloader.style.opacity = '0';
-            // After the fade-out transition (0.5s), hide the preloader and show the main UI
             setTimeout(() => {
                 preloader.style.display = 'none';
                 mainContent.style.display = 'block';
@@ -1123,29 +1139,25 @@ color: #888;
                     console.log('No user authentication, showing login section');
                 }
                 scrollAnchor.scrollIntoView({ behavior: 'instant', block: 'start' });
-            }, 500); // Match the CSS transition duration
-        }, 6000); // 6-second delay
+            }, 500);
+        }, 6000);
     }
 
     function addWallet(address = '', amount = '') {
         const walletDiv = document.createElement('div');
         walletDiv.className = 'wallet-input';
 
-        // Create wallet address input
         const addressInput = document.createElement('input');
         addressInput.type = 'text';
         addressInput.className = 'wallet-address';
         addressInput.placeholder = 'Wallet Address';
 
-        // Create trustline status box
         const trustlineStatusBox = document.createElement('div');
         trustlineStatusBox.className = 'trustline-status-box';
 
-        // Create amount-remove group
         const amountRemoveGroup = document.createElement('div');
         amountRemoveGroup.className = 'amount-remove-group';
 
-        // Create wallet amount input
         const amountInput = document.createElement('input');
         amountInput.type = 'number';
         amountInput.className = 'wallet-amount';
@@ -1153,38 +1165,37 @@ color: #888;
         amountInput.step = '0.000001';
         amountInput.min = '0';
 
-        // Create remove button
         const removeButton = document.createElement('button');
         removeButton.textContent = 'Remove';
         removeButton.onclick = function () { removeWallet(this); };
 
-        // Assemble the amount-remove group
         amountRemoveGroup.appendChild(amountInput);
         amountRemoveGroup.appendChild(removeButton);
 
-        // Assemble the wallet input div
         walletDiv.appendChild(addressInput);
         walletDiv.appendChild(trustlineStatusBox);
         walletDiv.appendChild(amountRemoveGroup);
 
-        // Append to DOM
         walletList.appendChild(walletDiv);
 
-        // Set values using both value property and attribute
         addressInput.value = address;
         amountInput.value = amount;
         addressInput.setAttribute('value', address);
         amountInput.setAttribute('value', amount);
 
-        // Debug: Log values after setting
         console.log('After setting values: addressInput=', addressInput.value, 'amountInput=', amountInput.value);
         console.log('DOM attributes: addressInput.value=', addressInput.getAttribute('value'), 'amountInput.value=', amountInput.getAttribute('value'));
+
+        // Reset validation and trustline states since the wallet list has changed
+        walletsValidated = false;
+        trustlineChecked = false;
+        checkTrustlinesBtn.classList.add('glow');
+        updateProceedButtonState();
     }
 
     document.addEventListener('DOMContentLoaded', () => {
         console.log('DOM loaded, initializing...');
         try {
-            // Check for missing critical elements
             if (!proceedBtn || !csvUploadInput || !airdropForm || !walletList || !tokenTypeSelect) {
                 console.error('Critical DOM elements missing:', {
                     proceedBtn, csvUploadInput, airdropForm, walletList, tokenTypeSelect
@@ -1193,7 +1204,6 @@ color: #888;
                 return;
             }
 
-            // Initialize audio
             const audio = document.getElementById('loader-audio');
             if (audio) {
                 audio.volume = 0.5;
@@ -1211,7 +1221,6 @@ color: #888;
                 });
             }
 
-            // Set up CSV upload handler
             csvUploadInput.addEventListener('change', (e) => {
                 const file = e.target.files[0];
                 if (!file) {
@@ -1228,7 +1237,6 @@ color: #888;
 
                     rows.forEach((row, index) => {
                         const cols = row.split(',').map(col => col.trim());
-                        // Skip header rows or rows with insufficient columns
                         if (cols.length < 2 || cols[0].startsWith('(')) {
                             console.log(`Skipping row ${index}: ${row}`);
                             return;
@@ -1238,21 +1246,18 @@ color: #888;
                         const amount = cols[1];
                         let numericAmount = parseFloat(amount);
 
-                        // Validate address format (basic check)
                         if (!address || !address.startsWith('r') || address.length < 25 || address.length > 35) {
                             console.log(`Invalid address at row ${index}: ${address}`);
                             hasInvalid = true;
                             return;
                         }
 
-                        // Validate amount
                         if (isNaN(numericAmount) || numericAmount <= 0) {
                             console.log(`Invalid amount at row ${index}: ${amount}`);
                             hasInvalid = true;
                             return;
                         }
 
-                        // Store amount as a string to match addWallet's expectation
                         wallets.push({ address, amount: numericAmount.toString() });
                     });
 
@@ -1273,7 +1278,6 @@ color: #888;
                         addWallet(safeAddress, safeAmount);
                     });
 
-                    // Delay updateTotalAmount to ensure DOM rendering
                     requestAnimationFrame(() => {
                         console.log('After adding wallets - Checking DOM values:');
                         document.querySelectorAll('.wallet-input').forEach((input, idx) => {
@@ -1294,7 +1298,6 @@ color: #888;
                         showNotification(`Successfully loaded ${wallets.length} wallets from CSV.`);
                     });
 
-                    // Reset the input value to allow re-uploading the same file
                     csvUploadInput.value = '';
                 };
 
@@ -1305,8 +1308,16 @@ color: #888;
                 reader.readAsText(file);
             });
 
-            // Set up Proceed to Signing button
+            // Add listener to prevent proceeding without validation
             proceedBtn.addEventListener('click', () => {
+                if (!walletsValidated) {
+                    showNotification('Please validate wallets before proceeding.', true);
+                    return;
+                }
+                if (!trustlineChecked) {
+                    showNotification('Please check trustlines before proceeding.', true);
+                    return;
+                }
                 console.log('Proceed to Signing button clicked');
                 const wallets = Array.from(document.getElementsByClassName('wallet-input')).map(div => {
                     const address = div.querySelector('.wallet-address').value.trim();
@@ -1317,10 +1328,13 @@ color: #888;
                 proceedWithAirdrop(wallets, tokenTypeSelect);
             });
 
-            // Other button listeners
             if (checkTrustlinesBtn) {
                 console.log('checkTrustlinesBtn found, will enable after successful login');
-                checkTrustlinesBtn.disabled = true; // Disabled initially
+                checkTrustlinesBtn.disabled = true;
+            }
+            if (validateWalletsBtn) {
+                console.log('validateWalletsBtn found, will enable after successful login');
+                validateWalletsBtn.disabled = true;
             }
             if (csvHeaderToggle) {
                 csvHeaderToggle.addEventListener('click', () => {
@@ -1330,7 +1344,6 @@ color: #888;
                 });
             }
 
-            // Initialize session and show main content
             const accessToken = getStorageItem('access_token');
             const storedAccount = getStorageItem('account');
             if (accessToken && storedAccount) {
@@ -1354,9 +1367,9 @@ color: #888;
                     if (data) {
                         loginSection.style.display = 'none';
                         airdropForm.style.display = 'block';
-                        proceedBtn.disabled = false;
-                        console.log('Proceed button enabled:', proceedBtn.disabled);
-                        walletAddressContainer.style.display = 'none'; // Hide the wallet address container
+                        proceedBtn.disabled = true; // Initially disabled until prerequisites are met
+                        console.log('Proceed button initial state:', proceedBtn.disabled);
+                        walletAddressContainer.style.display = 'none';
                         walletToggle.classList.remove('disconnected');
                         walletToggle.classList.add('connected');
                         disconnectButton.style.display = 'inline-block';
@@ -1364,6 +1377,10 @@ color: #888;
                         if (checkTrustlinesBtn) {
                             checkTrustlinesBtn.disabled = false;
                             console.log('checkTrustlinesBtn enabled after successful session validation');
+                        }
+                        if (validateWalletsBtn) {
+                            validateWalletsBtn.disabled = false;
+                            console.log('validateWalletsBtn enabled after successful session validation');
                         }
                         showMainContent();
                     }
@@ -1481,6 +1498,7 @@ color: #888;
     tokenTypeSelect.addEventListener('change', () => {
         console.log('Token type changed, clearing trustline status and amounts');
         trustlineChecked = false;
+        walletsValidated = false; // Reset validation since token type changed
         checkTrustlinesBtn.classList.add('glow');
         clearTrustlineStatus();
         totalAmountInput.value = '';
@@ -1490,6 +1508,7 @@ color: #888;
             amountInput.value = '';
         }
         updateTotalAmount();
+        updateProceedButtonState();
     });
 
     walletToggle.addEventListener('click', () => {
@@ -1610,8 +1629,8 @@ color: #888;
                     checkBalanceBtn.disabled = false;
                     validateWalletsBtn.disabled = false;
                     checkTrustlinesBtn.disabled = false;
-                    proceedBtn.disabled = false;
-                    walletAddressContainer.style.display = 'none'; // Hide the wallet address container
+                    proceedBtn.disabled = true; // Ensure disabled until prerequisites met
+                    walletAddressContainer.style.display = 'none';
                     walletToggle.classList.remove('disconnected');
                     walletToggle.classList.add('connected');
                     disconnectButton.style.display = 'inline-block';
@@ -1691,6 +1710,10 @@ color: #888;
     window.removeWallet = function(button) {
         button.parentElement.parentElement.remove();
         updateTotalAmount();
+        walletsValidated = false;
+        trustlineChecked = false;
+        checkTrustlinesBtn.classList.add('glow');
+        updateProceedButtonState();
     };
 
     function updateTotalAmount() {
@@ -1751,6 +1774,9 @@ color: #888;
         disconnectButton.style.display = 'none';
         tokenTypeSelect.innerHTML = '<option value="XRP">XRP</option>';
         tokenData = [];
+        walletsValidated = false;
+        trustlineChecked = false;
+        updateProceedButtonState();
         showNotification('Session expired. Please log in again.', true);
     }
 
@@ -1764,7 +1790,6 @@ color: #888;
             const issuer = selectedOption.dataset.issuer || '';
             const currency = selectedOption.dataset.currency || '';
 
-            // Use URLSearchParams to construct the query string
             let query = '';
             if (tokenType !== 'XRP') {
                 if (!issuer || !currency) {
@@ -1805,7 +1830,6 @@ color: #888;
             const data = await response.json();
             console.log('Balance response:', data);
 
-            // Decode the currency for display
             let displayCurrency = tokenType === 'XRP' ? 'XRP' : data.currency;
             if (tokenType !== 'XRP' && data.currency && data.currency.length === 40 && /^[0-9A-Fa-f]+$/.test(data.currency)) {
                 displayCurrency = decodeHexCurrency(data.currency);
@@ -1856,7 +1880,6 @@ color: #888;
                 if (!address) {
                     throw new Error('Wallet address cannot be empty');
                 }
-                // Basic format check to catch obvious errors before sending to backend
                 if (!address.startsWith('r') || address.length < 25 || address.length > 35) {
                     throw new Error(`Invalid XRPL address format: ${address}. Must start with 'r' and be 25-35 characters.`);
                 }
@@ -1905,17 +1928,16 @@ color: #888;
                 throw new Error('Invalid validation response from server');
             }
 
-            // Process validation results
             let allValid = true;
             const resultsHtml = data.map(wallet => {
                 let statusText = '';
                 let statusColor = '';
                 if (wallet.status === 'Valid') {
                     statusText = 'Valid XRPL Account';
-                    statusColor = '#28a745'; // Green for valid
+                    statusColor = '#28a745';
                 } else {
                     allValid = false;
-                    statusColor = '#dc3545'; // Red for invalid
+                    statusColor = '#dc3545';
                     if (wallet.error && wallet.error.includes('actNotFound')) {
                         statusText = 'Account does not exist on XRPL Mainnet';
                     } else if (wallet.error && (wallet.error.includes('actMalformed') || wallet.error.includes('accountMalformed'))) {
@@ -1944,7 +1966,13 @@ color: #888;
                 <button id="back-button" class="button">Back to Airdrop Form</button>
             `;
             resultsDiv.style.display = 'block';
-            showNotification(allValid ? 'All wallets validated successfully!' : 'Some wallets failed validation. Please review the results.', !allValid);
+            walletsValidated = allValid;
+            if (allValid) {
+                showNotification('All wallets validated successfully!');
+            } else {
+                showNotification('Some wallets failed validation. Please correct them and validate again.', true);
+            }
+            updateProceedButtonState();
         } catch (error) {
             console.error('Error validating wallets:', error);
             showNotification(
@@ -1952,6 +1980,8 @@ color: #888;
                 `Acquire XRP from an exchange like Coinbase or Bitstamp.`,
                 true
             );
+            walletsValidated = false;
+            updateProceedButtonState();
         } finally {
             validateWalletsBtn.disabled = false;
             validateLoader.style.display = 'none';
@@ -2037,23 +2067,26 @@ color: #888;
                 }
             }
 
-            trustlineChecked = true;
+            const allEligible = data.every(result => result.has_trustline);
+            trustlineChecked = allEligible;
             checkTrustlinesBtn.classList.remove('glow');
             showNotification('Trustline check completed.');
-            console.log('Trustline check completed, trustlineChecked set to true:', trustlineChecked);
+            console.log('Trustline check completed, trustlineChecked set to:', trustlineChecked);
 
-            const allEligible = data.every(result => result.has_trustline);
             if (allEligible && data.length > 0) {
                 showNotification('All wallets are eligible for airdrop (trustlines).', false);
             } else {
                 showNotification(
-                    'Warning: Some wallets flagged RED. Verify wallet address and trust line.',
+                    'Some wallets flagged RED. Please correct them and check trustlines again.',
                     true
                 );
             }
+            updateProceedButtonState();
         } catch (error) {
             console.error('Error checking trustlines:', error);
             showNotification(`Error checking trustlines: ${error.message}`, true);
+            trustlineChecked = false;
+            updateProceedButtonState();
         } finally {
             checkTrustlinesBtn.disabled = false;
             trustlinesLoader.style.display = 'none';
@@ -2087,10 +2120,10 @@ color: #888;
         for (const input of walletInputs) {
             const statusBox = input.querySelector('.trustline-status-box');
             if (statusBox && statusBox.classList.contains('invalid')) {
-                return true; // Found at least one red-flagged wallet
+                return true;
             }
         }
-        return false; // No red-flagged wallets
+        return false;
     }
 
     async function proceedWithAirdrop(wallets, tokenTypeSelect) {
@@ -2104,7 +2137,6 @@ color: #888;
 
         const feeBackBtn = document.getElementById('fee-back-btn');
 
-        // Handle Back button click to return to airdrop form
         feeBackBtn.addEventListener('click', () => {
             console.log('Fee Back button clicked, returning to airdrop form');
             transactionSigning.style.display = 'none';
@@ -2115,28 +2147,26 @@ color: #888;
             transactionQrLink.style.display = 'none';
             feeBackBtn.style.display = 'none';
             airdropForm.style.display = 'block';
-            proceedBtn.disabled = false;
+            proceedBtn.disabled = true; // Reset to disabled until prerequisites met again
+            updateProceedButtonState();
             proceedLoader.style.display = 'none';
             showNotification('Returned to airdrop form. You can now edit wallets and amounts.');
         });
 
         try {
-            // Validate wallet data
             if (!wallets || wallets.length === 0 || wallets.every(w => !w.address || w.amount <= 0)) {
                 throw new Error('No valid wallets or amounts provided');
             }
             console.log('Valid wallets:', wallets);
 
-            // Calculate REMI Service Fee: 0.05 XRP per wallet, capped at 5 XRP
             const walletCount = wallets.length;
-            const feePerWallet = 0.05; // XRP
-            const maxFee = 5; // XRP
+            const feePerWallet = 0.05;
+            const maxFee = 5;
             let serviceFee = walletCount * feePerWallet;
-            serviceFee = Math.min(serviceFee, maxFee); // Cap at 5 XRP
-            serviceFee = serviceFee.toFixed(6); // Ensure proper decimal places
+            serviceFee = Math.min(serviceFee, maxFee);
+            serviceFee = serviceFee.toFixed(6);
             console.log(`Calculated REMI Service Fee: ${serviceFee} XRP for ${walletCount} wallets`);
 
-            // Check for red-flagged wallets and show warning if necessary
             const redFlagWarning = document.getElementById('red-flag-warning');
             const redFlagAgreeBtn = document.getElementById('red-flag-agree-btn');
             const redFlagDisagreeBtn = document.getElementById('red-flag-disagree-btn');
@@ -2170,14 +2200,14 @@ color: #888;
                 if (!proceedToFeeConfirmation) {
                     console.log('User cancelled red-flagged wallet warning, returning to airdrop form');
                     airdropForm.style.display = 'block';
-                    proceedBtn.disabled = false;
+                    proceedBtn.disabled = true;
+                    updateProceedButtonState();
                     proceedLoader.style.display = 'none';
                     showNotification('Airdrop cancelled due to red-flagged wallets. Verify addresses and trust lines.');
                     return;
                 }
             }
 
-            // Show fee confirmation and wait for user response if red-flagged warning was passed
             if (proceedToFeeConfirmation) {
                 const userAgreed = await new Promise((resolve) => {
                     feeMessage.textContent = `REMI Service Fee: ${serviceFee} XRP for ${walletCount} wallet${walletCount === 1 ? '' : 's'}. Please double-check your wallets and amounts before proceeding.`;
@@ -2207,7 +2237,8 @@ color: #888;
                 if (!userAgreed) {
                     console.log('User cancelled fee confirmation, returning to airdrop form');
                     airdropForm.style.display = 'block';
-                    proceedBtn.disabled = false;
+                    proceedBtn.disabled = true;
+                    updateProceedButtonState();
                     proceedLoader.style.display = 'none';
                     showNotification('Airdrop cancelled. You can now edit wallets and amounts.');
                     return;
@@ -2273,13 +2304,14 @@ color: #888;
                 transactionQr.style.display = 'block';
                 transactionQrLink.href = data.fee_transaction.sign_url;
                 transactionQrLink.style.display = 'block';
-                feeBackBtn.style.display = 'block'; // Show the Back button during fee authorization
+                feeBackBtn.style.display = 'block';
                 showNotification(`Please authorize the REMI Service Fee payment of ${serviceFee} XRP in Xaman.`);
                 await new Promise(resolve => setTimeout(resolve, 1000));
                 const feeSigned = await pollTransaction(data.fee_transaction.payload_uuid, 0, 0, true);
                 if (!feeSigned.signed) {
                     showNotification('Fee payment not authorized. Airdrop cancelled.', true);
-                    proceedBtn.disabled = false;
+                    proceedBtn.disabled = true;
+                    updateProceedButtonState();
                     proceedLoader.style.display = 'none';
                     transactionSigning.style.display = 'none';
                     feeBackBtn.style.display = 'none';
@@ -2287,13 +2319,14 @@ color: #888;
                     return;
                 }
                 console.log('Fee signed, proceeding to airdrop transactions');
-                feeBackBtn.style.display = 'none'; // Hide the Back button after fee authorization
+                feeBackBtn.style.display = 'none';
             }
 
             let allSigned = true;
             if (!data.transactions || data.transactions.length === 0) {
                 showNotification('No airdrop transactions generated. Check wallet data or server response.', true);
-                proceedBtn.disabled = false;
+                proceedBtn.disabled = true;
+                updateProceedButtonState();
                 proceedLoader.style.display = 'none';
                 transactionSigning.style.display = 'none';
                 airdropForm.style.display = 'block';
@@ -2365,7 +2398,6 @@ color: #888;
                 }
             }
 
-            // Hide transaction signing UI
             transactionSigning.style.display = 'none';
             transactionTitle.textContent = '';
             transactionQr.src = '';
@@ -2374,7 +2406,6 @@ color: #888;
             transactionQrLink.style.display = 'none';
             feeBackBtn.style.display = 'none';
 
-            // Display results
             if (allSigned) {
                 showNotification('Airdrop transactions authorized successfully!');
             } else {
@@ -2400,7 +2431,6 @@ color: #888;
             `;
             resultsDiv.style.display = 'block';
 
-            // Attach event listeners
             const exportCsvBtn = document.getElementById('export-csv-btn');
             if (exportCsvBtn) {
                 exportCsvBtn.addEventListener('click', () => exportAirdropResults(transactionResults, tokenType));
@@ -2428,7 +2458,8 @@ color: #888;
             feeBackBtn.style.display = 'none';
             airdropForm.style.display = 'block';
         } finally {
-            proceedBtn.disabled = false;
+            proceedBtn.disabled = true;
+            updateProceedButtonState();
             proceedLoader.style.display = 'none';
         }
     }
@@ -2468,6 +2499,10 @@ color: #888;
         feeConfirmation.style.display = 'none';
         notificationOverlay.style.display = 'none';
         csvUploadInput.value = '';
+        walletsValidated = false;
+        trustlineChecked = false;
+        checkTrustlinesBtn.classList.add('glow');
+        updateProceedButtonState();
         if (loginSection.style.display === 'none') {
             airdropForm.style.display = 'block';
             console.log('Airdrop form should now be visible, display style:', airdropForm.style.display);
@@ -2492,7 +2527,3 @@ color: #888;
         }, 1000);
     };
 </script>
-
-</body>
-</html>
-
